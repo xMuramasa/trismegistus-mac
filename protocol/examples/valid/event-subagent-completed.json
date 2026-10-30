@@ -1,0 +1,14 @@
+{
+  "type": "event",
+  "session_id": "api_1792801001_b6235dd4",
+  "run_id": "run_43f98388dbc54cd1ab911657e79cf8af",
+  "seq": 4,
+  "kind": "subagent.completed",
+  "data": {
+    "subagent_id": "sa-0-31a5bc12",
+    "status": "completed",
+    "summary": "ok",
+    "duration": 2.67
+  },
+  "ts": 1792801004583
+}

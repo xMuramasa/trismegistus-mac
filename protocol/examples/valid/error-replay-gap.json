@@ -1,0 +1,6 @@
+{
+  "type": "error",
+  "code": "replay_gap",
+  "message": "events after seq 3 are no longer stored; reload the history",
+  "ref": "api_1792800970_b3a06956"
+}

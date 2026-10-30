@@ -1,0 +1,6 @@
+{
+  "type": "prompt",
+  "client_msg_id": "c1",
+  "session_id": "api_1/messages",
+  "text": "hi"
+}

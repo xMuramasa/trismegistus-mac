@@ -1,0 +1,14 @@
+{
+  "type": "event",
+  "session_id": "api_1792801001_b6235dd4",
+  "run_id": "run_43f98388dbc54cd1ab911657e79cf8af",
+  "seq": 2,
+  "kind": "tool.completed",
+  "data": {
+    "tool": "terminal",
+    "duration": 0.15,
+    "error": false,
+    "preview": "{\"output\": \"2026\", \"exit_code\": 0, \"error\": null}"
+  },
+  "ts": 1792801004583
+}

@@ -1,0 +1,371 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trismegistus.invalid/protocol/schema.json",
+  "title": "Trismegistus WebSocket protocol v1",
+  "description": "Every WebSocket message between the Trismegistus app and relay, both directions. One JSON object per text frame, discriminated by `type`. See protocol/README.md.",
+  "oneOf": [
+    { "$ref": "#/$defs/auth" },
+    { "$ref": "#/$defs/subscribe" },
+    { "$ref": "#/$defs/unsubscribe" },
+    { "$ref": "#/$defs/prompt" },
+    { "$ref": "#/$defs/stop" },
+    { "$ref": "#/$defs/steer" },
+    { "$ref": "#/$defs/approve" },
+    { "$ref": "#/$defs/ping" },
+    { "$ref": "#/$defs/ready" },
+    { "$ref": "#/$defs/event" },
+    { "$ref": "#/$defs/run" },
+    { "$ref": "#/$defs/ack" },
+    { "$ref": "#/$defs/error" },
+    { "$ref": "#/$defs/pong" }
+  ],
+  "$defs": {
+    "id": {
+      "description": "Session, run, request and client message ids: 1-128 characters, ASCII letters, digits and _ . : - (first one alphanumeric).",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "text": {
+      "description": "User text (prompt, steer): 1-32768 characters.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32768
+    },
+    "choice": {
+      "description": "Approval choices the app may send. Hermes' `always` is hidden on purpose.",
+      "enum": ["once", "session", "deny"]
+    },
+    "run_status": {
+      "enum": ["running", "waiting_for_approval", "completed", "failed", "cancelled"]
+    },
+    "error_code": {
+      "enum": [
+        "unauthorized",
+        "bad_request",
+        "too_large",
+        "rate_limited",
+        "busy",
+        "not_found",
+        "read_only",
+        "replay_gap",
+        "hermes_unavailable",
+        "hermes_error",
+        "internal"
+      ]
+    },
+    "event_kind": {
+      "enum": [
+        "tool.started",
+        "tool.completed",
+        "subagent.started",
+        "subagent.completed",
+        "approval.requested",
+        "approval.resolved",
+        "answer",
+        "run.completed",
+        "run.failed",
+        "run.cancelled",
+        "steer.queued",
+        "reconnected",
+        "unknown"
+      ]
+    },
+    "short": { "type": "string", "maxLength": 128 },
+    "preview": { "type": "string", "maxLength": 4000 },
+    "long": { "type": "string", "maxLength": 16000 },
+    "duration": { "type": "number", "minimum": 0 },
+
+    "auth": {
+      "description": "Phone → relay. Must be the first message, within 5 s of connecting.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "token"],
+      "properties": {
+        "type": { "const": "auth" },
+        "token": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9_-]+$" }
+      }
+    },
+    "subscribe": {
+      "description": "Phone → relay. Receive a session's events. With after_seq, events with a larger seq are replayed first.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "session_id"],
+      "properties": {
+        "type": { "const": "subscribe" },
+        "session_id": { "$ref": "#/$defs/id" },
+        "after_seq": { "$ref": "#/$defs/seq" }
+      }
+    },
+    "unsubscribe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "session_id"],
+      "properties": {
+        "type": { "const": "unsubscribe" },
+        "session_id": { "$ref": "#/$defs/id" }
+      }
+    },
+    "prompt": {
+      "description": "Phone → relay. Start a turn. client_msg_id (a UUID) makes resends safe.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "client_msg_id", "session_id", "text"],
+      "properties": {
+        "type": { "const": "prompt" },
+        "client_msg_id": { "$ref": "#/$defs/id" },
+        "session_id": { "$ref": "#/$defs/id" },
+        "text": { "$ref": "#/$defs/text" }
+      }
+    },
+    "stop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "run_id"],
+      "properties": {
+        "type": { "const": "stop" },
+        "run_id": { "$ref": "#/$defs/id" }
+      }
+    },
+    "steer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "run_id", "text"],
+      "properties": {
+        "type": { "const": "steer" },
+        "run_id": { "$ref": "#/$defs/id" },
+        "text": { "$ref": "#/$defs/text" }
+      }
+    },
+    "approve": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "run_id", "request_id", "choice"],
+      "properties": {
+        "type": { "const": "approve" },
+        "run_id": { "$ref": "#/$defs/id" },
+        "request_id": { "$ref": "#/$defs/id" },
+        "choice": { "$ref": "#/$defs/choice" }
+      }
+    },
+    "ping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "ping" }
+      }
+    },
+
+    "ready": {
+      "description": "Relay → phone, after a successful auth.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "device", "server_version"],
+      "properties": {
+        "type": { "const": "ready" },
+        "device": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "server_version": { "type": "string", "minLength": 1, "maxLength": 64 }
+      }
+    },
+    "event": {
+      "description": "Relay → phone. One numbered, stored event. seq counts up per session across runs, from 1. ts is unix milliseconds.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "session_id", "run_id", "seq", "kind", "data", "ts"],
+      "properties": {
+        "type": { "const": "event" },
+        "session_id": { "$ref": "#/$defs/id" },
+        "run_id": { "$ref": "#/$defs/id" },
+        "seq": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "kind": { "$ref": "#/$defs/event_kind" },
+        "data": { "type": "object" },
+        "ts": { "type": "integer", "minimum": 0 }
+      },
+      "allOf": [
+        { "if": { "properties": { "kind": { "const": "tool.started" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/data_tool_started" } } } },
+        { "if": { "properties": { "kind": { "const": "tool.completed" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/data_tool_completed" } } } },
+        { "if": { "properties": { "kind": { "const": "subagent.started" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/data_subagent_started" } } } },
+        { "if": { "properties": { "kind": { "const": "subagent.completed" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/data_subagent_completed" } } } },
+        { "if": { "properties": { "kind": { "const": "approval.requested" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/data_approval_requested" } } } },
+        { "if": { "properties": { "kind": { "const": "approval.resolved" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/data_approval_resolved" } } } },
+        { "if": { "properties": { "kind": { "const": "answer" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/data_answer" } } } },
+        { "if": { "properties": { "kind": { "const": "run.completed" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/data_empty" } } } },
+        { "if": { "properties": { "kind": { "const": "run.failed" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/data_run_failed" } } } },
+        { "if": { "properties": { "kind": { "const": "run.cancelled" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/data_run_cancelled" } } } },
+        { "if": { "properties": { "kind": { "const": "steer.queued" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/data_empty" } } } },
+        { "if": { "properties": { "kind": { "const": "reconnected" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/data_reconnected" } } } },
+        { "if": { "properties": { "kind": { "const": "unknown" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/data_unknown" } } } }
+      ]
+    },
+    "run": {
+      "description": "Relay → phone. A run's status changed (not stored; sent live and on subscribe for the active run).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "run_id", "session_id", "status"],
+      "properties": {
+        "type": { "const": "run" },
+        "run_id": { "$ref": "#/$defs/id" },
+        "session_id": { "$ref": "#/$defs/id" },
+        "status": { "$ref": "#/$defs/run_status" }
+      }
+    },
+    "ack": {
+      "description": "Relay → phone. A prompt was accepted; replayed is true when client_msg_id was seen before (no new run).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "client_msg_id", "run_id", "replayed"],
+      "properties": {
+        "type": { "const": "ack" },
+        "client_msg_id": { "$ref": "#/$defs/id" },
+        "run_id": { "$ref": "#/$defs/id" },
+        "replayed": { "type": "boolean" }
+      }
+    },
+    "error": {
+      "description": "Relay → phone. ref names what failed: the client_msg_id of a prompt, the run_id of stop/steer/approve, the session_id of subscribe.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "code", "message"],
+      "properties": {
+        "type": { "const": "error" },
+        "code": { "$ref": "#/$defs/error_code" },
+        "message": { "type": "string", "maxLength": 512 },
+        "ref": { "$ref": "#/$defs/id" }
+      }
+    },
+    "pong": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "pong" }
+      }
+    },
+
+    "data_empty": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {}
+    },
+    "data_tool_started": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool"],
+      "properties": {
+        "tool": { "$ref": "#/$defs/short" },
+        "preview": { "$ref": "#/$defs/preview" }
+      }
+    },
+    "data_tool_completed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool", "error"],
+      "properties": {
+        "tool": { "$ref": "#/$defs/short" },
+        "duration": { "$ref": "#/$defs/duration" },
+        "error": { "type": "boolean" },
+        "preview": { "$ref": "#/$defs/preview" }
+      }
+    },
+    "data_subagent_started": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subagent_id"],
+      "properties": {
+        "subagent_id": { "$ref": "#/$defs/short" },
+        "goal": { "$ref": "#/$defs/preview" },
+        "model": { "$ref": "#/$defs/short" },
+        "child_session_id": { "$ref": "#/$defs/short" },
+        "task_index": { "type": "integer", "minimum": 0 },
+        "task_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "data_subagent_completed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subagent_id"],
+      "properties": {
+        "subagent_id": { "$ref": "#/$defs/short" },
+        "status": { "$ref": "#/$defs/short" },
+        "summary": { "$ref": "#/$defs/long" },
+        "duration": { "$ref": "#/$defs/duration" }
+      }
+    },
+    "data_approval_requested": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_id", "command", "choices"],
+      "properties": {
+        "request_id": { "$ref": "#/$defs/id" },
+        "command": { "$ref": "#/$defs/long" },
+        "description": { "$ref": "#/$defs/preview" },
+        "choices": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/choice" }
+        }
+      }
+    },
+    "data_approval_resolved": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_id", "choice"],
+      "properties": {
+        "request_id": { "$ref": "#/$defs/id" },
+        "choice": { "type": "string", "maxLength": 32, "pattern": "^[a-z_]+$" }
+      }
+    },
+    "data_answer": {
+      "description": "The final answer. Answers over 256 KiB are cut and marked truncated; the full text is in the session history.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string", "maxLength": 262144 },
+        "truncated": { "type": "boolean" }
+      }
+    },
+    "data_run_failed": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "error": { "$ref": "#/$defs/preview" }
+      }
+    },
+    "data_run_cancelled": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reason": { "$ref": "#/$defs/short" }
+      }
+    },
+    "data_reconnected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason"],
+      "properties": {
+        "reason": { "enum": ["stream_lost", "relay_restart"] }
+      }
+    },
+    "data_unknown": {
+      "description": "A Hermes event the relay doesn't map. data is the frame without its envelope, or empty and truncated when over 8 KiB.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event", "data"],
+      "properties": {
+        "event": { "type": "string", "maxLength": 64 },
+        "data": { "type": "object" },
+        "truncated": { "type": "boolean" }
+      }
+    }
+  }
+}

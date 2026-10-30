@@ -1,0 +1,12 @@
+{
+  "type": "event",
+  "session_id": "api_1792801001_b6235dd4",
+  "run_id": "run_43f98388dbc54cd1ab911657e79cf8af",
+  "seq": 6,
+  "kind": "approval.resolved",
+  "data": {
+    "request_id": "a990e19b6d5049798852410f79f88255",
+    "choice": "deny"
+  },
+  "ts": 1792801004583
+}
