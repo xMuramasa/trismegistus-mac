@@ -21,7 +21,7 @@ public struct EndfieldBackground: View {
     private static func draw(_ context: inout GraphicsContext, _ size: CGSize) {
         let w = size.width, h = size.height
 
-        // Crosses only, no grid lines (Martin, 2026-10-31): a sparse field of small, thick `+`, rows wider apart
+        // Crosses only, no grid lines (Martin, 2026-10-31): a sparse field of small `+` (1.5 pt, his pick), rows wider apart
         // across than down (his sketch: one per ~14 characters, a row every 4 lines).
         var marks = Path()
         for x in stride(from: crossSpacing.width / 2, to: w, by: crossSpacing.width) {
@@ -30,7 +30,7 @@ public struct EndfieldBackground: View {
                 marks.move(to: CGPoint(x: x, y: y - 4)); marks.addLine(to: CGPoint(x: x, y: y + 4))
             }
         }
-        context.stroke(marks, with: .color(Theme.ink.opacity(0.45)), style: StrokeStyle(lineWidth: 2, lineCap: .butt))
+        context.stroke(marks, with: .color(Theme.ink.opacity(0.55)), style: StrokeStyle(lineWidth: 1.5, lineCap: .butt))
 
         let cx = w * 0.78, cy = h * 0.72
         for k in 1...18 {
