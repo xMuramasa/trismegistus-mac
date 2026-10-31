@@ -51,15 +51,24 @@ struct TerminalPane: View {
         var log: ObjectIdentifier?
     }
 
+    /// Title on its own line, the filter below as two halves: the pane can be 280 pt wide, too narrow for title and
+    /// both chips on one line (they wrapped letter by letter).
     private func header(_ entries: [TerminalEntry]) -> some View {
-        HStack(spacing: 8) {
-            Text("Terminal").typeRole(.label)
-            if let run = (state?.run?.id ?? entries.last?.runID), !run.isEmpty {
-                Text("run \(run.prefix(4))").typeRole(.monoSmall).foregroundStyle(Theme.secondary)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text("Terminal").typeRole(.label).lineLimit(1)
+                if let run = (state?.run?.id ?? entries.last?.runID), !run.isEmpty {
+                    Text("run \(run.prefix(4))").typeRole(.monoSmall).foregroundStyle(Theme.secondary).lineLimit(1)
+                }
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 8)
-            FilterChip(title: "Commands", symbol: Symbol.terminal, isOn: commandsOnly) { commandsOnly = true }
-            FilterChip(title: "All tools", symbol: Symbol.list, isOn: !commandsOnly) { commandsOnly = false }
+            HStack(spacing: 0) {
+                FilterChip(title: "Commands", symbol: Symbol.terminal, isOn: commandsOnly, fills: true) { commandsOnly = true }
+                Rectangle().fill(Theme.rule).frame(width: 1)
+                FilterChip(title: "All tools", symbol: Symbol.list, isOn: !commandsOnly, fills: true) { commandsOnly = false }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .overlay(Rectangle().strokeBorder(Theme.rule, lineWidth: 1))
         }
         .padding(.horizontal, 16).padding(.vertical, 10)
     }
@@ -86,16 +95,20 @@ struct FilterChip: View {
     let title: String
     let symbol: String
     let isOn: Bool
+    /// Stretch to the width offered (a half of a segmented row) instead of hugging the label.
+    var fills = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                Text(title).textCase(.uppercase)
+                // Never wrap: a narrow pane squeezed the labels into one letter column ("COM/MAN/DS").
+                Text(title).textCase(.uppercase).lineLimit(1).fixedSize()
                 Image(systemName: symbol)
             }
             .typeRole(.button)
             .padding(.horizontal, 10).padding(.vertical, 5)
+            .frame(maxWidth: fills ? .infinity : nil)
             .foregroundStyle(isOn ? Theme.yellow : Theme.ink)
             .background(isOn ? Theme.ink : .clear)
             .contentShape(Rectangle())
