@@ -27,11 +27,12 @@ public struct EndfieldBackground: View {
         var marks = Path()
         for x in stride(from: 4 * c, to: w, by: 4 * c) {
             for y in stride(from: 4 * c, to: h, by: 4 * c) {
-                marks.move(to: CGPoint(x: x - 6, y: y + 0.5)); marks.addLine(to: CGPoint(x: x + 7, y: y + 0.5))
-                marks.move(to: CGPoint(x: x + 0.5, y: y - 6)); marks.addLine(to: CGPoint(x: x + 0.5, y: y + 7))
+                // Small and darker than the grid they sit on (Martin: 13 pt marks in grid colour read as squares).
+                marks.move(to: CGPoint(x: x - 3, y: y + 0.5)); marks.addLine(to: CGPoint(x: x + 4, y: y + 0.5))
+                marks.move(to: CGPoint(x: x + 0.5, y: y - 3)); marks.addLine(to: CGPoint(x: x + 0.5, y: y + 4))
             }
         }
-        context.stroke(marks, with: .color(Theme.muted), lineWidth: 1)
+        context.stroke(marks, with: .color(Theme.ink.opacity(0.55)), style: StrokeStyle(lineWidth: 1.5, lineCap: .butt))
 
         let cx = w * 0.78, cy = h * 0.72
         for k in 1...18 {
