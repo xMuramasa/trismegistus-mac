@@ -26,6 +26,8 @@ public actor RelayClient {
     /// The relay closes a socket that hasn't sent auth within 5 s; this is the wait for its `ready`.
     public static let readyTimeout: Duration = .seconds(10)
     public static let maxBackoff: Duration = .seconds(30)
+    /// The relay refuses more subscriptions per socket (relay/internal/server: MaxSubscriptions).
+    public static let maxSubscriptions = 64
 
     public nonisolated let outputs: AsyncStream<Output>
     private let output: AsyncStream<Output>.Continuation
@@ -38,6 +40,8 @@ public actor RelayClient {
     public private(set) var state: ConnectionState = .disconnected
     /// Followed sessions and the last seq seen in each (0: none yet, subscribe without after_seq).
     private var lastSeq: [String: Int] = [:]
+    /// The same sessions in subscribe order (also after a reconnect).
+    private var followed: [String] = []
     private var socket: (any WebSocketConnection)?
     private var ready = false
     private var loop: Task<Void, Never>?
@@ -92,7 +96,7 @@ public actor RelayClient {
     /// Follows a session: subscribes now if connected, and again after every reconnect from the last seq seen.
     /// afterSeq > 0 replays the stored events after it first.
     public func subscribe(_ sessionID: String, afterSeq: Int = 0) async {
-        lastSeq[sessionID] = afterSeq
+        if lastSeq.updateValue(afterSeq, forKey: sessionID) == nil { followed.append(sessionID) }
         if ready, let c = socket {
             try? await c.send(Self.text(.subscribe(sessionID: sessionID, afterSeq: afterSeq > 0 ? afterSeq : nil)))
         }
@@ -100,7 +104,19 @@ public actor RelayClient {
 
     public func unsubscribe(_ sessionID: String) async {
         guard lastSeq.removeValue(forKey: sessionID) != nil else { return }
+        followed.removeAll { $0 == sessionID }
         if ready, let c = socket { try? await c.send(Self.text(.unsubscribe(sessionID: sessionID))) }
+    }
+
+    /// Follows exactly these sessions, in this order, up to maxSubscriptions (the rest are left out). Sessions already
+    /// followed keep their seq; the ones no longer named are unsubscribed first, so the relay's limit holds.
+    public func follow(_ sessionIDs: [String]) async {
+        var seen = Set<String>()
+        let ids = Array(sessionIDs.filter { seen.insert($0).inserted }.prefix(Self.maxSubscriptions))
+        let keep = Set(ids)
+        for id in followed where !keep.contains(id) { await unsubscribe(id) }
+        for id in ids where lastSeq[id] == nil { await subscribe(id) }
+        followed = ids
     }
 
     /// prompt, steer, stop, approve (subscribe through subscribe(_:afterSeq:) so reconnects resume it).
@@ -174,7 +190,8 @@ public actor RelayClient {
                 await c.close(code: 1000)
                 return false
             }
-            for (sessionID, seq) in lastSeq {
+            for sessionID in followed {
+                let seq = lastSeq[sessionID] ?? 0
                 try await c.send(Self.text(.subscribe(sessionID: sessionID, afterSeq: seq > 0 ? seq : nil)))
             }
             let keepalive = Task { await self.keepalive(c) }
