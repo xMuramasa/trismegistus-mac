@@ -13,7 +13,9 @@ commands, session list. Martin's laptop is the target; nothing is distributed.
 - **Menu bar app** (`MenuBarExtra` with the window style), not a Dock app: a companion that shows progress and asks
   for approvals belongs in the menu bar. SwiftUI, macOS 26 only (Martin's machine), Swift 6 strict concurrency.
   Plus a **main window** (decided 2026-10-31, #4) for long work: conversations | chat | terminal. The popover stays for
-  a glance and approvals and opens the window.
+  a glance and approvals and opens the window. Opening the app yourself (Finder, Spotlight, the Dock, or again while
+  it runs) opens the window; a launch at login stays in the menu bar. Automatic termination is disabled, so macOS
+  never quits it quietly while no window is open; Settings has Quit (⌘Q).
 - **Design:** the UI draft in Penpot (#5, exports in `design/ui-draft/`), approved by Martin on 2026-10-31 for the
   beta. Endfield design language (paper and ink, yellow for the one primary action, square edges, hairlines, key-hint
   strip), **light mode only** (forced at launch with `NSApp.appearance = .aqua`, so a Mac in dark mode doesn't turn system-colored text white on paper), **system font** (SF Pro, SF Mono, SF Pro Expanded bold for headings). Native controls

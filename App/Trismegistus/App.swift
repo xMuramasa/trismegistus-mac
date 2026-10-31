@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct TrismegistusApp: App {
     @State private var model = AppModel()
+    @NSApplicationDelegateAdaptor private var launch: AppLaunch
 
     init() {
         // Light mode only (SPEC "Design"): the Endfield palette is paper and ink. Without this, text and toolbars that
@@ -20,6 +21,7 @@ struct TrismegistusApp: App {
             StatusGlyph(activity: model.store?.activity ?? .disconnected)
                 // The label is the one view that is always alive: it opens the window for a clicked notification.
                 .opensChatFromNotifications(model.notifications)
+                .opensMainWindow(on: launch)  // when Martin opens the app himself, not at login
         }
         .menuBarExtraStyle(.window)
 

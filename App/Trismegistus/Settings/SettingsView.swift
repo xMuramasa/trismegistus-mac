@@ -116,6 +116,8 @@ struct SettingsView: View {
                 EmptyView()
             }
             if let error = login.error { Text(error).typeRole(.caption).foregroundStyle(Theme.red) }
+            // The only way to quit while no window is open (a menu bar app has no Dock icon or app menu then).
+            EndfieldButton("Quit Trismegistus", symbol: "power", shortcut: KeyboardShortcut("q")) { NSApp.terminate(nil) }
         }
     }
 
