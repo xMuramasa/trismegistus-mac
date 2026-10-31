@@ -26,14 +26,34 @@ final class AppLaunch: NSObject, NSApplicationDelegate {
         return false
     }
 
-    /// macOS marks the open-application event with `keyAELaunchedAsLogInItem` when it starts the app at login.
-    /// Only valid while that event is handled, i.e. in `applicationDidFinishLaunching`.
+    /// A launch at login starts quietly. Two signs, either is enough:
+    /// - the open-application event carries `keyAELaunchedAsLogInItem` (legacy login items; only valid while that
+    ///   event is handled, i.e. in `applicationDidFinishLaunching`). `SMAppService` login items don't get it: seen on
+    ///   macOS 26, where the window opened at login.
+    /// - the app started within a minute of Finder, which starts with every login session. A Finder relaunch right
+    ///   before opening the app by hand would also start it quietly; the menu bar icon is still there.
+    ///   Start times come from the kernel (`kinfo_proc`): `NSRunningApplication.launchDate` is nil for Finder, and
+    ///   the sandbox can't read utmpx (both checked on macOS 26).
     private static var launchedAsLoginItem: Bool {
-        guard let event = NSAppleEventManager.shared().currentAppleEvent,
-              event.eventID == AEEventID(kAEOpenApplication)
+        if let event = NSAppleEventManager.shared().currentAppleEvent, event.eventID == AEEventID(kAEOpenApplication),
+           event.paramDescriptor(forKeyword: AEKeyword(keyAEPropData))?.enumCodeValue == OSType(keyAELaunchedAsLogInItem) {
+            return true
+        }
+        guard let finder = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.finder").first,
+              let finderStart = startTime(of: finder.processIdentifier),
+              let ourStart = startTime(of: getpid())
         else { return false }
-        return event.paramDescriptor(forKeyword: AEKeyword(keyAEPropData))?.enumCodeValue
-            == OSType(keyAELaunchedAsLogInItem)
+        return abs(ourStart.timeIntervalSince(finderStart)) < 60
+    }
+
+    private static func startTime(of pid: pid_t) -> Date? {
+        var info = kinfo_proc()
+        var size = MemoryLayout<kinfo_proc>.stride
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]
+        guard sysctl(&mib, 4, &info, &size, nil, 0) == 0, size > 0 else { return nil }
+        let tv = info.kp_proc.p_starttime
+        guard tv.tv_sec > 0 else { return nil }
+        return Date(timeIntervalSince1970: TimeInterval(tv.tv_sec) + TimeInterval(tv.tv_usec) / 1_000_000)
     }
 }
 
