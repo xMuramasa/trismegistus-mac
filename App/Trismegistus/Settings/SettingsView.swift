@@ -1,24 +1,158 @@
+import ServiceManagement
 import SwiftUI
+import TrismegistusKit
+import TrismegistusUI
 
-/// Placeholder: relay, device, status, unpair.
+/// Settings (06): connection, launch at login, notification toggles.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
-    @State private var error: String?
+    @State private var login = LaunchAtLogin()
+    @State private var confirmingUnpair = false
+    @State private var unpairError: String?
+    /// Shown after unpairing: the relay still lists the device until this runs on the server.
+    @State private var revokeCommand: String?
+    @AppStorage(NotificationSettings.approvals) private var approvals = true
+    @AppStorage(NotificationSettings.runFinished) private var runFinished = true
+    @AppStorage(NotificationSettings.approvalSound) private var approvalSound = true
+
+    private var deviceName: String { model.deviceName ?? "macbook" }
+    private var serverCommand: String { "trismegistus-relay devices revoke \(deviceName)" }
+    private var version: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
+    }
 
     var body: some View {
-        Form {
-            LabeledContent("Relay", value: model.relayURL.absoluteString)
-            LabeledContent("Device", value: model.deviceName ?? "Not paired")
-            LabeledContent("Status", value: String(describing: model.connection))
-            if let error { Text(error).foregroundStyle(.red) }
-            Button("Unpair") {
-                Task {
-                    do { try await model.unpair() } catch { self.error = "Can't remove the token from the Keychain." }
-                }
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 2) {
+                TitleRule("Settings")
+                Text("trismegistus-mac \(version)").typeRole(.monoSmall).foregroundStyle(Theme.secondary)
             }
-            .disabled(model.store == nil)
+            .padding(.horizontal, 16).padding(.vertical, 14)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    connection
+                    general
+                    notifications
+                }
+                .padding(.horizontal, 16).padding(.bottom, 16)
+            }
+            KeyHintStrip([("esc", "close"), ("⌘Q", "quit")])
         }
-        .padding()
-        .frame(width: 420)
+        .frame(width: 380, height: 520)
+        .background(Theme.paper)
+        .onAppear { login.refresh() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            login.refresh()  // the user may have approved or removed the login item in System Settings
+        }
+    }
+
+    // MARK: Connection
+
+    private var linkState: (LinkState, String) {
+        switch model.connection {
+        case .connected: (.linked, model.relayURL.host() ?? "")
+        case .connecting: (.reconnecting, "connecting")
+        case .authFailed: (.offline, "token refused")
+        case .disconnected: (.offline, "not paired")
+        }
+    }
+
+    private var connection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            section("Connection")
+            StatusReadout(linkState.0, detail: linkState.1)
+            field("Relay", model.relayURL.absoluteString, mono: true)
+            field("Device name", model.deviceName ?? "—", mono: false)
+            HStack(spacing: 10) {
+                EndfieldButton("Unpair", symbol: Symbol.unpair, kind: .danger) { confirmingUnpair = true }
+                    .disabled(model.store == nil)
+                Text("removes the token from this Mac").typeRole(.caption).foregroundStyle(Theme.muted)
+            }
+            if let unpairError { Text(unpairError).typeRole(.caption).foregroundStyle(Theme.red) }
+            if let revokeCommand {
+                Text("The relay still lists this device. To revoke it, run on the server:")
+                    .typeRole(.caption).foregroundStyle(Theme.secondary)
+                CodeBlockView(language: "bash", code: revokeCommand)
+            }
+        }
+        .confirmationDialog("Unpair this Mac?", isPresented: $confirmingUnpair) {
+            Button("Unpair", role: .destructive) { Task { await unpair() } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("""
+                This removes the token from the Keychain and disconnects. It does not revoke the device on the relay. \
+                To do that, run on the server: \(serverCommand)
+                """)
+        }
+    }
+
+    private func unpair() async {
+        let command = serverCommand  // the device name is forgotten by unpair()
+        do {
+            try await model.unpair()
+            unpairError = nil
+            revokeCommand = command
+        } catch {
+            unpairError = "Can't remove the token from the Keychain."
+        }
+    }
+
+    // MARK: General
+
+    private var general: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            section("General")
+            Toggle("Launch at login", isOn: Binding(get: { login.isOn }, set: { login.set($0) }))
+                .endfieldSwitch().typeRole(.body)
+            switch login.status {
+            case .requiresApproval:
+                HStack(spacing: 10) {
+                    Text("Waiting for your approval in System Settings.").typeRole(.caption).foregroundStyle(Theme.secondary)
+                    EndfieldButton("Login Items", symbol: "gearshape") { login.openLoginItems() }
+                }
+            case .notFound:
+                Text("macOS can't find this app as a login item.").typeRole(.caption).foregroundStyle(Theme.secondary)
+            default:
+                EmptyView()
+            }
+            if let error = login.error { Text(error).typeRole(.caption).foregroundStyle(Theme.red) }
+        }
+    }
+
+    // MARK: Notifications
+
+    private var notifications: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            section("Notifications")
+            Toggle("Approval requests", isOn: $approvals)
+            Toggle("Run finished while closed", isOn: $runFinished)
+            Toggle("Sound for approvals", isOn: $approvalSound)
+        }
+        .endfieldSwitch().typeRole(.body)
+    }
+
+    // MARK: Pieces
+
+    private func section(_ title: String) -> some View {
+        HStack(spacing: 8) {
+            Text(title).typeRole(.label).foregroundStyle(Theme.secondary)
+            Rectangle().fill(Theme.rule).frame(height: 1)
+        }
+        .padding(.top, 4)
+        .accessibilityAddTraits(.isHeader)
+    }
+
+    private func field(_ label: String, _ value: String, mono: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label).typeRole(.callout).foregroundStyle(Theme.secondary)
+            Text(value)
+                .typeRole(mono ? .mono : .body)
+                .foregroundStyle(mono ? Theme.muted : Theme.ink)
+                .lineLimit(1).truncationMode(.middle)
+                .padding(.horizontal, 10)
+                .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
+                .background(Theme.sunken)
+                .textSelection(.enabled)
+        }
     }
 }
