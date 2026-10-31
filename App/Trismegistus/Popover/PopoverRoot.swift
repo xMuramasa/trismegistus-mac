@@ -1,23 +1,147 @@
 import SwiftUI
+import TrismegistusKit
+import TrismegistusUI
 
-/// Placeholder: the popover (session list → chat).
+/// The menu bar popover (380×560): the sessions list (02, 02b, 02c), with a chat or the settings pushed inside it.
 struct PopoverRoot: View {
+    private enum Page: Equatable {
+        case list, chat(String), settings
+    }
+
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
+    @State private var page = Page.list
+    @State private var reconnect = Reconnect()
+    @State private var error: String?
+    @State private var lastRefresh = Date.distantPast
+
+    private var isConnected: Bool {
+        if case .connected = model.connection { return true }
+        return false
+    }
 
     var body: some View {
-        VStack(alignment: .leading) {
-            Text(String(describing: model.connection))
-            List(model.sessions) { Text($0.title ?? $0.id) }
-            HStack {
-                Button("Open window", systemImage: "macwindow") {
-                    openWindow(id: "main")
-                    NSApp.activate() // the window may already be open behind other apps
-                }
-                SettingsLink { Label("Settings", systemImage: "gearshape") }
+        Group {
+            switch page {
+            case .list: home
+            case .chat(let id): ChatPage(sessionID: id) { page = .list }
+            case .settings: settings
             }
         }
-        .padding()
-        .frame(width: 320, height: 420)
+        .frame(width: 380, height: 560)
+        .background(Theme.paper)
+        .onChange(of: model.connection, initial: true) { _, state in reconnect.observe(state) }
+        .task { await refresh() }
+        // A MenuBarExtra window is created once; becoming key is the nearest thing to "the popover opened".
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+            Task { await refresh() }
+        }
+    }
+
+    // MARK: Home
+
+    private var home: some View {
+        VStack(spacing: 0) {
+            header
+            if !isConnected { reconnectNotice.padding(.horizontal, 16).padding(.bottom, 8) }
+            if let message = error ?? model.sessionsError, isConnected {
+                Notice(title: "Sessions", message: message, isError: true) {
+                    EndfieldButton("Dismiss", symbol: Symbol.close, kind: .quiet, iconOnly: true) { error = nil }
+                }
+                .padding(.horizontal, 16).padding(.bottom, 8)
+            }
+            SessionList(isStale: !isConnected, error: $error, onOpen: { page = .chat($0) }, onNew: newSession)
+            KeyHintStrip(homeHints)
+        }
+    }
+
+    private var homeHints: [(key: String, action: String)] {
+        if !isConnected { return [("⌘R", "retry now"), ("⌘,", "settings"), ("esc", "close")] }
+        if model.sessions.isEmpty { return [("⌘N", "new"), ("⌘,", "settings"), ("esc", "close")] }
+        return [("↑↓", "move"), ("↩", "open"), ("⌘N", "new"), ("⌘,", "settings")]
+    }
+
+    private var header: some View {
+        HStack(spacing: 10) {
+            TMark().scaleEffect(1.3).frame(width: 18, height: 18).foregroundStyle(Theme.ink)
+            TitleRule("Trismegistus").fixedSize()
+            Spacer(minLength: 8)
+            StatusReadout(isConnected ? .linked : .reconnecting, detail: isConnected ? model.deviceName ?? "" : "")
+            EndfieldButton("Open window", symbol: Symbol.window, kind: .quiet, iconOnly: true) {
+                openWindow(id: "main")
+                NSApp.activate() // the window may already be open behind other apps
+            }
+            EndfieldButton("Settings", symbol: "slider.horizontal.3", kind: .quiet, iconOnly: true, shortcut: KeyboardShortcut(",")) {
+                page = .settings
+            }
+        }
+        .padding(.horizontal, 16).padding(.vertical, 12)
+    }
+
+    private var reconnectNotice: some View {
+        let connecting = model.connection == .connecting
+        let attempt = max(reconnect.attempt, 1)
+        return countdownNotice(connecting: connecting, attempt: attempt)
+    }
+
+    /// The message is rebuilt every second for the countdown.
+    private func countdownNotice(connecting: Bool, attempt: Int) -> some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let message: String
+            if connecting {
+                message = "Showing the last known state. Attempt \(attempt), connecting."
+            } else if let at = reconnect.retryAt {
+                message = "Showing the last known state. Attempt \(attempt), next in \(max(0, Int(at.timeIntervalSince(context.date).rounded(.up)))) s."
+            } else {
+                message = "Showing the last known state. Attempt \(attempt)."
+            }
+            return Notice(title: connecting && attempt == 1 ? "Connecting" : "Relay unreachable", message: message) {
+                EndfieldButton("Retry", symbol: Symbol.retry, iconOnly: true, shortcut: KeyboardShortcut("r")) { retryNow() }
+            }
+        }
+    }
+
+    // MARK: Settings
+
+    private var settings: some View {
+        VStack(spacing: 0) {
+            HStack {
+                EndfieldButton("Back", symbol: "chevron.left", kind: .quiet, iconOnly: true, shortcut: .cancelAction) { page = .list }
+                Spacer()
+            }
+            .padding(.horizontal, 16).frame(height: 40)
+            SettingsView()
+        }
+    }
+
+    // MARK: Actions
+
+    private func newSession() {
+        guard let store = model.store else { return }
+        Task {
+            do {
+                let session = try await store.createSession()
+                page = .chat(session.id)
+            } catch {
+                self.error = (error as? RelayAPIError)?.message ?? "Can't reach the relay."
+            }
+        }
+    }
+
+    /// Restarting the client skips the backoff wait; the Kit has no "retry now".
+    private func retryNow() {
+        guard let client = model.store?.client else { return }
+        Task {
+            await client.stop()
+            await client.start()
+        }
+    }
+
+    private func refresh() async {
+        guard isConnected, Date().timeIntervalSince(lastRefresh) > 2 else { return }
+        lastRefresh = Date()
+        do { try await model.store?.refreshSessions() } catch {
+            self.error = (error as? RelayAPIError)?.message ?? "Can't reach the relay."
+        }
     }
 }
