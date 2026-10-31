@@ -1,0 +1,28 @@
+name: Trismegistus
+options:
+  bundleIdPrefix: dev.x-muramasa
+  deploymentTarget:
+    macOS: "26.0"
+packages:
+  TrismegistusKit:
+    path: ../TrismegistusKit
+targets:
+  Trismegistus:
+    type: application
+    platform: macOS
+    sources: [Trismegistus]
+    dependencies:
+      - package: TrismegistusKit
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_LSUIElement: YES
+        # No team signing (SPEC "Signing"): ad-hoc, run locally. The entitlements file and the sandbox settings below
+        # say the same thing, so either way of merging them gives the same entitlements.
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_ENTITLEMENTS: Trismegistus/Trismegistus.entitlements
+        ENABLE_APP_SANDBOX: YES
+        ENABLE_OUTGOING_NETWORK_CONNECTIONS: YES
+    scheme: {}
