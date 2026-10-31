@@ -16,7 +16,7 @@ commands, session list. Martin's laptop is the target; nothing is distributed.
   a glance and approvals and opens the window.
 - **Design:** the UI draft in Penpot (#5, exports in `design/ui-draft/`), approved by Martin on 2026-10-31 for the
   beta. Endfield design language (paper and ink, yellow for the one primary action, square edges, hairlines, key-hint
-  strip), **light mode only**, **system font** (SF Pro, SF Mono, SF Pro Expanded bold for headings). Native controls
+  strip), **light mode only** (forced at launch with `NSApp.appearance = .aqua`, so a Mac in dark mode doesn't turn system-colored text white on paper), **system font** (SF Pro, SF Mono, SF Pro Expanded bold for headings). Native controls
   with an Endfield surface; custom views only for content and identity (see the Controls page). Colors come from the
   Endfield palette (`endfield-dotfiles/theme/palette.json`), copied into an asset catalog. Buttons carry a trailing SF
   Symbol; obvious actions (copy, new, send, stop, retry, open window, terminal) are icon-only with the word as tooltip

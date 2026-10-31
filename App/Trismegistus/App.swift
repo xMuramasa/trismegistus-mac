@@ -4,6 +4,12 @@ import SwiftUI
 struct TrismegistusApp: App {
     @State private var model = AppModel()
 
+    init() {
+        // Light mode only (SPEC "Design"): the Endfield palette is paper and ink. Without this, text and toolbars that
+        // follow the system appearance turn white or dark on the paper background when macOS is in dark mode.
+        NSApplication.shared.appearance = NSAppearance(named: .aqua)
+    }
+
     var body: some Scene {
         MenuBarExtra {
             Group {
