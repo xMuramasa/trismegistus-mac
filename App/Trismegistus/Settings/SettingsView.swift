@@ -14,6 +14,7 @@ struct SettingsView: View {
     @AppStorage(NotificationSettings.approvals) private var approvals = true
     @AppStorage(NotificationSettings.runFinished) private var runFinished = true
     @AppStorage(NotificationSettings.approvalSound) private var approvalSound = true
+    @AppStorage(NewsSettings.readerURL) private var newsReaderURL = NewsSettings.defaultReaderURL
 
     private var deviceName: String { model.deviceName ?? "macbook" }
     private var serverCommand: String { "trismegistus-relay devices revoke \(deviceName)" }
@@ -116,6 +117,11 @@ struct SettingsView: View {
                 EmptyView()
             }
             if let error = login.error { Text(error).typeRole(.caption).foregroundStyle(Theme.red) }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("News reader").typeRole(.callout).foregroundStyle(Theme.secondary)
+                EndfieldTextField(NewsSettings.defaultReaderURL, text: $newsReaderURL)
+                Text("empty: News reads the feed runs instead").typeRole(.caption).foregroundStyle(Theme.muted)
+            }
             // The only way to quit while no window is open (a menu bar app has no Dock icon or app menu then).
             EndfieldButton("Quit Trismegistus", symbol: "power", shortcut: KeyboardShortcut("q")) { NSApp.terminate(nil) }
         }

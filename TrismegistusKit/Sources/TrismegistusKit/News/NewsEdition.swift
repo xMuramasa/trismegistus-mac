@@ -2,7 +2,8 @@ import Foundation
 
 /// A `news-edition/v1` edition (news-reader `packages/schema/src/edition.ts`), with what the reader shows. Decoding is
 /// lenient: unknown keys are ignored, a story or source that doesn't decode is dropped, wrong-typed optional fields
-/// are nil. Only the schema id, feed, date and title decide whether an answer is an edition at all.
+/// are nil. Only the schema id (or the reader's id, which its stored editions carry instead), feed, date and title
+/// decide whether an answer is an edition at all. The reader's list answers summaries: no stories, a `storyCount`.
 public struct NewsEdition: Decodable, Sendable, Equatable {
     public static let schemaID = "news-edition/v1"
 
@@ -31,6 +32,10 @@ public struct NewsEdition: Decodable, Sendable, Equatable {
         public var framing: [Framing]
         public var blindspot: String?
         public var sources: [Source]
+        /// Reader-only: a follow-up to an earlier story, its CVE ids (cyber), starred in the reader.
+        public var isUpdate: Bool
+        public var cves: [String]
+        public var favorite: Bool
 
         public init(from decoder: any Decoder) throws {
             let c = try decoder.container(keyedBy: AnyKey.self)
@@ -45,6 +50,9 @@ public struct NewsEdition: Decodable, Sendable, Equatable {
             framing = c.lossy("framing")
             blindspot = c.text("blindspot")
             sources = c.lossy("sources")
+            isUpdate = (try? c.decodeIfPresent(Bool.self, forKey: "is_update")) == true
+            cves = (c.lossy("cves") as [String]).filter { !$0.isEmpty }
+            favorite = (try? c.decodeIfPresent(Bool.self, forKey: "favorite")) == true
         }
     }
 
@@ -54,14 +62,27 @@ public struct NewsEdition: Decodable, Sendable, Equatable {
         public var change: String?
     }
 
+    public struct Section: Decodable, Sendable, Equatable {
+        public var id: String
+        public var title: String
+    }
+
+    /// The reader's edition id; nil for an edition parsed from a run's answer.
+    public var id: String?
     /// `chile`, `cyber`, `ai`, or a feed added later; `tag` is what the app shows.
     public var feed: String
     /// `YYYY-MM-DD`, which sorts as text.
     public var editionDate: String
     public var title: String
     public var lead: String
+    /// When the run that wrote it ran (the reader's `run_at`).
+    public var runAt: Date?
     /// In reading order: the feed's sections in order, then by rank.
-    public var stories: [Story]
+    public private(set) var stories: [Story]
+    /// The reader's `story_count`, else the stories decoded.
+    public var storyCount: Int
+    /// The feed's sections in reading order: the built-in table until the reader's `/api/feeds` replaces it.
+    public var sections: [Section] { didSet { sortStories() } }
     public var gaps: [String]
     public var marketsAsOf: String?
     public var markets: [Market]
@@ -70,23 +91,21 @@ public struct NewsEdition: Decodable, Sendable, Equatable {
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: AnyKey.self)
-        try c.check(c.text("schema") == Self.schemaID, "schema", "not a news edition")
+        id = c.text("id")
+        try c.check(c.text("schema") == Self.schemaID || id != nil, "schema", "not a news edition")
         feed = try c.required("feed").lowercased()
         editionDate = try c.required("edition_date")
         title = try c.required("title")
         lead = c.text("lead") ?? ""
-        let order = Self.sections[feed] ?? []
-        func position(_ s: Story) -> Int { order.firstIndex { $0.id == s.section } ?? order.count }
-        stories = (c.lossy("stories") as [Story]).enumerated()
-            .sorted { a, b in
-                let (x, y) = ((position(a.element), a.element.rank, a.offset), (position(b.element), b.element.rank, b.offset))
-                return x < y
-            }
-            .map(\.element)
+        runAt = c.text("run_at").flatMap(Self.date)
+        stories = c.lossy("stories")
+        storyCount = (try? c.decodeIfPresent(Int.self, forKey: "story_count")) ?? stories.count
+        sections = (Self.sections[feed] ?? []).map { Section(id: $0.id, title: $0.title) }
         gaps = (c.lossy("gaps") as [String]).filter { !$0.isEmpty }
         let m = try? c.nestedContainer(keyedBy: AnyKey.self, forKey: "markets")
         marketsAsOf = m?.text("as_of")
         markets = m?.lossy("items") ?? []
+        sortStories()
     }
 
     /// The edition in a cron run's final answer, like the publisher's `parse_answer`: the whole answer, the inside of
@@ -120,7 +139,24 @@ public struct NewsEdition: Decodable, Sendable, Equatable {
     ]
 
     public func sectionTitle(_ id: String) -> String {
-        Self.sections[feed]?.first { $0.id == id }?.title ?? id.replacingOccurrences(of: "_", with: " ").capitalized
+        sections.first { $0.id == id }?.title ?? id.replacingOccurrences(of: "_", with: " ").capitalized
+    }
+
+    /// Stable: by section position, then rank, then the order they came in.
+    private mutating func sortStories() {
+        let order = sections
+        func position(_ s: Story) -> Int { order.firstIndex { $0.id == s.section } ?? order.count }
+        stories = stories.enumerated()
+            .sorted { a, b in
+                let (x, y) = ((position(a.element), a.element.rank, a.offset), (position(b.element), b.element.rank, b.offset))
+                return x < y
+            }
+            .map(\.element)
+    }
+
+    /// `2026-10-31T06:10:17.000Z`, with or without the fraction.
+    static func date(_ text: String) -> Date? {
+        (try? Date.ISO8601FormatStyle(includingFractionalSeconds: true).parse(text)) ?? (try? Date.ISO8601FormatStyle().parse(text))
     }
 
     /// Coverage and framing group names (`gov_vendor` is "Gov/vendor"; the rest are their id capitalized).

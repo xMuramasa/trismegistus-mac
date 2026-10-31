@@ -1,13 +1,38 @@
 import SwiftUI
 import TrismegistusKit
 
+/// The news reader setting (#24). Empty (or not an https URL) turns the reader off: News then reads the feed runs.
+enum NewsSettings {
+    static let readerURL = "news.readerURL"
+    static let defaultReaderURL = "https://news.lab.x-muramasa.dev"
+
+    static func reader(_ text: String) -> NewsReaderClient? {
+        guard let url = URL(string: text.trimmingCharacters(in: .whitespaces)), url.scheme == "https", url.host() != nil else { return nil }
+        return NewsReaderClient(baseURL: url)
+    }
+}
+
 extension View {
-    /// Folds the feed runs of every new session list into the News conversation. Not `task(id:)`: a list arriving
-    /// mid-refresh must not cancel the fetches the refresh hands it to.
-    func refreshesNews(_ model: AppModel) -> some View {
-        onChange(of: model.sessions, initial: true) { _, sessions in
-            Task { await model.news?.refresh(sessions) }
-        }
+    func refreshesNews(_ model: AppModel) -> some View { modifier(RefreshesNews(model: model)) }
+}
+
+/// Folds the feed runs of every new session list into the News conversation and refreshes the reader's editions,
+/// with the reader from Settings. Not `task(id:)`: a list arriving mid-refresh must not cancel the fetches the
+/// refresh hands it to.
+private struct RefreshesNews: ViewModifier {
+    let model: AppModel
+    @AppStorage(NewsSettings.readerURL) private var readerURL = NewsSettings.defaultReaderURL
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: model.sessions, initial: true) { _, sessions in refresh(sessions) }
+            .onChange(of: readerURL) { refresh(model.sessions) }
+    }
+
+    private func refresh(_ sessions: [SessionInfo]) {
+        guard let news = model.news else { return }
+        news.setReader(NewsSettings.reader(readerURL))
+        Task { await news.refresh(sessions) }
     }
 }
 

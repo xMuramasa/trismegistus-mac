@@ -47,7 +47,7 @@ import Testing
     @Test func buildsNewestFirstAndSkipsRunsWithoutEdition() async throws {
         let (news, http) = feed()
         await news.refresh(sessions)
-        #expect(news.items.map(\.sessionID) == ["cron_aaa_1", "cron_ccc_1", "cron_ddd_1"])
+        #expect(news.items.map(\.id) == ["cron_aaa_1", "cron_ccc_1", "cron_ddd_1"])
         #expect(news.items.map(\.edition.tag) == ["AI", "CHILE", "CYBER"])
         #expect(news.items[0].publishedAt == Date(timeIntervalSince1970: 300))
         #expect(news.sessionIDs == ["cron_aaa_1", "cron_ccc_1", "cron_ddd_1"])
@@ -87,5 +87,64 @@ import Testing
         let (news, http) = feed()
         await news.refresh([SessionInfo(id: "api_1", source: "api_server"), SessionInfo(id: "x_1")])
         #expect(news.items.isEmpty && news.sessionIDs.isEmpty && http.requests.current.isEmpty)
+    }
+
+    // MARK: Reader
+
+    func paths(_ http: FakeHTTP) -> [String] { http.requests.current.map(\.url!.path) }
+
+    @Test func readerItemsNewestFirstRunsStillFolded() async {
+        let (news, _) = feed()
+        let reader = readerHTTP()
+        news.setReader(NewsReaderClient(baseURL: readerURL, http: reader))
+        await news.refresh(sessions)
+        #expect(news.items.map(\.id) == ["cyber-20261031-031943", "chile-20261031-031017", "ai-20261031-030727", "chile-20261030-031316", "cyber-20261030-031239"])
+        #expect(news.items[0].publishedAt == Date(timeIntervalSince1970: 1_793_427_583))
+        #expect(news.sessionIDs == ["cron_aaa_1", "cron_ccc_1", "cron_ddd_1"]) // a run before the cleanup still folds
+        #expect(paths(reader) == ["/api/feeds", "/api/editions"])
+        #expect(news.readerError == nil && news.edition(for: news.items[0]) == nil) // summaries only
+
+        news.setReader(nil) // disabled: the runs' editions, whole
+        #expect(news.items.map(\.id) == ["cron_aaa_1", "cron_ccc_1", "cron_ddd_1"])
+        #expect(news.edition(for: news.items[0])?.stories.count == 1)
+    }
+
+    @Test func fullEditionsOnDemandCached() async throws {
+        let (news, _) = feed()
+        let reader = readerHTTP()
+        news.setReader(NewsReaderClient(baseURL: readerURL, http: reader))
+        await news.refreshEditions()
+        let cyber = try #require(news.items.first)
+        async let a: Void = news.load(cyber.id)
+        async let b: Void = news.load(cyber.id)
+        _ = await (a, b)
+        await news.load(cyber.id)
+        #expect(paths(reader).filter { $0.hasPrefix("/api/editions/") } == ["/api/editions/cyber-20261031-031943"])
+        let full = try #require(news.edition(for: cyber))
+        #expect(full.stories.count == 4 && full.sectionTitle("your_stack") == "Your stack")
+
+        news.setReader(NewsReaderClient(baseURL: readerURL, http: reader)) // same URL: nothing refetched
+        #expect(news.edition(for: cyber) == full && news.items.count == 5)
+        news.setReader(NewsReaderClient(baseURL: URL(string: "https://other.invalid")!, http: reader)) // another reader starts over
+        #expect(news.items.isEmpty && news.edition(for: cyber) == nil)
+    }
+
+    @Test func unreachableReaderKeepsCache() async throws {
+        let (news, _) = feed()
+        news.setReader(NewsReaderClient(baseURL: readerURL, http: readerHTTP()))
+        await news.refreshEditions()
+        let chile = news.items[1]
+        await news.load(chile.id)
+
+        news.setReader(NewsReaderClient(baseURL: readerURL, http: DownHTTP()))
+        await news.refresh(sessions)
+        #expect(news.readerError == .unreachable)
+        #expect(news.items.count == 5 && news.edition(for: chile)?.stories.count == 3)
+        await news.load(news.items[2].id)
+        #expect(news.edition(for: news.items[2]) == nil && news.readerError == .unreachable)
+
+        news.setReader(NewsReaderClient(baseURL: readerURL, http: readerHTTP())) // retry once it's back
+        await news.refreshEditions()
+        #expect(news.readerError == nil && news.items.count == 5)
     }
 }

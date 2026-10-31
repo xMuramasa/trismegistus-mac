@@ -59,6 +59,30 @@ struct NewsView: View {
     }
 
     var body: some View {
+        VStack(spacing: 0) {
+            if model.news?.readerError != nil { unreachable }
+            editions
+        }
+        .background(Theme.paper)
+        .task { await model.news?.refreshEditions() }
+    }
+
+    /// One line over the editions already fetched, which stay.
+    private var unreachable: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle").font(.system(size: 11)).accessibilityHidden(true)
+            Text("Can't reach the news reader. Showing what was loaded.").typeRole(.callout).lineLimit(1)
+            Spacer(minLength: 8)
+            EndfieldButton("Retry", symbol: Symbol.retry, kind: .quiet, iconOnly: true) {
+                Task { await model.news?.refreshEditions() }
+            }
+        }
+        .foregroundStyle(Theme.secondary)
+        .padding(.horizontal, 16).padding(.vertical, 6)
+        .background(Theme.sunken)
+    }
+
+    private var editions: some View {
         Group {
             if days.isEmpty {
                 VStack(spacing: 6) {
@@ -81,7 +105,6 @@ struct NewsView: View {
                 }
             }
         }
-        .background(Theme.paper)
     }
 
     /// "Saturday 31 October" from `2026-10-31` (a calendar date: no time zone shifts it).
@@ -105,7 +128,7 @@ struct NewsPage: View {
                 VStack(alignment: .leading, spacing: 2) {
                     TitleRule("News").lineLimit(1)
                     let count = model.news?.items.count ?? 0
-                    Text("Cron · \(count) \(count == 1 ? "edition" : "editions") · read-only")
+                    Text("\(model.news?.reader == nil ? "Cron" : "Reader") · \(count) \(count == 1 ? "edition" : "editions") · read-only")
                         .typeRole(.monoSmall).foregroundStyle(Theme.secondary)
                 }
                 Spacer(minLength: 0)
@@ -117,10 +140,14 @@ struct NewsPage: View {
     }
 }
 
+/// A reader edition shows its summary until `load` brings the whole one (fetched when it first scrolls into view).
 private struct EditionView: View {
     let item: NewsFeed.Item
 
-    private var edition: NewsEdition { item.edition }
+    @Environment(AppModel.self) private var model
+
+    private var full: NewsEdition? { model.news?.edition(for: item) }
+    private var edition: NewsEdition { full ?? item.edition }
 
     /// Consecutive stories of one section (they come in reading order).
     private var sections: [(id: String, stories: [NewsEdition.Story])] {
@@ -145,6 +172,10 @@ private struct EditionView: View {
             if !edition.lead.isEmpty {
                 Text(edition.lead).typeRole(.body).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
             }
+            if full == nil {
+                let count = item.edition.storyCount
+                Text("\(count) \(count == 1 ? "story" : "stories") · loading").typeRole(.monoSmall).foregroundStyle(Theme.muted)
+            }
             if !edition.markets.isEmpty { markets }
             ForEach(sections, id: \.id) { section in
                 Text(edition.sectionTitle(section.id)).typeRole(.label).foregroundStyle(Theme.muted).padding(.top, 4)
@@ -161,6 +192,8 @@ private struct EditionView: View {
         .padding(14)
         .background(Theme.raised)
         .overlay(Rectangle().strokeBorder(Theme.rule, lineWidth: 1))
+        // Again after a retry clears the error.
+        .task(id: model.news?.readerError == nil) { await model.news?.load(item.id) }
     }
 
     private var markets: some View {
@@ -185,11 +218,22 @@ private struct StoryView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(story.headline).typeRole(.headline).foregroundStyle(Theme.ink)
                             .fixedSize(horizontal: false, vertical: true)
+                        if !story.cves.isEmpty {
+                            Text(story.cves.joined(separator: " · ")).typeRole(.monoSmall).foregroundStyle(Theme.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                         if !isExpanded {
                             Text(story.summary).typeRole(.callout).foregroundStyle(Theme.secondary).lineLimit(1)
                         }
                     }
                     Spacer(minLength: 8)
+                    if story.favorite {
+                        Image(systemName: "star.fill").font(.system(size: 10)).foregroundStyle(Theme.ink)
+                            .help("Starred in the news reader").accessibilityLabel("Starred")
+                    }
+                    if story.isUpdate {
+                        Text("update").typeRole(.label).foregroundStyle(Theme.secondary)
+                    }
                     if let v = story.verification, v != "confirmed" {
                         Text(v).typeRole(.label).foregroundStyle(Theme.secondary)
                     }

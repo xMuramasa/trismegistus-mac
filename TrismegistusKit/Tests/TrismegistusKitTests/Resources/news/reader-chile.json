@@ -1,0 +1,319 @@
+{
+ "edition": {
+  "id": "chile-20261031-031017",
+  "feed": "chile",
+  "edition_date": "2026-10-31",
+  "run_at": "2026-10-31T06:10:17.000Z",
+  "title": "Chile — Saturday, 31 October 2026",
+  "lead": "Kast accepted the resignation of Justice Undersecretary Luis Silva over the sentence-cut decrees and named Josefina Soto to replace him, while prosecutors opened a probe into Justice Minister Fernando Rabat and the opposition readies a constitutional accusation for Tuesday 3 November.",
+  "language": "en",
+  "story_count": 11,
+  "section_counts": {
+   "top": 4,
+   "independent": 3,
+   "fact_check": 1,
+   "quick_hit": 3
+  },
+  "markets": {
+   "as_of": "2026-10-30",
+   "items": [
+    {
+     "name": "IPSA (MSCI IPSA close, 30 Oct)",
+     "value": "10,254.15",
+     "change": "-2.76%"
+    },
+    {
+     "name": "USD/CLP dólar observado (BancoEstado indicator, 30 Oct)",
+     "value": "993.22",
+     "change": "n/a"
+    },
+    {
+     "name": "Copper (Cochilco, week to 30 Oct)",
+     "value": "US$6.55/lb",
+     "change": "+0.24% (week)"
+    }
+   ]
+  },
+  "gaps": [
+   "Built from the RSS snapshot plus web search snippets; web_extract was not used, so most stories rest on headlines and snippets.",
+   "USD/CLP is the BancoEstado dólar observado indicator for 30 Oct; the Banco Central series was not retrieved directly, so no change is calculated.",
+   "The Tuesday 3 Nov AC filing date comes from press reports; the Chamber had not confirmed it.",
+   "Junaeb ruling: vote split and reasoning come from press summaries only; the full judgment was not retrieved.",
+   "Piensa Chile feed failed; Resumen.cl and El Desconcierto were checked by search snippets only. No wire (Reuters, AP, AFP) coverage of 30-31 Oct domestic news was found.",
+   "Codelco, Aguirre, Jadue, Fondo E and unemployment items from the previous edition are not repeated; thread keys for them were not available.",
+   "Coverage is a sample from feeds and searches, not a full count of outlets."
+  ],
+  "stories": [
+   {
+    "id": "chile-20261031-031017-rabat-silva-out-probe-ac-coming",
+    "edition_id": "chile-20261031-031017",
+    "feed": "chile",
+    "edition_date": "2026-10-31",
+    "run_at": "2026-10-31T06:10:17.000Z",
+    "sort_date": "2026-10-30",
+    "section": "top",
+    "rank": 1,
+    "slug": "rabat-silva-out-probe-ac-coming",
+    "headline": "Silva out as justice undersecretary, prosecutors open probe into Rabat, AC expected Tue 3 Nov",
+    "summary": "On Fri 30 Oct Kast accepted the resignation of Justice Undersecretary Luis Silva, who had posted a video explaining the criteria behind the sentence-reduction decrees without consulting Rabat. Josefina Soto Larreátegui, a lawyer described as close to Republicanos, was named to replace him. The same day the Fiscalía Regional Metropolitana Centro Norte, under prosecutor Francisco Jacir, confirmed a criminal investigation of Rabat and Silva for possible prevaricación administrativa, after deputies Luis Cuello (PC) and Juan Santana (PS) filed a complaint. Kast keeps Rabat in office; the opposition's constitutional accusation (AC) is reported for filing on Tue 3 Nov, with no Chamber date confirmed.",
+    "event_date": "2026-10-30",
+    "is_update": true,
+    "thread": "rebajas-condena-delitos-sexuales-rabat",
+    "verification": "confirmed",
+    "action": null,
+    "details": [
+     {
+      "label": "Next",
+      "text": "AC filing reported for Tue 3 Nov (Nuevo Poder); Prensa Mercosur said 'by Tuesday at the latest'. The Chamber had not confirmed a date. Approval needs a majority of deputies present, i.e. 78 of 155 if all attend. El Mostrador's count: opposition base about 62, needs about 16 more, mainly from the PDG (14 deputies), which is divided."
+     },
+     {
+      "label": "Context",
+      "text": "The Fiscalía says the probe will establish whether the reported facts are a crime and any criminal responsibility; the referral does not itself establish responsibility. Silva told reporters he did not consult Rabat because the video's purpose was to inform."
+     },
+     {
+      "label": "Context",
+      "text": "CIPER (30 Oct) reviewed 73 cases from 2022-2025: the Boric government opposed these reductions and courts ordered 68 of them. The Kast government granted its decrees without contesting them in court, which CIPER says contradicts Rabat's claim that the law left no choice. Evelyn Matthei (Chile Vamos) asked Rabat to leave before any AC, calling the cost 'demasiado alto' (30 Oct)."
+     },
+     {
+      "label": "Numbers",
+      "text": "Chamber resolution, 28 Oct (non-binding): 68 for, 42 against, 7 abstentions. Cadem poll published 25 Oct (via El País): Kast approval 29%; 92% disagree with the reductions."
+     }
+    ],
+    "coverage": [
+     {
+      "group": "right",
+      "covered": true,
+      "outlets": [
+       "Ex-Ante",
+       "La Tercera",
+       "El Líbero",
+       "Emol"
+      ]
+     },
+     {
+      "group": "center",
+      "covered": true,
+      "outlets": [
+       "BioBioChile",
+       "Cooperativa",
+       "ADN"
+      ]
+     },
+     {
+      "group": "left",
+      "covered": true,
+      "outlets": [
+       "The Clinic",
+       "El Mostrador",
+       "El Desconcierto",
+       "Radio Universidad de Chile"
+      ]
+     },
+     {
+      "group": "independent",
+      "covered": true,
+      "outlets": [
+       "CIPER Chile",
+       "Interferencia"
+      ]
+     },
+     {
+      "group": "foreign",
+      "covered": true,
+      "outlets": [
+       "El País"
+      ]
+     }
+    ],
+    "framing": [
+     {
+      "group": "right",
+      "text": "Ex-Ante's opinion piece calls Rabat's treatment a 'crucifixión política' and warns about how easily a version of events is built. Republicanos asked allies to back Kast's decision to keep him (El Líbero)."
+     },
+     {
+      "group": "left",
+      "text": "The Clinic calls Silva's exit the government's first casualty of the scandal. El Mostrador says the debate now centres on what keeping Rabat costs the government, not only on whether he acted lawfully."
+     },
+     {
+      "group": "independent",
+      "text": "CIPER says the record contradicts Rabat's claim that the law or case law obliged the reductions."
+     },
+     {
+      "group": "foreign",
+      "text": "El País headlines Silva's fall as happening in the middle of the crisis over sentence cuts for convicted child sex offenders."
+     }
+    ],
+    "blindspot": null,
+    "sources": [
+     {
+      "outlet": "ADN Radio",
+      "url": "https://www.adnradio.cl/2026/10/30/rebaja-de-condena-a-violadores-de-ninos-fiscalia-centro-norte-investigara-denuncia-contra-rabat-y-subsecretario-silva/",
+      "outlet_slug": "adn",
+      "group": "center",
+      "lean": "center"
+     },
+     {
+      "outlet": "La Tercera",
+      "url": "https://www.latercera.com/politica/noticia/el-video-que-forzo-la-salida-de-luis-silva-de-justicia-y-las-explicaciones-que-dio-para-justificarlo/",
+      "outlet_slug": "la-tercera",
+      "group": "right",
+      "lean": "center-right"
+     },
+     {
+      "outlet": "CIPER Chile",
+      "url": "https://www.ciperchile.cl/2026/10/30/los-fallos-judiciales-que-contradicen-la-version-de-rabat-acerca-de-que-la-ley-obliga-a-aceptar-las-rebajas-de-condena/",
+      "outlet_slug": "ciper",
+      "group": "independent",
+      "lean": "investigative"
+     }
+    ],
+    "tags": [
+     "topic:politics",
+     "topic:government",
+     "topic:courts",
+     "region:chile",
+     "org:ministerio-de-justicia",
+     "org:camara-de-diputados",
+     "outlet:adn",
+     "outlet:la-tercera",
+     "outlet:ciper",
+     "update"
+    ],
+    "cves": [],
+    "favorite": false
+   },
+   {
+    "id": "chile-20261031-031017-confenats-341-million-querella",
+    "edition_id": "chile-20261031-031017",
+    "feed": "chile",
+    "edition_date": "2026-10-31",
+    "run_at": "2026-10-31T06:10:17.000Z",
+    "sort_date": "2026-10-30",
+    "section": "independent",
+    "rank": 1,
+    "slug": "confenats-341-million-querella",
+    "headline": "Confenats querella over reported $341 million gap, with cash cheques and transfers to personal accounts",
+    "summary": "Fast Check CL (30 Oct) reports a querella against former Confenats leader Berta Brito and others over a reported $341 million financial gap at the health-workers' confederation, including cheques cashed in cash and transfers to personal accounts. The figure comes from the complaint and was not independently audited in this sample. A Confenats querella over misappropriation by a former national treasurer was also reported on 6 Oct 2026 (centralnoticias).",
+    "event_date": "2026-10-30",
+    "is_update": false,
+    "thread": "confenats-341-million-querella",
+    "verification": "claimed",
+    "action": null,
+    "details": [
+     {
+      "label": "Next",
+      "text": "No prosecutor decision or hearing was reported in the sources retrieved."
+     }
+    ],
+    "coverage": [
+     {
+      "group": "independent",
+      "covered": true,
+      "outlets": [
+       "Fast Check CL"
+      ]
+     },
+     {
+      "group": "center",
+      "covered": false,
+      "outlets": []
+     }
+    ],
+    "framing": [],
+    "blindspot": "No centre or right coverage of the 30 Oct querella was found in this sample.",
+    "sources": [
+     {
+      "outlet": "Fast Check CL",
+      "url": "https://www.fastcheck.cl/2026/10/30/cheques-cobrados-en-efectivo-y-transferencias-a-cuentas-personales-el-desfonde-financiero-de-341-millones-que-remece-a-la-confenats/",
+      "outlet_slug": "fast-check-cl",
+      "group": "independent",
+      "lean": "fact-check"
+     }
+    ],
+    "tags": [
+     "topic:labor",
+     "topic:corruption",
+     "region:chile",
+     "org:confenats",
+     "outlet:fast-check-cl",
+     "blindspot:center"
+    ],
+    "cves": [],
+    "favorite": false
+   },
+   {
+    "id": "chile-20261031-031017-anativia-resigns-biobio-delegate",
+    "edition_id": "chile-20261031-031017",
+    "feed": "chile",
+    "edition_date": "2026-10-31",
+    "run_at": "2026-10-31T06:10:17.000Z",
+    "sort_date": "2026-10-30",
+    "section": "quick_hit",
+    "rank": 1,
+    "slug": "anativia-resigns-biobio-delegate",
+    "headline": "Biobío presidential delegate Julio Anativia resigns amid domestic-violence complaint",
+    "summary": "Julio Anativia resigned on Fri 30 Oct as presidential delegate for the Biobío region after his ex-wife, Javiera Aroca, filed a domestic-violence complaint. The government accepted the resignation and named a successor (ADN, G5 Noticias). The complaint is an allegation; no ruling has been reported.",
+    "event_date": "2026-10-30",
+    "is_update": false,
+    "thread": "anativia-resigns-biobio-delegate",
+    "verification": "confirmed",
+    "action": null,
+    "details": [],
+    "coverage": [
+     {
+      "group": "center",
+      "covered": true,
+      "outlets": [
+       "BioBioChile",
+       "ADN"
+      ]
+     },
+     {
+      "group": "left",
+      "covered": true,
+      "outlets": [
+       "El Mostrador",
+       "Radio Universidad de Chile"
+      ]
+     }
+    ],
+    "framing": [],
+    "blindspot": null,
+    "sources": [
+     {
+      "outlet": "BioBioChile",
+      "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/30/delegado-del-bio-bio-julio-anativia-presentaria-su-renuncia-al-cargo-en-medio-de-polemica.shtml",
+      "outlet_slug": "biobiochile",
+      "group": "center",
+      "lean": "center"
+     },
+     {
+      "outlet": "El Mostrador",
+      "url": "https://www.elmostrador.cl/noticias/pais/2026/10/30/renuncia-delegado-presidencial-del-biobio-tras-denuncia-de-su-esposa-por-violencia-intrafamiliar/",
+      "outlet_slug": "el-mostrador",
+      "group": "left",
+      "lean": "center-left"
+     }
+    ],
+    "tags": [
+     "topic:government",
+     "region:chile",
+     "org:delegacion-presidencial-del-biobio",
+     "outlet:biobiochile",
+     "outlet:el-mostrador"
+    ],
+    "cves": [],
+    "favorite": false
+   }
+  ],
+  "prev": "chile-20261030-031316",
+  "next": null,
+  "same_day": [
+   {
+    "id": "chile-20261031-031017",
+    "run_at": "2026-10-31T06:10:17.000Z",
+    "latest": true
+   }
+  ]
+ }
+}

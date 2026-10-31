@@ -1,0 +1,208 @@
+{
+ "feeds": [
+  {
+   "id": "chile",
+   "label": "Chile",
+   "emoji": "🇨🇱",
+   "cadence": "daily",
+   "sections": [
+    {
+     "id": "top",
+     "title": "Top stories"
+    },
+    {
+     "id": "independent",
+     "title": "Independent & alternative"
+    },
+    {
+     "id": "fact_check",
+     "title": "Fact-checks"
+    },
+    {
+     "id": "quick_hit",
+     "title": "Quick hits"
+    }
+   ],
+   "coverage_groups": [
+    {
+     "id": "right",
+     "title": "Right"
+    },
+    {
+     "id": "center",
+     "title": "Center"
+    },
+    {
+     "id": "left",
+     "title": "Left"
+    },
+    {
+     "id": "independent",
+     "title": "Independent"
+    },
+    {
+     "id": "foreign",
+     "title": "Foreign"
+    }
+   ],
+   "latest": {
+    "id": "chile-20261031-031017",
+    "feed": "chile",
+    "edition_date": "2026-10-31",
+    "run_at": "2026-10-31T06:10:17.000Z",
+    "title": "Chile — Saturday, 31 October 2026",
+    "lead": "Kast accepted the resignation of Justice Undersecretary Luis Silva over the sentence-cut decrees and named Josefina Soto to replace him, while prosecutors opened a probe into Justice Minister Fernando Rabat and the opposition readies a constitutional accusation for Tuesday 3 November.",
+    "language": "en",
+    "story_count": 11,
+    "section_counts": {
+     "top": 4,
+     "independent": 3,
+     "fact_check": 1,
+     "quick_hit": 3
+    }
+   },
+   "counts": {
+    "editions": 8,
+    "stories": 111
+   }
+  },
+  {
+   "id": "cyber",
+   "label": "Cyber",
+   "emoji": "🛡️",
+   "cadence": "daily",
+   "sections": [
+    {
+     "id": "patch_now",
+     "title": "Patch now"
+    },
+    {
+     "id": "top",
+     "title": "Top stories"
+    },
+    {
+     "id": "your_stack",
+     "title": "Your stack"
+    },
+    {
+     "id": "chile_latam",
+     "title": "Chile & LatAm"
+    },
+    {
+     "id": "research",
+     "title": "Research & threat intel"
+    },
+    {
+     "id": "policy",
+     "title": "Policy"
+    }
+   ],
+   "coverage_groups": [
+    {
+     "id": "gov_vendor",
+     "title": "Gov/vendor"
+    },
+    {
+     "id": "press",
+     "title": "Press"
+    },
+    {
+     "id": "independent",
+     "title": "Independent"
+    },
+    {
+     "id": "research",
+     "title": "Research"
+    }
+   ],
+   "latest": {
+    "id": "cyber-20261031-031943",
+    "feed": "cyber",
+    "edition_date": "2026-10-31",
+    "run_at": "2026-10-31T06:19:43.000Z",
+    "title": "Cyber — Saturday, 31 October 2026",
+    "lead": "Binance says about $6.3 billion was drained from its wallets on 29 Oct, and two blockchain firms, TRM and Chainalysis, tie the theft to North Korea's TraderTraitor; Binance has not confirmed that attribution.",
+    "language": "en",
+    "story_count": 16,
+    "section_counts": {
+     "patch_now": 5,
+     "top": 5,
+     "your_stack": 3,
+     "chile_latam": 1,
+     "research": 2
+    }
+   },
+   "counts": {
+    "editions": 7,
+    "stories": 105
+   }
+  },
+  {
+   "id": "ai",
+   "label": "AI",
+   "emoji": "🤖",
+   "cadence": "daily",
+   "sections": [
+    {
+     "id": "top",
+     "title": "Top stories"
+    },
+    {
+     "id": "release",
+     "title": "Model & product releases"
+    },
+    {
+     "id": "open_source",
+     "title": "Open-source & local AI"
+    },
+    {
+     "id": "research",
+     "title": "Research highlights"
+    },
+    {
+     "id": "industry",
+     "title": "Industry, funding & policy"
+    }
+   ],
+   "coverage_groups": [
+    {
+     "id": "lab",
+     "title": "Lab"
+    },
+    {
+     "id": "press",
+     "title": "Press"
+    },
+    {
+     "id": "independent",
+     "title": "Independent"
+    },
+    {
+     "id": "research",
+     "title": "Research"
+    }
+   ],
+   "latest": {
+    "id": "ai-20261031-030727",
+    "feed": "ai",
+    "edition_date": "2026-10-31",
+    "run_at": "2026-10-31T06:07:27.000Z",
+    "title": "AI daily — 31 October 2026",
+    "lead": "Wiz's 30 October report ties at least nine AI developer platform breaches in October to stolen model keys, with two stolen enterprise keys used for about 2.5 million model calls.",
+    "language": "en",
+    "story_count": 8,
+    "section_counts": {
+     "top": 3,
+     "release": 1,
+     "open_source": 2,
+     "research": 1,
+     "industry": 1
+    }
+   },
+   "counts": {
+    "editions": 8,
+    "stories": 59
+   }
+  }
+ ]
+}
