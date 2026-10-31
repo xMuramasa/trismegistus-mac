@@ -1,11 +1,13 @@
 import AppKit
 import SwiftUI
 
-/// The Endfield desktop paper (endfield-dotfiles' Quickshell `Background.qml`): a faint grid, a crosshair on every
-/// fourth intersection and topographic contour lines around a point near the lower right. Deterministic, no images.
+/// The Endfield paper, after endfield-dotfiles' Quickshell `Background.qml`: a sparse field of small `+` marks (no grid
+/// lines, Martin's choice for the app) and topographic contour lines around a point near the lower right.
+/// Deterministic, no images.
 /// Fills whatever size it is given; the app draws it once per window size (see `endfieldPaper()`).
 public struct EndfieldBackground: View {
-    static let cell: CGFloat = 80
+    /// Distance between crosses, across and down.
+    static let crossSpacing = CGSize(width: 96, height: 64)
 
     public init() {}
 
@@ -17,22 +19,18 @@ public struct EndfieldBackground: View {
     }
 
     private static func draw(_ context: inout GraphicsContext, _ size: CGSize) {
-        let w = size.width, h = size.height, c = cell
+        let w = size.width, h = size.height
 
-        var grid = Path()
-        for x in stride(from: c, to: w, by: c) { grid.move(to: CGPoint(x: x + 0.5, y: 0)); grid.addLine(to: CGPoint(x: x + 0.5, y: h)) }
-        for y in stride(from: c, to: h, by: c) { grid.move(to: CGPoint(x: 0, y: y + 0.5)); grid.addLine(to: CGPoint(x: w, y: y + 0.5)) }
-        context.stroke(grid, with: .color(Theme.rule.opacity(0.5)), lineWidth: 1)
-
+        // Crosses only, no grid lines (Martin, 2026-10-31): a sparse field of small, thick `+`, rows wider apart
+        // across than down (his sketch: one per ~14 characters, a row every 4 lines).
         var marks = Path()
-        for x in stride(from: 4 * c, to: w, by: 4 * c) {
-            for y in stride(from: 4 * c, to: h, by: 4 * c) {
-                // Small and darker than the grid they sit on (Martin: 13 pt marks in grid colour read as squares).
-                marks.move(to: CGPoint(x: x - 3, y: y + 0.5)); marks.addLine(to: CGPoint(x: x + 4, y: y + 0.5))
-                marks.move(to: CGPoint(x: x + 0.5, y: y - 3)); marks.addLine(to: CGPoint(x: x + 0.5, y: y + 4))
+        for x in stride(from: crossSpacing.width / 2, to: w, by: crossSpacing.width) {
+            for y in stride(from: crossSpacing.height / 2, to: h, by: crossSpacing.height) {
+                marks.move(to: CGPoint(x: x - 4, y: y)); marks.addLine(to: CGPoint(x: x + 4, y: y))
+                marks.move(to: CGPoint(x: x, y: y - 4)); marks.addLine(to: CGPoint(x: x, y: y + 4))
             }
         }
-        context.stroke(marks, with: .color(Theme.ink.opacity(0.55)), style: StrokeStyle(lineWidth: 1.5, lineCap: .butt))
+        context.stroke(marks, with: .color(Theme.ink.opacity(0.45)), style: StrokeStyle(lineWidth: 2, lineCap: .butt))
 
         let cx = w * 0.78, cy = h * 0.72
         for k in 1...18 {
