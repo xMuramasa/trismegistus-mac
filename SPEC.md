@@ -1,4 +1,4 @@
-# trismegistus-mac: spec v1 (2026-10-30)
+# trismegistus-mac: spec v1.1 (2026-10-31)
 
 A native macOS companion for Hermes Agent, living in the menu bar. It talks to the Trismegistus relay
 (`xMuramasa/trismegistus`, deployed at `hermes.lab.x-muramasa.dev`) over the same WebSocket protocol as the Android
@@ -12,6 +12,15 @@ commands, session list. Martin's laptop is the target; nothing is distributed.
   only the protocol, so a native client per platform is the same pattern.
 - **Menu bar app** (`MenuBarExtra` with the window style), not a Dock app: a companion that shows progress and asks
   for approvals belongs in the menu bar. SwiftUI, macOS 26 only (Martin's machine), Swift 6 strict concurrency.
+  Plus a **main window** (decided 2026-10-31, #4) for long work: conversations | chat | terminal. The popover stays for
+  a glance and approvals and opens the window.
+- **Design:** the UI draft in Penpot (#5, exports in `design/ui-draft/`), approved by Martin on 2026-10-31 for the
+  beta. Endfield design language (paper and ink, yellow for the one primary action, square edges, hairlines, key-hint
+  strip), **light mode only**, **system font** (SF Pro, SF Mono, SF Pro Expanded bold for headings). Native controls
+  with an Endfield surface; custom views only for content and identity (see the Controls page). Colors come from the
+  Endfield palette (`endfield-dotfiles/theme/palette.json`), copied into an asset catalog. Buttons carry a trailing SF
+  Symbol; obvious actions (copy, new, send, stop, retry, open window, terminal) are icon-only with the word as tooltip
+  and accessibility label; Once / Session / Deny, Pair, Unpair and Steer keep their words. Session sources are icons.
 - **Two targets in one repo.** `TrismegistusKit` is a Swift package: protocol types, the relay client (WebSocket +
   REST), reconnect/replay, the state model. Pure Swift, no UI, no dependencies beyond Foundation. `App/` is the
   SwiftUI app and depends on it. The split is what makes the server useful: the Kit's tests run over SSH with
@@ -63,17 +72,28 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
 
 - **Menu bar icon:** state in the glyph: disconnected, connected idle, a run in progress, an approval waiting
   (badge). Click opens the popover.
-- **Popover:** session list (name, source, read-only lock, last activity) → chat view: messages, foldable tool
-  rows with duration and error flag, subagent rows, the answer rendered as Markdown (`AttributedString`), a working
-  indicator, an input field; `⌘↩` sends. One run per session: a prompt during a run offers "send as steer".
+- **Popover:** session list (name, source icon, read-only lock, last activity, RUN / APPROVAL marks) → chat view:
+  messages, foldable tool rows with duration and error flag, subagent rows, the answer rendered as Markdown, a working
+  indicator, an input field; `⌘↩` sends. One run per session: a prompt during a run offers "send as steer". Header:
+  connection status, open window, settings. Empty and reconnecting states as drawn.
+- **Main window:** `NavigationSplitView` (conversations sidebar, chat) plus an `.inspector` terminal pane (`⌘⌥T`). The
+  chat keeps messages and answers; each run shows one marker (`4 COMMANDS · 6.1 s · 1 failed`) that focuses the pane.
+  The **terminal pane** is a read-only transcript of the selected conversation's tool calls: `$ command` from the
+  `tool.started` preview, then output, exit code and duration from the `tool.completed` preview (JSON for the
+  terminal tool; shown raw when cut). Filter: commands only or all tools. Limits of today's relay: output arrives when
+  a command finishes and is cut at 4,000 characters. It is not a shell.
+- **Markdown:** prose with `AttributedString(markdown:)`; fenced code blocks are split out and drawn as views with a
+  language label and a copy button.
+- **Row status for every conversation:** the client subscribes to every listed session (the relay allows 64 per
+  socket), so RUN and APPROVAL marks and approval notifications work for conversations that are not open.
 - **Approval banner:** at the top of the chat and as a notification: command, description, buttons Once / Session
   / Deny (`always` is never offered, as in the protocol). Approving from the Mac runs commands on optiplex, same
   trust level as the phone.
 - **Settings:** relay URL, device name, connection status, unpair, launch at login (`SMAppService`), notification
-  toggles.
+  toggles (approval requests, run finished while closed, sound for approvals: on by default).
 - **Pairing sheet:** first launch; paste the code; shows the relay URL from the QR payload.
 
-Not in v1: a full window, multiple relays, streaming deltas (the relay has streaming off), Sparkle updates, Linux
+Not in v1: live terminal output (needs a relay change), dark mode, bundled Endfield fonts, multiple relays, streaming deltas (the relay has streaming off), Sparkle updates, Linux
 (a Quickshell module in endfield-dotfiles is the Linux plan, not this repo), Windows.
 
 ## Security
@@ -88,15 +108,14 @@ Not in v1: a full window, multiple relays, streaming deltas (the relay has strea
 | # | Phase | Done when |
 |---|---|---|
 | 1 | Kit: protocol types, contract tests, RelayClient against a fake, SessionStore | `swift test` green on the Mac over SSH; every valid example round-trips; the fake exercises auth, replay, live events, approval, ping/pong, reconnect; no dependencies. |
-| 2 | App: menu bar, pairing, sessions, chat, settings; build loop | `scripts/mac-build.sh` builds, installs and launches the app on the Mac; Martin pairs it against the real relay and sends a prompt from the menu bar. |
+| 2 | App: menu bar popover and main window (conversations, chat, terminal pane), pairing, settings; build loop | `scripts/mac-build.sh` builds, installs and launches the app on the Mac; Martin pairs it against the real relay, sends a prompt from the menu bar and watches its commands in the terminal pane. |
 | 3 | Approvals and notifications, launch at login | An approval raised by Hermes on optiplex is answered from the Mac notification; a completed run notifies when the popover is closed. |
 
 Each phase: Claude Code (Opus) writes the code from a brief; Hermes verifies on the Mac over SSH, commits and pushes;
 the report goes on the phase's issue. Phase 1 can run entirely from optiplex except the final `swift test` on the Mac.
 
-## Open decisions
+## Decided (2026-10-31, #4 and #5)
 
-1. Popover only, or also a detachable window for long chats (SwiftUI `Window` opened from the popover)?
-2. Notification sound for approvals: default sound, or silent with the badge only?
-3. Markdown rendering: `AttributedString(markdown:)` (built in, no code blocks) or a small renderer with code
-   blocks and a copy button (the phone app has copyable code blocks)?
+1. Popover **and** a main window (conversations | chat | terminal).
+2. Approval notifications play the default sound; a Settings toggle turns it off.
+3. Markdown with code blocks drawn as views with a copy button.
