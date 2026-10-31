@@ -13,6 +13,8 @@ public final class SessionStore {
 
     public private(set) var connection: RelayClient.ConnectionState = .disconnected
     public private(set) var sessionList: [SessionInfo] = []
+    /// Tags by session id, from the relay (they follow every device). May hold ids the list doesn't have.
+    public private(set) var tags: [String: [String]] = [:]
     /// Open sessions by id.
     public private(set) var sessions: [String: SessionState] = [:]
     /// A row for every listed or open session. The open ones and the RelayClient.maxSubscriptions most recent are
@@ -143,6 +145,12 @@ public final class SessionStore {
     public func refreshSessions() async throws {
         sessionList = try await rest.listSessions()
         await follow()
+        await refreshTags()
+    }
+
+    /// Keeps the tags it has when the relay can't be reached; a relay without the endpoint has none.
+    public func refreshTags() async {
+        if let fresh = try? await rest.tags() { tags = fresh }
     }
 
     @discardableResult
@@ -153,19 +161,65 @@ public final class SessionStore {
         return session
     }
 
+    /// The row shows the new title at once; it goes back, and the error is thrown, if the relay refuses.
     public func renameSession(_ id: String, to title: String) async throws {
-        let session = try await rest.renameSession(id, title: title)
-        if let i = sessionList.firstIndex(where: { $0.id == id }) {
-            sessionList[i].title = session.title ?? title
-            overview[id]?.info = sessionList[i]
+        let old = sessionList.first { $0.id == id }?.title
+        update(id) { $0.title = title }
+        do {
+            let session = try await rest.renameSession(id, title: title)
+            update(id) { $0.title = session.title ?? title }
+        } catch {
+            update(id, ifTitle: title) { $0.title = old }
+            throw error
+        }
+    }
+
+    /// Optimistic like renameSession.
+    public func setPinned(_ id: String, _ pinned: Bool) async throws {
+        let old = sessionList.first { $0.id == id }?.pinned
+        update(id) { $0.pinned = pinned }
+        do {
+            _ = try await rest.setPinned(id, pinned)
+        } catch {
+            update(id) { $0.pinned = old }
+            throw error
+        }
+    }
+
+    /// Replaces the session's tags with the validated set (`TagRules` throws before anything changes). Optimistic
+    /// like renameSession; keeps what the relay stored.
+    public func setTags(_ id: String, _ new: [String]) async throws {
+        let new = try TagRules.normalize(new)
+        let old = tags[id]
+        tags[id] = new
+        do {
+            tags[id] = try await rest.setTags(id, new)
+        } catch {
+            if tags[id] == new { tags[id] = old } // not if a refresh already replaced it
+            throw error
         }
     }
 
     public func deleteSession(_ id: String) async throws {
         try await rest.deleteSession(id)
         sessionList.removeAll { $0.id == id }
+        tags[id] = nil
         sessions[id] = nil
         await follow()
+    }
+
+    /// One line for the UI: the relay's own message, or why the Mac could not ask.
+    public static func message(for error: any Error) -> String {
+        if let error = error as? RelayAPIError { return error.message }
+        if let error = error as? TagRules.Violation { return error.message }
+        return "Can't reach the relay."
+    }
+
+    private func update(_ id: String, ifTitle title: String? = nil, _ change: (inout SessionInfo) -> Void) {
+        guard let i = sessionList.firstIndex(where: { $0.id == id }) else { return }
+        if let title, sessionList[i].title != title { return } // a refresh already replaced it
+        change(&sessionList[i])
+        overview[id]?.info = sessionList[i]
     }
 
     /// Follows the open sessions, then the listed ones most recent first (RelayClient keeps the first

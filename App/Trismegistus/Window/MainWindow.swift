@@ -23,7 +23,10 @@ struct MainWindow: View {
                 } else if selection.wrappedValue == CommandsView.id {
                     CommandsView(onOpen: { selection.wrappedValue = $0 })
                 } else if let id = selection.wrappedValue {
-                    ChatView(sessionID: id, compact: false, onShowTerminal: { terminalShown = true })
+                    VStack(spacing: 0) {
+                        ConversationHeader(sessionID: id)
+                        ChatView(sessionID: id, compact: false, onShowTerminal: { terminalShown = true })
+                    }
                 } else {
                     Text("No conversation selected").typeRole(.caption).foregroundStyle(Theme.muted)
                         .frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.paper)

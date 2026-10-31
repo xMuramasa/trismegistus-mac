@@ -9,43 +9,72 @@ struct ConversationSidebar: View {
 
     @Environment(AppModel.self) private var model
     @State private var filter = ""
+    /// A tag, lowercased (`TagRules.key`).
+    @State private var tagFilter: String?
     @State private var createFailed = false
+    @State private var actions = ConversationActions()
 
-    /// Most recent first, with the daily feed runs folded into one News row.
-    private var rows: [ConversationListRow<SessionOverview>] {
-        guard let store = model.store else { return [] }
-        let needle = filter.trimmingCharacters(in: .whitespaces)
-        let news = model.news
+    private var tags: [String: [String]] { model.store?.tags ?? [:] }
+    /// Tags of the listed conversations with how many carry each; tag ids the app doesn't list are ignored.
+    private var tagCounts: [(tag: String, count: Int)] { SessionListing.tagCounts(ids: model.sessions.map(\.id), tags: tags) }
+
+    /// Pinned first, then most recent first with the daily feed runs folded into one News row. Unfiltered.
+    private var listing: (pinned: [SessionOverview], rest: [ConversationListRow<SessionOverview>]) {
+        guard let store = model.store else { return ([], []) }
         let overviews = model.sessions
             .compactMap { store.overview[$0.id] }
             .sorted { ($0.lastActivity ?? .distantPast) > ($1.lastActivity ?? .distantPast) }
-        return ConversationListRow.folding(overviews, news: news?.sessionIDs ?? []).filter { row in
-            guard !needle.isEmpty else { return true }
-            switch row {
-            case .item(let overview): return (overview.info.map(Self.title) ?? "").localizedCaseInsensitiveContains(needle)
-            case .news: return ["News", news?.items.first?.edition.title ?? ""].contains { $0.localizedCaseInsensitiveContains(needle) }
-            }
+        return ConversationListRow.listing(overviews, news: model.news?.sessionIDs ?? [], isPinned: { $0.info?.isPinned == true })
+    }
+
+    /// The listing after the filter field and the tag filter.
+    private var shown: (pinned: [SessionOverview], rest: [ConversationListRow<SessionOverview>]) {
+        let needle = filter.trimmingCharacters(in: .whitespaces)
+        let news = model.news
+        func matches(_ overview: SessionOverview) -> Bool {
+            if let tagFilter, !SessionListing.hasTag(tagFilter, in: tags[overview.id] ?? []) { return false }
+            return needle.isEmpty || (overview.info.map(Self.title) ?? "").localizedCaseInsensitiveContains(needle)
         }
+        let listing = self.listing
+        return (listing.pinned.filter(matches), listing.rest.filter { row in
+            switch row {
+            case .item(let overview): return matches(overview)
+            case .news:
+                return tagFilter == nil && (needle.isEmpty
+                    || ["News", news?.items.first?.edition.title ?? ""].contains { $0.localizedCaseInsensitiveContains(needle) })
+            }
+        })
+    }
+
+    /// Every conversation in the order shown, for moving the selection when one goes.
+    private var orderedIDs: [String] {
+        let listing = self.listing
+        return listing.pinned.map(\.id) + listing.rest.map(\.id)
     }
 
     var body: some View {
+        let shown = self.shown
         VStack(spacing: 0) {
-            header
+            header(count: shown.pinned.count + shown.rest.count)
             List(selection: $selection) {
                 CommandsRowView(isSelected: selection == CommandsView.id)
                     .tag(CommandsView.id)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparatorTint(Theme.rule)
-                ForEach(rows) { row in
-                    Group {
-                        switch row {
-                        case .item(let overview): ConversationRow(overview: overview, isSelected: selection == row.id)
-                        case .news: newsRow
-                        }
+                if !shown.pinned.isEmpty {
+                    SectionLabel(title: "Pinned").listRowInsets(EdgeInsets())
+                    ForEach(shown.pinned) { conversation($0) }
+                    if !shown.rest.isEmpty { SectionLabel(title: "Conversations").listRowInsets(EdgeInsets()) }
+                }
+                ForEach(shown.rest) { row in
+                    switch row {
+                    case .item(let overview): conversation(overview)
+                    case .news:
+                        newsRow
+                            .tag(row.id)
+                            .listRowInsets(EdgeInsets())
+                            .listRowSeparatorTint(Theme.rule)
                     }
-                    .tag(row.id)
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparatorTint(Theme.rule)
                 }
             }
             .listStyle(.plain)
@@ -53,21 +82,64 @@ struct ConversationSidebar: View {
             footer
         }
         .background(Theme.sunken)
+        .confirmsDelete(actions, store: model.store)
+        .onChange(of: orderedIDs) { old, new in
+            selection = SessionListing.selection(selection, from: old, to: new)
+        }
+        .onChange(of: tagCounts.map(\.tag)) { _, tags in
+            if let tagFilter, !tags.contains(where: { TagRules.key($0) == tagFilter }) { self.tagFilter = nil }
+        }
     }
 
-    private var header: some View {
+    /// A conversation's row, with its tag editor under it while that is open.
+    private func conversation(_ overview: SessionOverview) -> some View {
+        VStack(spacing: 0) {
+            ConversationRow(overview: overview, isSelected: selection == overview.id,
+                            tags: tags[overview.id] ?? [], actions: actions, store: model.store)
+            if actions.tagging == overview.id, let store = model.store {
+                TagEditor(
+                    tags: tags[overview.id] ?? [], known: tagCounts.map(\.tag),
+                    onChange: { actions.setTags(overview.id, $0, store: store) }, onDone: { actions.tagging = nil })
+                    .padding(8)
+            }
+        }
+        .tag(overview.id)
+        .listRowInsets(EdgeInsets())
+        .listRowSeparatorTint(Theme.rule)
+    }
+
+    private func header(count: Int) -> some View {
         VStack(spacing: 10) {
             HStack {
-                Text("Conversations // \(rows.count)").typeRole(.label).foregroundStyle(Theme.secondary)
+                Text("Conversations // \(count)").typeRole(.label).foregroundStyle(Theme.secondary)
                 Spacer()
                 EndfieldButton("New conversation", symbol: Symbol.plus, kind: .quiet, iconOnly: true) { create() }
             }
             EndfieldTextField("Filter", text: $filter)
+            if !tagCounts.isEmpty { tagFilterBar }
             if createFailed {
                 Text("Could not create a conversation. Try again.").typeRole(.caption).foregroundStyle(Theme.red)
             }
+            ActionError(message: actions.error)
         }
         .padding(.horizontal, 16).padding(.vertical, 12)
+    }
+
+    /// One chip per tag with its count; a second click clears it.
+    private var tagFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 4) {
+                ForEach(tagCounts, id: \.tag) { entry in
+                    let on = tagFilter == TagRules.key(entry.tag)
+                    Button { tagFilter = on ? nil : TagRules.key(entry.tag) } label: {
+                        TagChip(tag: "\(entry.tag) \(entry.count)", isOn: on)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(entry.tag), \(entry.count) conversations")
+                    .accessibilityAddTraits(on ? .isSelected : [])
+                }
+            }
+        }
     }
 
     @ViewBuilder private var newsRow: some View {
@@ -103,16 +175,24 @@ struct ConversationSidebar: View {
 private struct ConversationRow: View {
     let overview: SessionOverview
     let isSelected: Bool
+    let tags: [String]
+    let actions: ConversationActions
+    let store: SessionStore?
 
     var body: some View {
         // Ticks every second only while a run's clock shows; the "2 min" age is fine at half a minute.
         TimelineView(.periodic(from: .now, by: overview.run == nil ? 30 : 1)) { context in
-            SessionRowView(
+            let row = SessionRowView(
                 name: overview.info.map(ConversationSidebar.title) ?? "New conversation",
                 source: source, activity: Self.age(overview.lastActivity, now: context.date), isSelected: isSelected,
                 isReadOnly: overview.isReadOnly,
                 runElapsed: overview.run.map { Self.clock(context.date.timeIntervalSince($0.startedAt)) },
                 needsApproval: overview.isWaitingForApproval)
+            if let info = overview.info {
+                row.conversationChrome(info, tags: tags, actions: actions, store: store)
+            } else {
+                row
+            }
         }
     }
 

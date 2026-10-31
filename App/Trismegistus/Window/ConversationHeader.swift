@@ -1,0 +1,49 @@
+import SwiftUI
+import TrismegistusKit
+import TrismegistusUI
+
+/// Above the open conversation in the window: source, title, pin, tags and the same actions menu as its row.
+struct ConversationHeader: View {
+    let sessionID: String
+
+    @Environment(AppModel.self) private var model
+    @State private var actions = ConversationActions()
+
+    private var info: SessionInfo? { model.sessions.first { $0.id == sessionID } }
+
+    var body: some View {
+        if let info {
+            let tags = model.store?.tags[sessionID] ?? []
+            VStack(spacing: 0) {
+                HStack(spacing: 10) {
+                    SourceIcon(PopoverFormat.source(info.source)).foregroundStyle(Theme.ink)
+                    if actions.renaming == info.id {
+                        RenameField(info: info, actions: actions, store: model.store).frame(height: 30)
+                    } else {
+                        Text(PopoverFormat.title(info)).typeRole(.title).foregroundStyle(Theme.ink).lineLimit(1)
+                        if info.isPinned {
+                            Image(systemName: "pin.fill").font(.system(size: 11)).foregroundStyle(Theme.secondary)
+                                .accessibilityLabel("Pinned")
+                        }
+                        TagChips(tags: tags, limit: 4)
+                    }
+                    Spacer(minLength: 0)
+                    ConversationMenuButton(info: info, actions: actions, store: model.store)
+                }
+                .padding(.horizontal, 16).padding(.vertical, 8)
+                if actions.tagging == info.id, let store = model.store {
+                    TagEditor(
+                        tags: tags, known: SessionListing.tagCounts(ids: model.sessions.map(\.id), tags: store.tags).map(\.tag),
+                        onChange: { actions.setTags(info.id, $0, store: store) }, onDone: { actions.tagging = nil })
+                        .padding(.horizontal, 16).padding(.bottom, 8)
+                }
+                ActionError(message: actions.error).padding(.horizontal, 16).padding(.bottom, 8)
+            }
+            .background(Theme.raised)
+            .overlay(alignment: .bottom) { Rectangle().fill(Theme.rule).frame(height: 1) }
+            .confirmsDelete(actions, store: model.store)
+            // A header for another conversation starts clean.
+            .id(sessionID)
+        }
+    }
+}

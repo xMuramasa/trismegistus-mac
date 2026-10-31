@@ -13,15 +13,17 @@ struct SessionList: View {
 
     @Environment(AppModel.self) private var model
     @State private var selection: String?
-    @State private var renaming: SessionInfo?
-    @State private var renameText = ""
-    @State private var deleting: SessionInfo?
+    @State private var actions = ConversationActions()
     @FocusState private var focused: Bool
 
     private var sessions: [SessionInfo] { model.sessions }
-    /// The sessions with the daily feed runs folded into one News row.
+    /// Pinned conversations first; then the rest with the daily feed runs folded into one News row.
+    private var listing: (pinned: [SessionInfo], rest: [ConversationListRow<SessionInfo>]) {
+        ConversationListRow.listing(sessions, news: model.news?.sessionIDs ?? [], isPinned: \.isPinned)
+    }
     private var rows: [ConversationListRow<SessionInfo>] {
-        ConversationListRow.folding(sessions, news: model.news?.sessionIDs ?? [])
+        let listing = self.listing
+        return listing.pinned.map { .item($0) } + listing.rest
     }
     private var isEmpty: Bool { sessions.isEmpty && !isStale }
 
@@ -29,16 +31,12 @@ struct SessionList: View {
         VStack(spacing: 0) {
             if isEmpty { empty } else { list }
         }
-        .alert("Rename session", isPresented: isPresenting($renaming), presenting: renaming) { session in
-            TextField("Title", text: $renameText)
-            Button("Rename") { rename(session) }
-            Button("Cancel", role: .cancel) {}
+        .confirmsDelete(actions, store: model.store)
+        .onChange(of: actions.error) { _, message in
+            if let message { error = message }
         }
-        .alert("Delete session?", isPresented: isPresenting($deleting), presenting: deleting) { session in
-            Button("Delete", role: .destructive) { delete(session) }
-            Button("Cancel", role: .cancel) {}
-        } message: { session in
-            Text("“\(PopoverFormat.title(session))” is deleted on the relay. This can't be undone.")
+        .onChange(of: rows.map(\.id)) { old, new in
+            selection = SessionListing.selection(selection, from: old, to: new)
         }
     }
 
@@ -57,10 +55,16 @@ struct SessionList: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
+                        let listing = self.listing
                         LazyVStack(spacing: 1) {
-                            ForEach(rows) { row in
+                            if !listing.pinned.isEmpty {
+                                SectionLabel(title: "Pinned").background(Theme.paper)
+                                ForEach(listing.pinned) { entry($0, now: context.date) }
+                                SectionLabel(title: "Conversations").background(Theme.paper)
+                            }
+                            ForEach(listing.rest) { row in
                                 switch row {
-                                case .item(let session): self.row(session, now: context.date)
+                                case .item(let session): entry(session, now: context.date)
                                 case .news: newsRow(now: context.date)
                                 }
                             }
@@ -83,6 +87,19 @@ struct SessionList: View {
         .onAppear { focused = true }
     }
 
+    /// A row, with the tag editor under it while it is open.
+    private func entry(_ session: SessionInfo, now: Date) -> some View {
+        VStack(spacing: 1) {
+            row(session, now: now)
+            if actions.tagging == session.id, let store = model.store {
+                let tags = store.tags[session.id] ?? []
+                TagEditor(
+                    tags: tags, known: SessionListing.tagCounts(ids: sessions.map(\.id), tags: store.tags).map(\.tag),
+                    onChange: { actions.setTags(session.id, $0, store: store) }, onDone: { actions.tagging = nil })
+            }
+        }
+    }
+
     private func row(_ session: SessionInfo, now: Date) -> some View {
         let overview = model.store?.overview[session.id]
         return SessionRowView(
@@ -98,16 +115,7 @@ struct SessionList: View {
             selection = session.id
             onOpen(session.id)
         }
-        .contextMenu {
-            // The relay only lets api_server sessions be renamed or deleted.
-            if !session.isReadOnly {
-                Button("Rename", systemImage: "pencil") {
-                    renameText = session.title ?? ""
-                    renaming = session
-                }
-                Button("Delete", systemImage: "trash", role: .destructive) { deleting = session }
-            }
-        }
+        .conversationChrome(session, tags: model.store?.tags[session.id] ?? [], actions: actions, store: model.store)
     }
 
     @ViewBuilder private func newsRow(now: Date) -> some View {
@@ -152,32 +160,5 @@ struct SessionList: View {
         .frame(maxWidth: .infinity)
     }
 
-    // MARK: Actions
-
     private var newShortcut: KeyboardShortcut { KeyboardShortcut("n") }
-
-    private func rename(_ session: SessionInfo) {
-        let title = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
-        renaming = nil
-        guard !title.isEmpty, let store = model.store else { return }
-        Task {
-            do { try await store.renameSession(session.id, to: title) } catch { self.error = message(error) }
-        }
-    }
-
-    private func delete(_ session: SessionInfo) {
-        deleting = nil
-        guard let store = model.store else { return }
-        Task {
-            do { try await store.deleteSession(session.id) } catch { self.error = message(error) }
-        }
-    }
-
-    private func message(_ error: any Error) -> String {
-        (error as? RelayAPIError)?.message ?? "Can't reach the relay."
-    }
-
-    private func isPresenting<T>(_ item: Binding<T?>) -> Binding<Bool> {
-        Binding(get: { item.wrappedValue != nil }, set: { if !$0 { item.wrappedValue = nil } })
-    }
 }

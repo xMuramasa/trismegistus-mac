@@ -48,12 +48,15 @@ public struct SessionInfo: Decodable, Sendable, Equatable, Identifiable {
     public var lastActive: Double?
     public var messageCount: Int?
     public var toolCallCount: Int?
+    /// Hermes' keep flag; absent counts as false.
+    public var pinned: Bool?
 
+    public var isPinned: Bool { pinned ?? false }
     public var isReadOnly: Bool { source != "api_server" }
 
     enum CodingKeys: String, CodingKey {
         case id, source, title, preview, startedAt = "started_at", lastActive = "last_active", messageCount = "message_count"
-        case toolCallCount = "tool_call_count"
+        case toolCallCount = "tool_call_count", pinned
     }
 }
 
@@ -138,12 +141,35 @@ public struct RelayREST: Sendable {
         try decode(SessionEnvelope.self, try await call("POST", "/api/sessions", body: [:])).session
     }
 
-    /// Only for `api_server` sessions (403 read_only otherwise); title is 1-200 characters.
+    /// Every source; title is 1-200 characters.
     public func renameSession(_ id: String, title: String) async throws -> SessionInfo {
-        try decode(SessionEnvelope.self, try await call("PATCH", try sessionPath(id), body: ["title": title])).session
+        try decode(SessionEnvelope.self, try await call("PATCH", try sessionPath(id), body: ["title": .string(title)])).session
     }
 
-    /// Only for `api_server` sessions with no active run (409 busy otherwise).
+    /// Every source. Pinning is Hermes' durable keep flag (also exempt from auto-prune).
+    public func setPinned(_ id: String, _ pinned: Bool) async throws -> SessionInfo {
+        try decode(SessionEnvelope.self, try await call("PATCH", try sessionPath(id), body: ["pinned": .bool(pinned)])).session
+    }
+
+    /// Every session's tags by session id (`GET /api/tags`). Ids of sessions deleted elsewhere may linger. A relay
+    /// that predates the endpoint answers 404: no tags.
+    public func tags() async throws -> [String: [String]] {
+        do {
+            return try decode(TagsEnvelope.self, try await call("GET", "/api/tags")).sessions
+        } catch let error as RelayAPIError where error.status == 404 {
+            return [:]
+        }
+    }
+
+    /// Replaces the session's tags (`[]` clears); answers the set as stored (trimmed, deduplicated). 400 bad_request
+    /// with a message when a tag breaks the rules (see `TagRules`).
+    public func setTags(_ id: String, _ tags: [String]) async throws -> [String] {
+        struct Stored: Decodable { var tags: [String] }
+        let body: [String: JSONValue] = ["tags": .array(tags.map(JSONValue.string))]
+        return try decode(Stored.self, try await call("PUT", try sessionPath(id) + "/tags", body: body)).tags
+    }
+
+    /// Only for `api_server`, `cron` and `cli` sessions (403 read_only otherwise) with no active run (409 busy).
     public func deleteSession(_ id: String) async throws {
         _ = try await call("DELETE", try sessionPath(id))
     }
@@ -175,7 +201,7 @@ public struct RelayREST: Sendable {
             var device: Device
         }
         let rest = RelayREST(baseURL: baseURL, token: "", http: http)
-        let body = try rest.decode(Body.self, try await rest.call("POST", "/api/pair", body: ["code": code]))
+        let body = try rest.decode(Body.self, try await rest.call("POST", "/api/pair", body: ["code": .string(code)]))
         guard isDeviceToken(body.token) else { throw RelayAPIError.unexpected }
         return Pairing(token: body.token, device: String(body.device.name.prefix(64)))
     }
@@ -188,6 +214,7 @@ public struct RelayREST: Sendable {
 
     private struct Envelope<T: Decodable>: Decodable { var data: T }
     private struct SessionEnvelope: Decodable { var session: SessionInfo }
+    private struct TagsEnvelope: Decodable { var sessions: [String: [String]] }
 
     private func sessionPath(_ id: String) throws -> String {
         guard isValidID(id) else { throw RelayAPIError(status: 0, code: .notFound, message: "Unknown session.") }
@@ -198,7 +225,7 @@ public struct RelayREST: Sendable {
         do { return try Wire.decode(type, from: data) } catch { throw RelayAPIError.unexpected }
     }
 
-    private func call(_ method: String, _ path: String, body: [String: String]? = nil) async throws -> Data {
+    private func call(_ method: String, _ path: String, body: [String: JSONValue]? = nil) async throws -> Data {
         var base = baseURL.absoluteString
         while base.hasSuffix("/") { base.removeLast() }
         guard let url = URL(string: base + path) else { throw RelayAPIError(status: 0, code: .badRequest, message: "Bad relay URL.") }
