@@ -3,8 +3,8 @@
 # cache dir, `xcodegen generate` in App/, then `xcodebuild`. It never launches the app: Martin starts it.
 #
 #   scripts/mac-build.sh             compile check without signing; prints errors, warnings and the result
-#   scripts/mac-build.sh --install   signed Debug build, copied to ~/Applications/Trismegistus.app (Hermes only;
-#                                    signing over SSH needs access to the login keychain's signing key)
+#   scripts/mac-build.sh --install   ad-hoc signed Debug build, copied to ~/Applications/Trismegistus.app (Hermes
+#                                    only). No team signing: see SPEC "Signing".
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 mode=check
@@ -20,7 +20,11 @@ dest=$1 mode=$2
 cd "$HOME/$dest/App" || exit 2
 "$HOME/.local/bin/xcodegen" generate --quiet || exit 2
 log=$(mktemp)
-if [[ $mode == install ]]; then signing=(-allowProvisioningUpdates); else signing=(CODE_SIGNING_ALLOWED=NO); fi
+if [[ $mode == install ]]; then
+    signing=(CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER=)
+else
+    signing=(CODE_SIGNING_ALLOWED=NO)
+fi
 xcodebuild -project Trismegistus.xcodeproj -scheme Trismegistus -configuration Debug \
     -derivedDataPath "$HOME/$dest/.DerivedData" "${signing[@]}" build > "$log" 2>&1
 status=$?
