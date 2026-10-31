@@ -47,11 +47,13 @@ public struct SessionInfo: Decodable, Sendable, Equatable, Identifiable {
     public var startedAt: Double?
     public var lastActive: Double?
     public var messageCount: Int?
+    public var toolCallCount: Int?
 
     public var isReadOnly: Bool { source != "api_server" }
 
     enum CodingKeys: String, CodingKey {
         case id, source, title, preview, startedAt = "started_at", lastActive = "last_active", messageCount = "message_count"
+        case toolCallCount = "tool_call_count"
     }
 }
 
@@ -97,10 +99,13 @@ public struct HistoryMessage: Decodable, Sendable, Equatable {
 /// A JSON array where items that don't decode are skipped (Hermes objects pass through the relay unchecked).
 struct Lossy<T: Decodable>: Decodable {
     var items: [T] = []
+    /// Items in the array, skipped ones included.
+    var count = 0
 
     init(from decoder: any Decoder) throws {
         var c = try decoder.unkeyedContainer()
         while !c.isAtEnd {
+            count += 1
             if let v = try? c.decode(T.self) { items.append(v) } else { _ = try c.decode(JSONValue.self) }
         }
     }
@@ -151,6 +156,14 @@ public struct RelayREST: Sendable {
     public func latestMessages(_ sessionID: String, limit: Int) async throws -> [HistoryMessage] {
         let path = try sessionPath(sessionID) + "/messages?limit=\(limit)&order=latest"
         return try decode(Envelope<Lossy<HistoryMessage>>.self, try await call("GET", path)).data.items
+    }
+
+    /// Up to `limit` messages after the first `offset`, oldest first: the rest of a history fetched before. `count` is
+    /// how many the page held, messages that didn't decode included: add it to the offset for the next page.
+    public func messages(_ sessionID: String, offset: Int, limit: Int) async throws -> (messages: [HistoryMessage], count: Int) {
+        let path = try sessionPath(sessionID) + "/messages?limit=\(limit)&offset=\(offset)&order=oldest"
+        let page = try decode(Envelope<Lossy<HistoryMessage>>.self, try await call("GET", path)).data
+        return (page.items, page.count)
     }
 
     /// Trades a one-time pairing code (`XXXX-XXXX-XXXX`, from `trismegistus-relay pair`) for a device token.

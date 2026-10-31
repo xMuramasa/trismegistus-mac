@@ -94,8 +94,11 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   chat keeps messages and answers; each run shows one marker (`4 COMMANDS · 6.1 s · 1 failed`) that focuses the pane.
   The **terminal pane** is a read-only transcript of the selected conversation's tool calls: `$ command` from the
   `tool.started` preview, then output, exit code and duration from the `tool.completed` preview (JSON for the
-  terminal tool; shown raw when cut). Filter: commands only or all tools. Limits of today's relay: output arrives when
-  a command finishes and is cut at 4,000 characters. It is not a shell.
+  terminal tool; shown raw when cut). Filter: commands only or all tools. Live output arrives when a command finishes and is
+  cut at 4,000 characters; past calls come from the Hermes history (every source, output in full), fetched again every
+  10 s while the pane is shown. A **Commands** row in the sidebar lists recent calls across conversations (filters:
+  commands/all tools, failed, conversation, search), synced incrementally and cached per relay in the app's Caches
+  (deleted on unpair). It is not a shell.
 - **Markdown:** prose with `AttributedString(markdown:)`; fenced code blocks are split out and drawn as views with a
   language label and a copy button.
 - **Row status for every conversation:** the client subscribes to every listed session (the relay allows 64 per

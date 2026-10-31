@@ -1,8 +1,8 @@
 import Foundation
 
 /// One tool call as the terminal pane shows it: `$ command`, then output, exit code and duration.
-public struct TerminalEntry: Sendable, Equatable, Identifiable {
-    /// The seq of the call's first event.
+public struct TerminalEntry: Sendable, Equatable, Identifiable, Codable {
+    /// Live: the seq of the call's first event. History: negative (see `entries(fromHistory:sessionID:after:)`).
     public var id: Int
     public var runID: String
     public var tool: String
@@ -23,6 +23,14 @@ public struct TerminalEntry: Sendable, Equatable, Identifiable {
     public var duration: Double?
     /// Started, not completed.
     public var isRunning: Bool
+    /// History: the call's id, which its result message names.
+    public var callID: String? = nil
+    /// History, terminal tool: the `workdir` argument.
+    public var cwd: String? = nil
+    /// History: the conversation (live entries come from one session's events).
+    public var sessionID: String? = nil
+    /// History: a call whose result isn't in the history (yet): still running, or its run was cut off.
+    public var awaitsResult = false
 
     public var isCommand: Bool { tool == TerminalTranscript.terminalTool }
     public var failed: Bool { isError || (exitCode ?? 0) != 0 }
@@ -105,10 +113,12 @@ public enum TerminalTranscript {
     }
 }
 
-/// The terminal tool's `tool.completed` preview.
-private struct TerminalResult: Decodable {
+/// The terminal tool's `tool.completed` preview, and its result in the history.
+struct TerminalResult: Decodable {
     var output: String?
     var exitCode: Int?
     var error: String?
-    enum CodingKeys: String, CodingKey { case output, exitCode = "exit_code", error }
+    /// execute_code: "success" or "error".
+    var status: String?
+    enum CodingKeys: String, CodingKey { case output, exitCode = "exit_code", error, status }
 }

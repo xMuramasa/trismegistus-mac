@@ -69,6 +69,8 @@ final class AppModel {
     /// Disconnects and forgets the token. The relay keeps the device until it is revoked there.
     func unpair() async throws {
         await disconnect()
+        // The command log's cache holds command output from this relay.
+        try? FileManager.default.removeItem(at: CommandLog.cacheURL(for: relayURL))
         deviceName = nil
         defaults.removeObject(forKey: Keys.deviceName)
         try tokens.deleteToken()

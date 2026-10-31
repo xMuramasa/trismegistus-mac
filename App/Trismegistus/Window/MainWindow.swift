@@ -20,6 +20,8 @@ struct MainWindow: View {
             Group {
                 if selection.wrappedValue == NewsRowView.id {
                     NewsView()
+                } else if selection.wrappedValue == CommandsView.id {
+                    CommandsView(onOpen: { selection.wrappedValue = $0 })
                 } else if let id = selection.wrappedValue {
                     ChatView(sessionID: id, compact: false, onShowTerminal: { terminalShown = true })
                 } else {
@@ -28,10 +30,11 @@ struct MainWindow: View {
                 }
             }
             .inspector(isPresented: $terminalShown) {
-                TerminalPane(sessionID: selection.wrappedValue == NewsRowView.id ? nil : selection.wrappedValue)
+                TerminalPane(sessionID: [NewsRowView.id, CommandsView.id].contains(selectedSession) ? nil : selection.wrappedValue)
                     .inspectorColumnWidth(min: 280, ideal: 360, max: 560)
             }
         }
+        .providesCommandLog(model)
         .selectsChatFromNotifications(model.notifications, selection: selection)
         .refreshesNews(model)
         .toolbar { toolbar }

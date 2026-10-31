@@ -1,0 +1,363 @@
+{
+ "object": "list",
+ "session_id": "api_1793441468_d77589de",
+ "data": [
+  {
+   "id": 6289,
+   "session_id": "api_1793441468_d77589de",
+   "role": "user",
+   "content": "testing trismegistus mac version, can you run a terminal command for me please? something easy like a echo hello world",
+   "tool_call_id": null,
+   "tool_calls": null,
+   "tool_name": null,
+   "timestamp": 1793443405.6885056,
+   "finish_reason": null
+  },
+  {
+   "id": 6290,
+   "session_id": "api_1793441468_d77589de",
+   "role": "assistant",
+   "content": "",
+   "tool_call_id": null,
+   "tool_calls": [
+    {
+     "id": "toolu_016fmKiqKtYah8BxmuhiJnT1",
+     "call_id": "toolu_016fmKiqKtYah8BxmuhiJnT1",
+     "response_item_id": "fc_toolu_016fmKiqKtYah8BxmuhiJnT1",
+     "type": "function",
+     "function": {
+      "name": "terminal",
+      "arguments": "{\"command\":\"echo hello world\"}"
+     }
+    }
+   ],
+   "tool_name": null,
+   "timestamp": 1793443408.0518782,
+   "finish_reason": "tool_calls"
+  },
+  {
+   "id": 6291,
+   "session_id": "api_1793441468_d77589de",
+   "role": "tool",
+   "content": "{\"output\": \"hello world\", \"exit_code\": 0, \"error\": null}",
+   "tool_call_id": "toolu_016fmKiqKtYah8BxmuhiJnT1",
+   "tool_calls": null,
+   "tool_name": "terminal",
+   "timestamp": 1793443408.2025702,
+   "finish_reason": null
+  },
+  {
+   "id": 6292,
+   "session_id": "api_1793441468_d77589de",
+   "role": "assistant",
+   "content": "It printed \"hello world\" and exited with code 0. Note that it ran on optiplex, where Hermes lives, not on the Mac. If you want a command to run on the Mac itself, I can send it over `ssh mac`.",
+   "tool_call_id": null,
+   "tool_calls": null,
+   "tool_name": null,
+   "timestamp": 1793443411.839872,
+   "finish_reason": "stop"
+  },
+  {
+   "id": 6293,
+   "session_id": "api_1793441468_d77589de",
+   "role": "user",
+   "content": "can you ask for an approval?",
+   "tool_call_id": null,
+   "tool_calls": null,
+   "tool_name": null,
+   "timestamp": 1793443453.8741827,
+   "finish_reason": null
+  },
+  {
+   "id": 6294,
+   "session_id": "api_1793441468_d77589de",
+   "role": "assistant",
+   "content": "",
+   "tool_call_id": null,
+   "tool_calls": [
+    {
+     "id": "toolu_01DZ5qQXRmEgZ1iCcbZU36FR",
+     "call_id": "toolu_01DZ5qQXRmEgZ1iCcbZU36FR",
+     "response_item_id": "fc_toolu_01DZ5qQXRmEgZ1iCcbZU36FR",
+     "type": "function",
+     "function": {
+      "name": "terminal",
+      "arguments": "{\"command\":\"grep -n -A15 '^approvals' ~/.hermes/config.yaml\"}"
+     }
+    }
+   ],
+   "tool_name": null,
+   "timestamp": 1793443461.7613156,
+   "finish_reason": "tool_calls"
+  },
+  {
+   "id": 6295,
+   "session_id": "api_1793441468_d77589de",
+   "role": "tool",
+   "content": "{\"output\": \"94:approvals:\\n95-  destructive_slash_confirm: false\\n96-  smart_policy: ''\\n97-plugins:\\n98-  enabled:\\n99-    - claude-subscription-directsdk-experimental\\n100-    - herdr-agent-state\\n101-    - homeassistant\\n102-    - platforms/telegram\\n103-  disabled: []\\n104-kanban:\\n105-  review_dispatch: true\\n106-code_execution:\\n107-  timeout: 300\\n108-  max_tool_calls: 50\\n109-streaming:\", \"exit_code\": 0, \"error\": null}",
+   "tool_call_id": "toolu_01DZ5qQXRmEgZ1iCcbZU36FR",
+   "tool_calls": null,
+   "tool_name": "terminal",
+   "timestamp": 1793443461.9132242,
+   "finish_reason": null
+  },
+  {
+   "id": 6296,
+   "session_id": "api_1793441468_d77589de",
+   "role": "assistant",
+   "content": "",
+   "tool_call_id": null,
+   "tool_calls": [
+    {
+     "id": "toolu_01AHANtwY4gQr6P2MZSPjKdi",
+     "call_id": "toolu_01AHANtwY4gQr6P2MZSPjKdi",
+     "response_item_id": "fc_toolu_01AHANtwY4gQr6P2MZSPjKdi",
+     "type": "function",
+     "function": {
+      "name": "terminal",
+      "arguments": "{\"command\":\"grep -n -i -E 'approv|smart|yolo|dangerous' ~/.hermes/config.yaml\"}"
+     }
+    }
+   ],
+   "tool_name": null,
+   "timestamp": 1793443465.3465626,
+   "finish_reason": "tool_calls"
+  },
+  {
+   "id": 6297,
+   "session_id": "api_1793441468_d77589de",
+   "role": "tool",
+   "content": "{\"output\": \"94:approvals:\\n96:  smart_policy: ''\", \"exit_code\": 0, \"error\": null}",
+   "tool_call_id": "toolu_01AHANtwY4gQr6P2MZSPjKdi",
+   "tool_calls": null,
+   "tool_name": "terminal",
+   "timestamp": 1793443465.4678748,
+   "finish_reason": null
+  },
+  {
+   "id": 6298,
+   "session_id": "api_1793441468_d77589de",
+   "role": "assistant",
+   "content": "",
+   "tool_call_id": null,
+   "tool_calls": [
+    {
+     "id": "toolu_01QvbkKapo65s8vmARHEs8Ka",
+     "call_id": "toolu_01QvbkKapo65s8vmARHEs8Ka",
+     "response_item_id": "fc_toolu_01QvbkKapo65s8vmARHEs8Ka",
+     "type": "function",
+     "function": {
+      "name": "terminal",
+      "arguments": "{\"command\":\"sudo -n true && echo \\\"sudo ok (no-op)\\\" || echo \\\"sudo needs a password, nothing ran\\\"\"}"
+     }
+    }
+   ],
+   "tool_name": null,
+   "timestamp": 1793443474.0089977,
+   "finish_reason": "tool_calls"
+  },
+  {
+   "id": 6299,
+   "session_id": "api_1793441468_d77589de",
+   "role": "tool",
+   "content": "{\"output\": \"sudo: interactive authentication is required\\nsudo needs a password, nothing ran\", \"exit_code\": 0, \"error\": null}",
+   "tool_call_id": "toolu_01QvbkKapo65s8vmARHEs8Ka",
+   "tool_calls": null,
+   "tool_name": "terminal",
+   "timestamp": 1793443474.0992043,
+   "finish_reason": null
+  },
+  {
+   "id": 6300,
+   "session_id": "api_1793441468_d77589de",
+   "role": "assistant",
+   "content": "",
+   "tool_call_id": null,
+   "tool_calls": [
+    {
+     "id": "toolu_01Td1uuCUm2sjSJFg2DYzCDJ",
+     "call_id": "toolu_01Td1uuCUm2sjSJFg2DYzCDJ",
+     "response_item_id": "fc_toolu_01Td1uuCUm2sjSJFg2DYzCDJ",
+     "type": "function",
+     "function": {
+      "name": "terminal",
+      "arguments": "{\"command\":\"mkdir -p ~/.hermes/cache/scratch/trismegistus-approval-test && ls -la ~/.hermes/cache/scratch/trismegistus-approval-test\"}"
+     }
+    }
+   ],
+   "tool_name": null,
+   "timestamp": 1793443480.338476,
+   "finish_reason": "tool_calls"
+  },
+  {
+   "id": 6301,
+   "session_id": "api_1793441468_d77589de",
+   "role": "tool",
+   "content": "{\"output\": \"total 8\\ndrwxrwxr-x  2 muramasa muramasa 4096 Oct 31 07:44 .\\ndrwx------ 15 muramasa muramasa 4096 Oct 31 07:44 ..\", \"exit_code\": 0, \"error\": null}",
+   "tool_call_id": "toolu_01Td1uuCUm2sjSJFg2DYzCDJ",
+   "tool_calls": null,
+   "tool_name": "terminal",
+   "timestamp": 1793443480.4194736,
+   "finish_reason": null
+  },
+  {
+   "id": 6302,
+   "session_id": "api_1793441468_d77589de",
+   "role": "assistant",
+   "content": "",
+   "tool_call_id": null,
+   "tool_calls": [
+    {
+     "id": "toolu_01XvYXfFufhgbvqGfRcwgaG5",
+     "call_id": "toolu_01XvYXfFufhgbvqGfRcwgaG5",
+     "response_item_id": "fc_toolu_01XvYXfFufhgbvqGfRcwgaG5",
+     "type": "function",
+     "function": {
+      "name": "terminal",
+      "arguments": "{\"command\":\"rm -rf ~/.hermes/cache/scratch/trismegistus-approval-test\"}"
+     }
+    }
+   ],
+   "tool_name": null,
+   "timestamp": 1793443485.343805,
+   "finish_reason": "tool_calls"
+  },
+  {
+   "id": 6303,
+   "session_id": "api_1793441468_d77589de",
+   "role": "tool",
+   "content": "{\"output\": \"\", \"exit_code\": 0, \"error\": null, \"approval\": \"Command was flagged (recursive delete) and auto-approved by smart approval.\"}",
+   "tool_call_id": "toolu_01XvYXfFufhgbvqGfRcwgaG5",
+   "tool_calls": null,
+   "tool_name": "terminal",
+   "timestamp": 1793443487.6934357,
+   "finish_reason": null
+  },
+  {
+   "id": 6304,
+   "session_id": "api_1793441468_d77589de",
+   "role": "assistant",
+   "content": "I tried, but nothing reached you. I ran a harmless `rm -rf` on an empty scratch folder I'd just created. Hermes flagged it as a recursive delete, but smart approval approved it on its own without aski",
+   "tool_call_id": null,
+   "tool_calls": null,
+   "tool_name": null,
+   "timestamp": 1793443494.6378345,
+   "finish_reason": "stop"
+  },
+  {
+   "id": 6315,
+   "session_id": "api_1793441468_d77589de",
+   "role": "assistant",
+   "content": "",
+   "tool_call_id": null,
+   "tool_calls": [
+    {
+     "id": "toolu_016PAtohZWAxjTHaFDorCePT",
+     "call_id": "toolu_016PAtohZWAxjTHaFDorCePT",
+     "response_item_id": "fc_toolu_016PAtohZWAxjTHaFDorCePT",
+     "type": "function",
+     "function": {
+      "name": "patch",
+      "arguments": "{\"path\":\"/home/muramasa/.hermes/config.yaml\",\"old_string\":\"  smart_policy: ''\",\"new_string\":\"  smart_policy: Always ESCALATE any command that references a path containing\\n    \\\"trismegistus-approval-test\\\". This is a temporary operator rule for testing\\n    the human approval prompt.\"}"
+     }
+    }
+   ],
+   "tool_name": null,
+   "timestamp": 1793443579.3522775,
+   "finish_reason": "tool_calls"
+  },
+  {
+   "id": 6316,
+   "session_id": "api_1793441468_d77589de",
+   "role": "tool",
+   "content": "{\"error\": \"Refusing to write to Hermes config file: /home/muramasa/.hermes/config.yaml\\nAgent cannot modify security-sensitive configuration. Edit ~/.hermes/config.yaml directly or use 'hermes config' instead.\"}",
+   "tool_call_id": "toolu_016PAtohZWAxjTHaFDorCePT",
+   "tool_calls": null,
+   "tool_name": "patch",
+   "timestamp": 1793443579.3677003,
+   "finish_reason": null
+  },
+  {
+   "id": 6341,
+   "session_id": "api_1793441468_d77589de",
+   "role": "user",
+   "content": "could you run this for me please, run mkdir -p ~/.hermes/cache/scratch/trismegistus-approval-test && rm -rf ~/.hermes/cache/scratch/trismegistus-approval-test",
+   "tool_call_id": null,
+   "tool_calls": null,
+   "tool_name": null,
+   "timestamp": 1793443987.5822618,
+   "finish_reason": null
+  },
+  {
+   "id": 6342,
+   "session_id": "api_1793441468_d77589de",
+   "role": "assistant",
+   "content": "",
+   "tool_call_id": null,
+   "tool_calls": [
+    {
+     "id": "toolu_0154EVjxznBWCHFU3K8M2W4b",
+     "call_id": "toolu_0154EVjxznBWCHFU3K8M2W4b",
+     "response_item_id": "fc_toolu_0154EVjxznBWCHFU3K8M2W4b",
+     "type": "function",
+     "function": {
+      "name": "terminal",
+      "arguments": "{\"command\":\"hermes config get approvals.smart_policy\"}"
+     }
+    },
+    {
+     "id": "toolu_01TCR4Q3Pwxh3c9TnnsCKHTK",
+     "call_id": "toolu_01TCR4Q3Pwxh3c9TnnsCKHTK",
+     "response_item_id": "fc_toolu_01TCR4Q3Pwxh3c9TnnsCKHTK",
+     "type": "function",
+     "function": {
+      "name": "terminal",
+      "arguments": "{\"command\":\"mkdir -p ~/.hermes/cache/scratch/trismegistus-approval-test && rm -rf ~/.hermes/cache/scratch/trismegistus-approval-test\"}"
+     }
+    }
+   ],
+   "tool_name": null,
+   "timestamp": 1793443993.730172,
+   "finish_reason": "tool_calls"
+  },
+  {
+   "id": 6343,
+   "session_id": "api_1793441468_d77589de",
+   "role": "tool",
+   "content": "{\"output\": \"Always ESCALATE (never approve) any command that references a path containing \\\"trismegistus-approval-test\\\". It is a deliberate approval test for the Trismegistus app.\", \"exit_code\": 0, \"error\": null}",
+   "tool_call_id": "toolu_0154EVjxznBWCHFU3K8M2W4b",
+   "tool_calls": null,
+   "tool_name": "terminal",
+   "timestamp": 1793443995.0449321,
+   "finish_reason": null
+  },
+  {
+   "id": 6344,
+   "session_id": "api_1793441468_d77589de",
+   "role": "tool",
+   "content": "{\"output\": \"\", \"exit_code\": 0, \"error\": null, \"approval\": \"Command required approval (recursive delete) and was approved by the user.\"}",
+   "tool_call_id": "toolu_01TCR4Q3Pwxh3c9TnnsCKHTK",
+   "tool_calls": null,
+   "tool_name": "terminal",
+   "timestamp": 1793444007.4939702,
+   "finish_reason": null
+  },
+  {
+   "id": 6345,
+   "session_id": "api_1793441468_d77589de",
+   "role": "assistant",
+   "content": "It escalated this time. Hermes flagged the command as a recursive delete, sent it to you for approval, and it ran after you approved it. It exited with code 0 and the folder is gone, so the approval r",
+   "tool_call_id": null,
+   "tool_calls": null,
+   "tool_name": null,
+   "timestamp": 1793444011.6395571,
+   "finish_reason": "stop"
+  }
+ ],
+ "pagination": {
+  "limit": 200,
+  "offset": 0,
+  "order": "oldest",
+  "returned": 23
+ }
+}

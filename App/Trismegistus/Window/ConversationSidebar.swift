@@ -2,7 +2,8 @@ import SwiftUI
 import TrismegistusKit
 import TrismegistusUI
 
-/// Window sidebar: `CONVERSATIONS // n`, icon-only new, filter field, one row per session, the paired device below.
+/// Window sidebar: `CONVERSATIONS // n`, icon-only new, filter field, the Commands row, one row per session, the
+/// paired device below.
 struct ConversationSidebar: View {
     @Binding var selection: String?
 
@@ -31,6 +32,10 @@ struct ConversationSidebar: View {
         VStack(spacing: 0) {
             header
             List(selection: $selection) {
+                CommandsRowView(isSelected: selection == CommandsView.id)
+                    .tag(CommandsView.id)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparatorTint(Theme.rule)
                 ForEach(rows) { row in
                     Group {
                         switch row {
