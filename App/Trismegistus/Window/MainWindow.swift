@@ -30,6 +30,7 @@ struct MainWindow: View {
                     .inspectorColumnWidth(min: 280, ideal: 360, max: 560)
             }
         }
+        .selectsChatFromNotifications(model.notifications, selection: selection)
         .toolbar { toolbar }
         .toolbar(removing: .title)
         .frame(minWidth: 1100, minHeight: 640)

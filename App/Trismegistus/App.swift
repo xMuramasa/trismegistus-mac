@@ -12,6 +12,8 @@ struct TrismegistusApp: App {
             .environment(model)
         } label: {
             StatusGlyph(activity: model.store?.activity ?? .disconnected)
+                // The label is the one view that is always alive: it opens the window for a clicked notification.
+                .opensChatFromNotifications(model.notifications)
         }
         .menuBarExtraStyle(.window)
 
