@@ -30,6 +30,7 @@ struct ConversationHeader: View {
                         TagChips(tags: tags, limit: 4)
                     }
                     Spacer(minLength: 0)
+                    ContextMeter(info: info) { actions.handingOff = info }
                     ModelMenu(info: info)
                     ConversationMenuButton(info: info, actions: actions, store: model.store)
                 }

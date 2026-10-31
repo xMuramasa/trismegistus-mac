@@ -9,6 +9,7 @@ struct ChatPage: View {
     let onBack: @MainActor () -> Void
 
     @Environment(AppModel.self) private var model
+    @State private var handingOff: SessionInfo?
 
     /// The thread's newest part, which ChatView shows and sends to.
     private var id: String { model.store?.threadTip(of: sessionID) ?? sessionID }
@@ -39,7 +40,10 @@ struct ChatPage: View {
                 EndfieldButton("Back", symbol: "chevron.left", kind: .quiet, iconOnly: true, shortcut: .cancelAction, action: onBack)
                 VStack(alignment: .leading, spacing: 2) {
                     TitleRule(info.map(PopoverFormat.title) ?? "Session").lineLimit(1)
-                    Text(subtitle).typeRole(.monoSmall).foregroundStyle(Theme.secondary)
+                    HStack(spacing: 10) {
+                        Text(subtitle).typeRole(.monoSmall).foregroundStyle(Theme.secondary).lineLimit(1)
+                        if let info { ContextMeter(info: info) { handingOff = info } }
+                    }
                 }
                 Spacer(minLength: 0)
                 if let info { ModelMenu(info: info) }
@@ -48,5 +52,6 @@ struct ChatPage: View {
             ChatView(sessionID: sessionID)
             KeyHintStrip(hints)
         }
+        .handoffSheet($handingOff)
     }
 }
