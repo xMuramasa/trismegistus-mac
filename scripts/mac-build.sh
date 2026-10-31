@@ -4,7 +4,8 @@
 #
 #   scripts/mac-build.sh             compile check without signing; prints errors, warnings and the result
 #   scripts/mac-build.sh --install   ad-hoc signed Debug build, copied to ~/Applications/Trismegistus.app (Hermes
-#                                    only). No team signing: see SPEC "Signing".
+#                                    only), plus ~/.local/bin/trismegistus-open (scripts/mac-open.sh), with which
+#                                    Martin signs it with his Personal Team and opens it. See SPEC "Signing".
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 mode=check
@@ -39,5 +40,7 @@ if [[ $mode == install ]]; then
     app="$HOME/$dest/.DerivedData/Build/Products/Debug/Trismegistus.app"
     mkdir -p "$HOME/Applications" && rm -rf "$HOME/Applications/Trismegistus.app" && cp -R "$app" "$HOME/Applications/"
     codesign --verify --deep --strict "$HOME/Applications/Trismegistus.app" && echo "installed: ~/Applications/Trismegistus.app"
+    mkdir -p "$HOME/.local/bin" && install -m 755 "$HOME/$dest/scripts/mac-open.sh" "$HOME/.local/bin/trismegistus-open" &&
+        echo "installed: ~/.local/bin/trismegistus-open (Martin runs it to sign with his team and open the app)"
 fi
 EOF
