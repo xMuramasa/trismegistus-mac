@@ -6,6 +6,8 @@ options:
 packages:
   TrismegistusKit:
     path: ../TrismegistusKit
+  TrismegistusUI:
+    path: ../TrismegistusUI
 targets:
   Trismegistus:
     type: application
@@ -13,6 +15,7 @@ targets:
     sources: [Trismegistus]
     dependencies:
       - package: TrismegistusKit
+      - package: TrismegistusUI
     settings:
       base:
         SWIFT_VERSION: "6.0"
