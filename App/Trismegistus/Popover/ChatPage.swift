@@ -10,8 +10,10 @@ struct ChatPage: View {
 
     @Environment(AppModel.self) private var model
 
-    private var info: SessionInfo? { model.sessions.first { $0.id == sessionID } }
-    private var runID: String? { model.store?.sessions[sessionID]?.run?.id ?? model.store?.overview[sessionID]?.run?.id }
+    /// The thread's newest part, which ChatView shows and sends to.
+    private var id: String { model.store?.threadTip(of: sessionID) ?? sessionID }
+    private var info: SessionInfo? { model.sessions.first { $0.id == id } }
+    private var runID: String? { model.store?.sessions[id]?.run?.id ?? model.store?.overview[id]?.run?.id }
 
     private var subtitle: String {
         var parts = [PopoverFormat.sourceName(info?.source)]
@@ -40,6 +42,7 @@ struct ChatPage: View {
                     Text(subtitle).typeRole(.monoSmall).foregroundStyle(Theme.secondary)
                 }
                 Spacer(minLength: 0)
+                if let info { ModelMenu(info: info) }
             }
             .padding(.horizontal, 16).padding(.vertical, 12)
             ChatView(sessionID: sessionID)

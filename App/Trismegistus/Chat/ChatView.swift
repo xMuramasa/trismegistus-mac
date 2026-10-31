@@ -16,9 +16,12 @@ struct ChatView: View {
     @State private var actionError: String?
     /// When this view first saw the current run, for a run with no events yet.
     @State private var runSeen = Date()
+    @State private var handingOff: SessionInfo?
 
-    private var state: SessionState? { model.store?.sessions[sessionID] }
-    private var info: SessionInfo? { model.sessions.first { $0.id == sessionID } }
+    /// The newest part of the conversation's thread: older parts show folded above, the composer sends here.
+    private var id: String { model.store?.threadTip(of: sessionID) ?? sessionID }
+    private var state: SessionState? { model.store?.sessions[id] }
+    private var info: SessionInfo? { model.sessions.first { $0.id == id } }
     private var run: ActiveRun? { state?.run }
     private var approval: PendingApproval? { state?.approvals.first }
 
@@ -27,9 +30,11 @@ struct ChatView: View {
             if let approval { banner(approval) }
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
+                    OlderParts(tipID: id, compact: compact)
                     historyStatus
+                    let items = self.items
                     ChatTranscript(items: items, onShowTerminal: showTerminal, retry: retry(_:))
-                    if let run { working(run) }
+                    if let run { working(run) } else if let info, SessionCapabilities(info).canHandOff, Self.stalled(items) { stallRow(info) }
                 }
                 .padding(16)
             }
@@ -39,8 +44,32 @@ struct ChatView: View {
             input
         }
         .background(Theme.paper)
-        .task(id: sessionID) { await model.store?.open(sessionID) }
+        .task(id: id) { await model.store?.open(id) }
         .onChange(of: run?.id, initial: true) { runSeen = Date() }
+        .handoffSheet($handingOff)
+    }
+
+    /// The last answer or error says the model stopped answering (Hermes' stall messages).
+    private static func stalled(_ items: [ChatItem]) -> Bool {
+        for item in items.reversed() {
+            switch item {
+            case .answer(_, let text, _), .note(_, let text, true): return HandoffDigest.isStall(text)
+            default: continue
+            }
+        }
+        return false
+    }
+
+    private func stallRow(_ info: SessionInfo) -> some View {
+        HStack(spacing: 8) {
+            Text("The model stopped answering. Continue in a new conversation from a digest of this one.")
+                .typeRole(.caption).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            EndfieldButton("Hand off", symbol: Symbol.handoff, kind: .primary) { handingOff = info }
+        }
+        .padding(10)
+        .background(Theme.sunken)
+        .overlay(Rectangle().strokeBorder(Theme.rule, lineWidth: 1))
     }
 
     private var items: [ChatItem] {
@@ -77,7 +106,7 @@ struct ChatView: View {
             HStack(spacing: 8) {
                 Text(error).typeRole(.caption).foregroundStyle(Theme.red)
                 EndfieldButton("Retry", symbol: Symbol.retry, kind: .quiet, iconOnly: true) {
-                    Task { await model.store?.loadHistory(sessionID) }
+                    Task { await model.store?.loadHistory(id) }
                 }
             }
         } else if let state, !state.historyLoaded {
@@ -160,7 +189,7 @@ struct ChatView: View {
                 }
             }
         } else {
-            Task { await model.send(text, to: sessionID) }
+            Task { await model.send(text, to: id) }
         }
     }
 
@@ -170,7 +199,7 @@ struct ChatView: View {
         if case .failed(.busy, _) = prompt.status, let run {
             act { try await model.steer(runID: run.id, text: prompt.text) }
         } else {
-            Task { await model.send(prompt.text, to: sessionID) }
+            Task { await model.send(prompt.text, to: id) }
         }
     }
 

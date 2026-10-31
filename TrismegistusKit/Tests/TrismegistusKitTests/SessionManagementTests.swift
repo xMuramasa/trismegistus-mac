@@ -16,6 +16,9 @@ import Testing
     @Test func onlyApiServerCronAndCliCanBeDeleted() {
         #expect(["api_server", "cron", "cli"].allSatisfy { SessionCapabilities(source: $0).canDelete })
         #expect(["telegram", "discord", "slack", "", nil].allSatisfy { !SessionCapabilities(source: $0).canDelete })
+        // Hand off follows delete: never for a live messaging chat.
+        #expect(["api_server", "cron", "cli"].allSatisfy { SessionCapabilities(source: $0).canHandOff })
+        #expect(["telegram", "discord", "", nil].allSatisfy { !SessionCapabilities(source: $0).canHandOff })
     }
 }
 

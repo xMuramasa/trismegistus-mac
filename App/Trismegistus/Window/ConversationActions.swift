@@ -11,6 +11,8 @@ final class ConversationActions {
     var renameText = ""
     var tagging: String?
     var deleting: SessionInfo?
+    /// The conversation the handoff sheet is open for.
+    var handingOff: SessionInfo?
     /// One line; cleared by the next action.
     var error: String?
 
@@ -37,7 +39,7 @@ final class ConversationActions {
 
     func delete(_ info: SessionInfo, store: SessionStore?) {
         deleting = nil
-        run(store) { try await $0.deleteSession(info.id) }
+        run(store) { try await $0.deleteThread(info.id) }
     }
 
     private func run(_ store: SessionStore?, _ call: @escaping @MainActor (SessionStore) async throws -> Void) {
@@ -61,7 +63,7 @@ extension ConversationListRow {
 
 // MARK: Menu
 
-/// Pin/Unpin, Rename, Tags and Delete, as the relay allows them for the conversation's source.
+/// Pin/Unpin, Rename, Tags, Hand off and Delete, as the relay allows them for the conversation's source.
 struct ConversationMenuItems: View {
     let info: SessionInfo
     let actions: ConversationActions
@@ -79,6 +81,9 @@ struct ConversationMenuItems: View {
         }
         if capabilities.canTag {
             Button("Tags", systemImage: "tag") { actions.tagging = actions.tagging == info.id ? nil : info.id }
+        }
+        if capabilities.canHandOff {
+            Button("Hand off", systemImage: Symbol.handoff) { actions.handingOff = info }
         }
         if capabilities.canDelete {
             Divider()
@@ -111,15 +116,30 @@ struct ConversationMenuButton: View {
 }
 
 extension View {
-    /// Asks before deleting, naming the conversation.
+    /// Asks before deleting, naming the conversation and every part of its thread; presents the handoff sheet.
     func confirmsDelete(_ actions: ConversationActions, store: SessionStore?) -> some View {
         alert("Delete conversation?", isPresented: Binding(get: { actions.deleting != nil }, set: { if !$0 { actions.deleting = nil } }),
               presenting: actions.deleting) { info in
             Button("Delete", role: .destructive) { actions.delete(info, store: store) }
             Button("Cancel", role: .cancel) {}
         } message: { info in
-            Text("“\(PopoverFormat.title(info))” is deleted on the relay. This can't be undone.")
+            Text(Self.deleteMessage(info, store: store))
         }
+        .handoffSheet(Binding(get: { actions.handingOff }, set: { actions.handingOff = $0 }))
+    }
+
+    @MainActor private static func deleteMessage(_ info: SessionInfo, store: SessionStore?) -> String {
+        guard let store, !store.olderParts(of: info.id).isEmpty else {
+            return "“\(PopoverFormat.title(info))” is deleted on the relay. This can't be undone."
+        }
+        func name(_ id: String) -> String {
+            store.sessionList.first { $0.id == id }.map { "“\(PopoverFormat.title($0))”" } ?? "an earlier part (\(id))"
+        }
+        let parts = store.deletableParts(of: info.id)
+        let kept = store.olderParts(of: info.id).filter { !parts.contains($0) }
+        var text = "Every part of this thread the relay can delete goes, newest first: " + parts.map(name).joined(separator: ", ") + "."
+        if !kept.isEmpty { text += " Kept (from \(kept.count == 1 ? "a source" : "sources") the Mac can't delete): " + kept.map(name).joined(separator: ", ") + "." }
+        return text + " This can't be undone."
     }
 }
 

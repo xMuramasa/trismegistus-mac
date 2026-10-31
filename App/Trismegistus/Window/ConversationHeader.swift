@@ -9,11 +9,13 @@ struct ConversationHeader: View {
     @Environment(AppModel.self) private var model
     @State private var actions = ConversationActions()
 
-    private var info: SessionInfo? { model.sessions.first { $0.id == sessionID } }
+    /// The thread's newest part: the header shows and acts on it.
+    private var id: String { model.store?.threadTip(of: sessionID) ?? sessionID }
+    private var info: SessionInfo? { model.sessions.first { $0.id == id } }
 
     var body: some View {
         if let info {
-            let tags = model.store?.tags[sessionID] ?? []
+            let tags = model.store?.tags[info.id] ?? []
             VStack(spacing: 0) {
                 HStack(spacing: 10) {
                     SourceIcon(PopoverFormat.source(info.source)).foregroundStyle(Theme.ink)
@@ -28,6 +30,7 @@ struct ConversationHeader: View {
                         TagChips(tags: tags, limit: 4)
                     }
                     Spacer(minLength: 0)
+                    ModelMenu(info: info)
                     ConversationMenuButton(info: info, actions: actions, store: model.store)
                 }
                 .padding(.horizontal, 16).padding(.vertical, 8)
@@ -42,8 +45,9 @@ struct ConversationHeader: View {
             .background(Theme.raised)
             .overlay(alignment: .bottom) { Rectangle().fill(Theme.rule).frame(height: 1) }
             .confirmsDelete(actions, store: model.store)
-            // A header for another conversation starts clean.
-            .id(sessionID)
+            // A header for another conversation starts clean; a handoff stays in the same thread (its oldest part), so
+            // the handoff sheet opened here survives the new part becoming the tip.
+            .id(model.store?.olderParts(of: info.id).last ?? info.id)
         }
     }
 }

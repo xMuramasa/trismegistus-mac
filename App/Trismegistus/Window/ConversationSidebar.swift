@@ -15,13 +15,15 @@ struct ConversationSidebar: View {
     @State private var actions = ConversationActions()
 
     private var tags: [String: [String]] { model.store?.tags ?? [:] }
+    /// One per thread: its newest part (title, tags and pin come from it).
+    private var threads: [SessionInfo] { SessionListing.threads(model.sessions, id: \.id, links: model.store?.links ?? [:]) }
     /// Tags of the listed conversations with how many carry each; tag ids the app doesn't list are ignored.
-    private var tagCounts: [(tag: String, count: Int)] { SessionListing.tagCounts(ids: model.sessions.map(\.id), tags: tags) }
+    private var tagCounts: [(tag: String, count: Int)] { SessionListing.tagCounts(ids: threads.map(\.id), tags: tags) }
 
     /// Pinned first, then most recent first with the daily feed runs folded into one News row. Unfiltered.
     private var listing: (pinned: [SessionOverview], rest: [ConversationListRow<SessionOverview>]) {
         guard let store = model.store else { return ([], []) }
-        let overviews = model.sessions
+        let overviews = threads
             .compactMap { store.overview[$0.id] }
             .sorted { ($0.lastActivity ?? .distantPast) > ($1.lastActivity ?? .distantPast) }
         return ConversationListRow.listing(overviews, news: model.news?.sessionIDs ?? [], isPinned: { $0.info?.isPinned == true })
@@ -84,7 +86,12 @@ struct ConversationSidebar: View {
         .background(Theme.sunken)
         .confirmsDelete(actions, store: model.store)
         .onChange(of: orderedIDs) { old, new in
-            selection = SessionListing.selection(selection, from: old, to: new)
+            // A handed-off conversation leaves the list for the part that continues it: the window stays on the thread.
+            if let selection, let tip = model.store?.threadTip(of: selection), tip != selection {
+                self.selection = tip
+            } else {
+                selection = SessionListing.selection(selection, from: old, to: new)
+            }
         }
         .onChange(of: tagCounts.map(\.tag)) { _, tags in
             if let tagFilter, !tags.contains(where: { TagRules.key($0) == tagFilter }) { self.tagFilter = nil }

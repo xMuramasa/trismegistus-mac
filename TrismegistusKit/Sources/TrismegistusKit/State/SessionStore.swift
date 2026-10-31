@@ -15,6 +15,12 @@ public final class SessionStore {
     public private(set) var sessionList: [SessionInfo] = []
     /// Tags by session id, from the relay (they follow every device). May hold ids the list doesn't have.
     public private(set) var tags: [String: [String]] = [:]
+    /// Handoff links, newer id → the older id it continues (`HandoffChain`). Empty from a relay without them.
+    public private(set) var links: [String: String] = [:]
+    /// Hermes' connected models; nil until loaded and from a relay without the endpoint (hide the picker then).
+    public private(set) var models: ModelCatalog?
+    /// The sessions with a model of their own; the others use `models.current`.
+    public private(set) var sessionModels: [String: ModelChoice] = [:]
     /// Open sessions by id.
     public private(set) var sessions: [String: SessionState] = [:]
     /// A row for every listed or open session. The open ones and the RelayClient.maxSubscriptions most recent are
@@ -146,11 +152,42 @@ public final class SessionStore {
         sessionList = try await rest.listSessions()
         await follow()
         await refreshTags()
+        await refreshLinksAndModels()
     }
 
     /// Keeps the tags it has when the relay can't be reached; a relay without the endpoint has none.
     public func refreshTags() async {
         if let fresh = try? await rest.tags() { tags = fresh }
+    }
+
+    /// Like refreshTags: what the relay can't answer stays as it was; a relay without the endpoints has none.
+    public func refreshLinksAndModels() async {
+        if let fresh = try? await rest.links() { links = fresh }
+        if let fresh = try? await rest.models() { models = fresh }
+        if let fresh = try? await rest.sessionModels() { sessionModels = fresh }
+    }
+
+    /// The model the session's next run uses: its own choice, else the relay's current one.
+    public func model(for id: String) -> ModelChoice? {
+        sessionModels[id] ?? models?.current
+    }
+
+    /// Optimistic like renameSession; keeps what the relay stored.
+    public func setModel(_ id: String, _ choice: ModelChoice) async throws {
+        let old = sessionModels[id]
+        sessionModels[id] = choice
+        do {
+            sessionModels[id] = try await rest.setModel(id, choice)
+        } catch {
+            if sessionModels[id] == choice { sessionModels[id] = old }
+            throw error
+        }
+    }
+
+    /// Records that `id` continues `from` (nil drops the link); the lists show the thread at once.
+    public func setContinues(_ id: String, from: String?) async throws {
+        let stored = try await rest.setContinues(id, from: from)
+        links[id] = stored
     }
 
     @discardableResult
@@ -204,6 +241,8 @@ public final class SessionStore {
         try await rest.deleteSession(id)
         sessionList.removeAll { $0.id == id }
         tags[id] = nil
+        sessionModels[id] = nil
+        links = links.filter { $0.key != id && $0.value != id } // the relay drops both sides
         sessions[id] = nil
         await follow()
     }

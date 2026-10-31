@@ -31,6 +31,13 @@ public enum SessionListing {
         return new.isEmpty ? nil : new[min(i, new.count - 1)]
     }
 
+    /// One item per thread, its newest part (see `HandoffChain`): items that another listed item continues are left out.
+    public static func threads<T>(_ items: [T], id: (T) -> String, links: [String: String]) -> [T] {
+        guard !links.isEmpty else { return items }
+        let hidden = HandoffChain.continued(listed: Set(items.map(id)), links: links)
+        return items.filter { !hidden.contains(id($0)) }
+    }
+
     public static func hasTag(_ tag: String, in tags: [String]) -> Bool {
         tags.contains { TagRules.key($0) == TagRules.key(tag) }
     }

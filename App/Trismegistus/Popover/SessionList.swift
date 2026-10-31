@@ -16,7 +16,8 @@ struct SessionList: View {
     @State private var actions = ConversationActions()
     @FocusState private var focused: Bool
 
-    private var sessions: [SessionInfo] { model.sessions }
+    /// One row per thread: its newest part.
+    private var sessions: [SessionInfo] { SessionListing.threads(model.sessions, id: \.id, links: model.store?.links ?? [:]) }
     /// Pinned conversations first; then the rest with the daily feed runs folded into one News row.
     private var listing: (pinned: [SessionInfo], rest: [ConversationListRow<SessionInfo>]) {
         ConversationListRow.listing(sessions, news: model.news?.sessionIDs ?? [], isPinned: \.isPinned)
@@ -36,7 +37,12 @@ struct SessionList: View {
             if let message { error = message }
         }
         .onChange(of: rows.map(\.id)) { old, new in
-            selection = SessionListing.selection(selection, from: old, to: new)
+            // A handed-off conversation leaves the list for the part that continues it.
+            if let selection, let tip = model.store?.threadTip(of: selection), tip != selection {
+                self.selection = tip
+            } else {
+                selection = SessionListing.selection(selection, from: old, to: new)
+            }
         }
     }
 

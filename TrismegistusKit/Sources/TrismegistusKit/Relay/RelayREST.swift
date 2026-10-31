@@ -50,13 +50,15 @@ public struct SessionInfo: Decodable, Sendable, Equatable, Identifiable {
     public var toolCallCount: Int?
     /// Hermes' keep flag; absent counts as false.
     public var pinned: Bool?
+    /// The model Hermes ran the session on (an id like `claude-opus-5-5[1m]`, no provider).
+    public var model: String?
 
     public var isPinned: Bool { pinned ?? false }
     public var isReadOnly: Bool { source != "api_server" }
 
     enum CodingKeys: String, CodingKey {
         case id, source, title, preview, startedAt = "started_at", lastActive = "last_active", messageCount = "message_count"
-        case toolCallCount = "tool_call_count", pinned
+        case toolCallCount = "tool_call_count", pinned, model
     }
 }
 
@@ -167,6 +169,51 @@ public struct RelayREST: Sendable {
         struct Stored: Decodable { var tags: [String] }
         let body: [String: JSONValue] = ["tags": .array(tags.map(JSONValue.string))]
         return try decode(Stored.self, try await call("PUT", try sessionPath(id) + "/tags", body: body)).tags
+    }
+
+    /// Hermes' connected providers and models; nil from a relay that predates the endpoint (404).
+    public func models() async throws -> ModelCatalog? {
+        do {
+            return try decode(ModelCatalog.self, try await call("GET", "/api/models"))
+        } catch let error as RelayAPIError where error.status == 404 {
+            return nil
+        }
+    }
+
+    /// The sessions with a model of their own; the others use the catalog's `current`. 404 → none.
+    public func sessionModels() async throws -> [String: ModelChoice] {
+        struct Body: Decodable { var sessions: [String: ModelChoice] }
+        do {
+            return try decode(Body.self, try await call("GET", "/api/session-models")).sessions
+        } catch let error as RelayAPIError where error.status == 404 {
+            return [:]
+        }
+    }
+
+    /// Only `api_server` sessions (403 read_only otherwise); the pair must be in `models()` (400 bad_request). Applies
+    /// from the next run.
+    public func setModel(_ id: String, _ choice: ModelChoice) async throws -> ModelChoice {
+        let body: [String: JSONValue] = ["provider": .string(choice.provider), "model": .string(choice.model)]
+        return try decode(ModelChoice.self, try await call("PUT", try sessionPath(id) + "/model", body: body))
+    }
+
+    /// Handoff links, newer id → the older id it continues. Ids deleted elsewhere may linger. 404 → none.
+    public func links() async throws -> [String: String] {
+        struct Body: Decodable { var continues: [String: String] }
+        do {
+            return try decode(Body.self, try await call("GET", "/api/links")).continues
+        } catch let error as RelayAPIError where error.status == 404 {
+            return [:]
+        }
+    }
+
+    /// Records that `id` continues `from` (nil removes its link). A taken link, a loop, a chain over 32 links or a
+    /// self-link is 400 bad_request with the reason.
+    @discardableResult
+    public func setContinues(_ id: String, from: String?) async throws -> String? {
+        struct Body: Decodable { var from: String? }
+        let body: [String: JSONValue] = ["from": from.map(JSONValue.string) ?? .null]
+        return try decode(Body.self, try await call("PUT", try sessionPath(id) + "/continues", body: body)).from
     }
 
     /// Only for `api_server`, `cron` and `cli` sessions (403 read_only otherwise) with no active run (409 busy).
