@@ -8,4 +8,5 @@ cp "$src/schema.json" "$dst/schema.json"
 rm -rf "$dst/examples"; cp -R "$src/examples" "$dst/examples"
 commit=$(git -C "$src" rev-parse --short HEAD)
 sed -i.bak -E "s/commit \`[0-9a-f]+\`/commit \`$commit\`/" "$dst/README.md" && rm -f "$dst/README.md.bak"
+"$(dirname "$0")/protocol-hash.sh" "$dst" > "$dst/SOURCE"
 echo "protocol synced from $src ($commit)"

@@ -1,0 +1,12 @@
+# Invalid protocol examples that still decode in Swift: the constraint is a length, pattern or charset rule that
+# the relay checks (schema validation in relay/internal/protocol) and a Swift type does not.
+# <file>  <constraint the relay enforces>
+auth-token-bad-charset.json  auth.token pattern ^[A-Za-z0-9_-]+$
+prompt-empty-text.json  $defs/text minLength 1
+prompt-oversize-text.json  $defs/text maxLength 32768
+prompt-session-id-bad-charset.json  $defs/id pattern ^[A-Za-z0-9][A-Za-z0-9_.:-]*$
+prompt-session-id-slash.json  $defs/id pattern ^[A-Za-z0-9][A-Za-z0-9_.:-]*$
+prompt-session-id-too-long.json  $defs/id maxLength 128
+steer-oversize-text.json  $defs/text maxLength 32768
+stop-run-id-empty.json  $defs/id minLength 1
+stop-run-id-space.json  $defs/id pattern ^[A-Za-z0-9][A-Za-z0-9_.:-]*$
