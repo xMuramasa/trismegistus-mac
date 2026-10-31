@@ -11,7 +11,7 @@ struct TrismegistusApp: App {
             }
             .environment(model)
         } label: {
-            Image(systemName: statusSymbol)
+            StatusGlyph(activity: model.store?.activity ?? .disconnected)
         }
         .menuBarExtraStyle(.window)
 
@@ -31,13 +31,5 @@ struct TrismegistusApp: App {
             SettingsView()
                 .environment(model)
         }
-    }
-
-    /// Placeholder status glyph: approval waiting, a run in progress, connected, disconnected.
-    private var statusSymbol: String {
-        if !model.pendingApprovals.isEmpty { return "exclamationmark.circle.fill" }
-        if model.isWorking { return "circle.dotted.circle" }
-        if case .connected = model.connection { return "circle.fill" }
-        return "circle.dashed"
     }
 }
