@@ -80,8 +80,8 @@ struct CommandsView: View {
                         }
                     }
                     .padding(16)
-                    .textSelection(.enabled)
                 }
+                .settledWidth()
             }
         }
         .background(Theme.paper)

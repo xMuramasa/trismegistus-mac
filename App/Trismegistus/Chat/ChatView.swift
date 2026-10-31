@@ -37,9 +37,13 @@ struct ChatView: View {
                     if let run { working(run) } else if let info, SessionCapabilities(info).canHandOff, Self.stalled(items) { stallRow(info) }
                 }
                 .padding(16)
+                // A readable column: on a wide window, opening a pane or the sidebar doesn't re-wrap the messages.
+                .frame(maxWidth: 760)
+                .frame(maxWidth: .infinity)
             }
             .defaultScrollAnchor(.bottom)
             .defaultScrollAnchor(.bottom, for: .sizeChanges)
+            .settledWidth()
             if let run { runStrip(run) }
             input
         }
@@ -280,10 +284,40 @@ private struct UserMessage: View {
 }
 
 /// The answer as Markdown: prose with inline styles (line breaks and list markers kept as written, since `Text` drops
-/// block structure), fenced code as `CodeBlockView`. A separate view so unchanged answers aren't parsed again.
+/// block structure), fenced code as `CodeBlockView`. Parsed once per text: the lazy stack recreates a row each time it
+/// scrolls back into view.
 private struct AnswerMessage: View {
     let text: String
     let label: String
+
+    private enum Block {
+        case prose(AttributedString)
+        case code(language: String?, text: String)
+    }
+
+    private final class Parsed {
+        let blocks: [Block]
+        init(_ blocks: [Block]) { self.blocks = blocks }
+    }
+
+    private static let parsed: NSCache<NSString, Parsed> = {
+        let cache = NSCache<NSString, Parsed>()
+        cache.countLimit = 500
+        return cache
+    }()
+
+    private static func blocks(_ text: String) -> [Block] {
+        if let hit = parsed.object(forKey: text as NSString) { return hit.blocks }
+        let blocks: [Block] = MarkdownBlocks.parse(text).map {
+            switch $0 {
+            case .prose(let s):
+                .prose((try? AttributedString(markdown: s, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(s))
+            case .code(let language, let code): .code(language: language, text: code)
+            }
+        }
+        parsed.setObject(Parsed(blocks), forKey: text as NSString)
+        return blocks
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -291,10 +325,10 @@ private struct AnswerMessage: View {
             HStack(alignment: .top, spacing: 10) {
                 Rectangle().fill(Theme.yellow).frame(width: 3)
                 VStack(alignment: .leading, spacing: 8) {
-                    ForEach(Array(MarkdownBlocks.parse(text).enumerated()), id: \.offset) { _, block in
+                    ForEach(Array(Self.blocks(text).enumerated()), id: \.offset) { _, block in
                         switch block {
                         case .prose(let s):
-                            Text((try? AttributedString(markdown: s, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(s))
+                            Text(s)
                                 .typeRole(.body).foregroundStyle(Theme.ink).textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         case .code(let language, let code):

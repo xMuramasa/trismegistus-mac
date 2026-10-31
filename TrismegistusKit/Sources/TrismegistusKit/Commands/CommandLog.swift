@@ -59,13 +59,13 @@ public final class CommandLog {
                 if await fetch(s.id, expected: s.messageCount) { changed = true }
             }
         }
-        if changed { save() }
+        if changed { await save() }
     }
 
     /// Fetches one session's messages after the cached ones, whatever the list says: the terminal pane, every few
     /// seconds while it shows a conversation that may be running elsewhere.
     public func sync(_ sessionID: String) async {
-        if await fetch(sessionID, expected: nil) { save() }
+        if await fetch(sessionID, expected: nil) { await save() }
     }
 
     /// Returns whether the session's log changed. A failed page keeps the pages before it; the rest is fetched next time.
@@ -77,7 +77,7 @@ public final class CommandLog {
         // Fewer messages than cached: the history was rewritten (compressed), start over.
         if let expected, expected < log.count { log = SessionLog() }
         while let page = try? await rest.messages(id, offset: log.count, limit: Self.pageSize) {
-            log.entries = TerminalTranscript.entries(fromHistory: page.messages, sessionID: id, after: log.entries)
+            log.entries = await Self.entries(fromHistory: page.messages, sessionID: id, after: log.entries)
             log.count += page.count
             logs[id] = log
             if page.count < Self.pageSize { break }
@@ -85,10 +85,22 @@ public final class CommandLog {
         return logs[id] != before
     }
 
-    // shortcut: rewrites the whole file on the main actor after each refresh (a few MB at most, other tools' results
-    // are cut); move it off the main actor if the window stutters.
-    private func save() {
-        guard let cacheURL, let data = try? JSONEncoder().encode(logs) else { return }
+    /// Off the main actor: a page of long outputs takes a while to read, and the window may be animating a pane.
+    @concurrent nonisolated private static func entries(
+        fromHistory messages: [HistoryMessage], sessionID: String, after previous: [TerminalEntry]
+    ) async -> [TerminalEntry] {
+        TerminalTranscript.entries(fromHistory: messages, sessionID: sessionID, after: previous)
+    }
+
+    private func save() async {
+        guard let cacheURL else { return }
+        await Self.write(logs, to: cacheURL)
+    }
+
+    // shortcut: rewrites the whole file after each refresh (a few MB at most, other tools' results are cut); a refresh
+    // and a pane sync saving at once may land out of order, which only makes the next launch fetch a page again.
+    @concurrent nonisolated private static func write(_ logs: [String: SessionLog], to cacheURL: URL) async {
+        guard let data = try? JSONEncoder().encode(logs) else { return }
         try? FileManager.default.createDirectory(at: cacheURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? data.write(to: cacheURL, options: .atomic)
     }

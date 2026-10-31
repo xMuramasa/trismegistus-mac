@@ -21,20 +21,24 @@ struct TerminalPane: View {
     }
 
     var body: some View {
+        let entries = entries
         VStack(spacing: 0) {
-            header
+            header(entries)
             Rectangle().fill(Theme.rule).frame(height: 1)
-            transcript
+            transcript(entries)
             Text("Live output arrives when a command finishes, cut at 4,000 characters; the history has it in full.")
                 .typeRole(.caption).foregroundStyle(Theme.muted)
                 .padding(.horizontal, 16).padding(.vertical, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .overlay(alignment: .top) { Rectangle().fill(Theme.rule).frame(height: 1) }
         }
+        .settledWidth(minimum: 280)
         .background(Theme.paper)
         // Runs started elsewhere (Telegram, cron, the CLI) send no live events: ask the history while the pane shows.
         .task(id: TaskKey(sessionID: sessionID, log: log.map(ObjectIdentifier.init))) {
             guard let sessionID, let log else { return }
+            // Not while the pane is still opening.
+            try? await Task.sleep(for: .milliseconds(400))
             while !Task.isCancelled {
                 await log.sync(sessionID)
                 try? await Task.sleep(for: .seconds(10))
@@ -47,7 +51,7 @@ struct TerminalPane: View {
         var log: ObjectIdentifier?
     }
 
-    private var header: some View {
+    private func header(_ entries: [TerminalEntry]) -> some View {
         HStack(spacing: 8) {
             Text("Terminal").typeRole(.label)
             if let run = (state?.run?.id ?? entries.last?.runID), !run.isEmpty {
@@ -60,7 +64,7 @@ struct TerminalPane: View {
         .padding(.horizontal, 16).padding(.vertical, 10)
     }
 
-    @ViewBuilder private var transcript: some View {
+    @ViewBuilder private func transcript(_ entries: [TerminalEntry]) -> some View {
         if entries.isEmpty {
             Text(sessionID == nil ? "Select a conversation." : "No commands yet.")
                 .typeRole(.caption).foregroundStyle(Theme.muted)
@@ -71,8 +75,6 @@ struct TerminalPane: View {
                     ForEach(entries) { EntryRow(entry: $0) }
                 }
                 .padding(16)
-                // Read-only, but selectable across entries so commands and output can be copied.
-                .textSelection(.enabled)
             }
             .defaultScrollAnchor(.bottom)
             .defaultScrollAnchor(.bottom, for: .sizeChanges)

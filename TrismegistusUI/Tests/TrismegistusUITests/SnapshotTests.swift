@@ -151,8 +151,23 @@ final class SnapshotTests: XCTestCase {
                 TerminalEntryView(meta: "terminal · 12:04:31 · 0.3 s", command: "ls ~/Projects", output: "endfield-dotfiles\nhomelab", exitCode: 0)
                 TerminalEntryView(meta: "terminal · 12:04:40 · 4.8 s", command: "pytest -q tests/", exitCode: 1)
                 TerminalEntryView(meta: "terminal · 12:04:50", command: "sleep 30", isRunning: true)
+                TerminalEntryView(
+                    meta: "terminal · 12:05:02 · 1.2 s", command: "seq 40",
+                    output: (1...40).map(String.init).joined(separator: "\n"), exitCode: 0)
             }
         }
+    }
+
+    func testTerminalOutputPreview() {
+        let lines = (1...40).map(String.init)
+        let preview = TerminalEntryView.preview(lines.joined(separator: "\n"))
+        XCTAssertEqual(preview?.text, lines.prefix(12).joined(separator: "\n"))
+        XCTAssertEqual(preview?.hidden, 28)
+        XCTAssertEqual(TerminalEntryView.preview(lines.joined(separator: "\n") + "\n")?.hidden, 28)
+        // Twelve lines, with or without a final newline, show in full.
+        XCTAssertNil(TerminalEntryView.preview(lines.prefix(12).joined(separator: "\n")))
+        XCTAssertNil(TerminalEntryView.preview(lines.prefix(12).joined(separator: "\n") + "\n"))
+        XCTAssertEqual(TerminalEntryView.preview(lines.prefix(13).joined(separator: "\n"))?.hidden, 1)
     }
 
     func testGlyphs() throws {

@@ -116,13 +116,18 @@ public struct ApprovalBannerView: View {
     }
 }
 
-/// One tool call in the terminal pane: meta line, `$ command`, output, exit code or a running cursor.
+/// One tool call in the terminal pane: meta line, `$ command`, output, exit code or a running cursor. Output longer than
+/// `previewLines` shows its first lines and a button for the rest: the history has outputs in full, and typesetting
+/// thousands of lines is what a row costs when it scrolls into view.
 public struct TerminalEntryView: View {
+    public static let previewLines = 12
+
     let meta: String
     let command: String
     let output: String?
     let exitCode: Int?
     let isRunning: Bool
+    @State private var expanded = false
 
     public init(meta: String, command: String, output: String? = nil, exitCode: Int? = nil, isRunning: Bool = false) {
         self.meta = meta
@@ -141,7 +146,20 @@ public struct TerminalEntryView: View {
             }
             .typeRole(.mono)
             if let output {
-                Text(output).typeRole(.monoSmall).foregroundStyle(Theme.ink).textSelection(.enabled)
+                let preview = expanded ? nil : Self.preview(output)
+                Text(preview?.text ?? output).typeRole(.monoSmall).foregroundStyle(Theme.ink)
+                if let preview {
+                    Button { expanded = true } label: {
+                        HStack(spacing: 4) {
+                            Text("\(preview.hidden) more \(preview.hidden == 1 ? "line" : "lines")")
+                            Image(systemName: Symbol.chevronDown).font(.system(size: 9))
+                        }
+                        .typeRole(.monoSmall).foregroundStyle(Theme.blue)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Show the whole output")
+                }
             }
             if isRunning {
                 Rectangle().fill(Theme.ink).frame(width: 7, height: 13).accessibilityLabel("Running")
@@ -151,7 +169,21 @@ public struct TerminalEntryView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .textSelection(.enabled)
         .accessibilityElement(children: .combine)
+    }
+
+    /// The first `previewLines` lines and how many are left, or nil when the output is that short.
+    static func preview(_ output: String) -> (text: String, hidden: Int)? {
+        let utf8 = output.utf8
+        var end = utf8.startIndex
+        for _ in 0..<previewLines {
+            guard let newline = utf8[end...].firstIndex(of: 10) else { return nil }
+            end = utf8.index(after: newline)
+        }
+        let rest = utf8[end...]
+        guard !rest.isEmpty else { return nil }
+        return (String(output[..<utf8.index(before: end)]), rest.count(where: { $0 == 10 }) + (rest.last == 10 ? 0 : 1))
     }
 }
 
