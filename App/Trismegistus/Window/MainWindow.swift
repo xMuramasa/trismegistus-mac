@@ -18,7 +18,9 @@ struct MainWindow: View {
                 .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 340)
         } detail: {
             Group {
-                if let id = selection.wrappedValue {
+                if selection.wrappedValue == NewsRowView.id {
+                    NewsView()
+                } else if let id = selection.wrappedValue {
                     ChatView(sessionID: id, compact: false, onShowTerminal: { terminalShown = true })
                 } else {
                     Text("No conversation selected").typeRole(.caption).foregroundStyle(Theme.muted)
@@ -26,11 +28,12 @@ struct MainWindow: View {
                 }
             }
             .inspector(isPresented: $terminalShown) {
-                TerminalPane(sessionID: selection.wrappedValue)
+                TerminalPane(sessionID: selection.wrappedValue == NewsRowView.id ? nil : selection.wrappedValue)
                     .inspectorColumnWidth(min: 280, ideal: 360, max: 560)
             }
         }
         .selectsChatFromNotifications(model.notifications, selection: selection)
+        .refreshesNews(model)
         .toolbar { toolbar }
         .toolbar(removing: .title)
         .frame(minWidth: 1100, minHeight: 640)

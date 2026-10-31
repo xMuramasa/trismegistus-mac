@@ -147,6 +147,12 @@ public struct RelayREST: Sendable {
         try decode(Envelope<Lossy<HistoryMessage>>.self, try await call("GET", try sessionPath(sessionID) + "/messages")).data.items
     }
 
+    /// The last `limit` messages of a session, oldest first: the end of a long history without fetching all of it.
+    public func latestMessages(_ sessionID: String, limit: Int) async throws -> [HistoryMessage] {
+        let path = try sessionPath(sessionID) + "/messages?limit=\(limit)&order=latest"
+        return try decode(Envelope<Lossy<HistoryMessage>>.self, try await call("GET", path)).data.items
+    }
+
     /// Trades a one-time pairing code (`XXXX-XXXX-XXXX`, from `trismegistus-relay pair`) for a device token.
     /// A bad, used or expired code is `unauthorized`.
     public static func pair(baseURL: URL, code: String, http: any HTTPTransport = URLSession.shared) async throws -> Pairing {

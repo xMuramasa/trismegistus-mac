@@ -14,6 +14,8 @@ final class AppModel {
     private(set) var deviceName: String?
     /// Nil until paired. Per-session state (`sessions[id]`), `open`/`close`, history and the REST calls live here.
     private(set) var store: SessionStore?
+    /// The News conversation (#19): the daily feed runs folded into one; a new one per connection.
+    private(set) var news: NewsFeed?
     /// The token couldn't be read at launch; shown on the pairing screen.
     private(set) var keychainError: String?
     /// The last session list refresh failed.
@@ -104,6 +106,7 @@ final class AppModel {
             rest: RelayREST(baseURL: relayURL, token: token)
         )
         self.store = store
+        news = NewsFeed(rest: store.rest)
         store.start()
         // The session list is reloaded on every (re)connect.
         watch = Task { [weak self] in
@@ -124,6 +127,7 @@ final class AppModel {
         watch = nil
         await store?.stop()
         store = nil
+        news = nil
     }
 
     private enum Keys {

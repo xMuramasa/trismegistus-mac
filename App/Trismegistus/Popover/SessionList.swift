@@ -19,6 +19,10 @@ struct SessionList: View {
     @FocusState private var focused: Bool
 
     private var sessions: [SessionInfo] { model.sessions }
+    /// The sessions with the daily feed runs folded into one News row.
+    private var rows: [ConversationListRow<SessionInfo>] {
+        ConversationListRow.folding(sessions, news: model.news?.sessionIDs ?? [])
+    }
     private var isEmpty: Bool { sessions.isEmpty && !isStale }
 
     var body: some View {
@@ -43,7 +47,7 @@ struct SessionList: View {
     private var list: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Sessions // \(sessions.count)").typeRole(.label).foregroundStyle(Theme.secondary)
+                Text("Sessions // \(rows.count)").typeRole(.label).foregroundStyle(Theme.secondary)
                 Spacer()
                 EndfieldButton("New session", symbol: Symbol.plus, kind: .quiet, iconOnly: true, shortcut: newShortcut) {
                     onNew()
@@ -54,8 +58,11 @@ struct SessionList: View {
                 ScrollView {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         LazyVStack(spacing: 1) {
-                            ForEach(sessions) { session in
-                                row(session, now: context.date)
+                            ForEach(rows) { row in
+                                switch row {
+                                case .item(let session): self.row(session, now: context.date)
+                                case .news: newsRow(now: context.date)
+                                }
                             }
                         }
                     }
@@ -81,7 +88,7 @@ struct SessionList: View {
         return SessionRowView(
             name: PopoverFormat.title(session), source: PopoverFormat.source(session.source),
             activity: PopoverFormat.ago(overview?.lastActivity ?? session.lastActive.map(Date.init(timeIntervalSince1970:)), now: now),
-            isSelected: session.id == (selection ?? sessions.first?.id), isReadOnly: session.isReadOnly,
+            isSelected: session.id == (selection ?? rows.first?.id), isReadOnly: session.isReadOnly,
             runElapsed: overview?.run.map { PopoverFormat.elapsed(since: $0.startedAt, now: now) },
             needsApproval: overview?.isWaitingForApproval ?? false
         )
@@ -103,15 +110,28 @@ struct SessionList: View {
         }
     }
 
+    @ViewBuilder private func newsRow(now: Date) -> some View {
+        if let news = model.news {
+            NewsRowView(feed: news, isSelected: NewsRowView.id == (selection ?? rows.first?.id), now: now)
+                .id(NewsRowView.id)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    selection = NewsRowView.id
+                    onOpen(NewsRowView.id)
+                }
+        }
+    }
+
     private func move(_ delta: Int) -> KeyPress.Result {
-        guard !sessions.isEmpty else { return .ignored }
-        let current = sessions.firstIndex { $0.id == selection } ?? 0
-        selection = sessions[min(max(current + delta, 0), sessions.count - 1)].id
+        let rows = self.rows
+        guard !rows.isEmpty else { return .ignored }
+        let current = rows.firstIndex { $0.id == selection } ?? 0
+        selection = rows[min(max(current + delta, 0), rows.count - 1)].id
         return .handled
     }
 
     private func openSelected() -> KeyPress.Result {
-        guard let id = selection ?? sessions.first?.id else { return .ignored }
+        guard let id = selection ?? rows.first?.id else { return .ignored }
         onOpen(id)
         return .handled
     }

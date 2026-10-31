@@ -10,13 +10,21 @@ struct ConversationSidebar: View {
     @State private var filter = ""
     @State private var createFailed = false
 
-    private var rows: [SessionOverview] {
+    /// Most recent first, with the daily feed runs folded into one News row.
+    private var rows: [ConversationListRow<SessionOverview>] {
         guard let store = model.store else { return [] }
         let needle = filter.trimmingCharacters(in: .whitespaces)
-        return model.sessions
-            .filter { needle.isEmpty || Self.title($0).localizedCaseInsensitiveContains(needle) }
+        let news = model.news
+        let overviews = model.sessions
             .compactMap { store.overview[$0.id] }
             .sorted { ($0.lastActivity ?? .distantPast) > ($1.lastActivity ?? .distantPast) }
+        return ConversationListRow.folding(overviews, news: news?.sessionIDs ?? []).filter { row in
+            guard !needle.isEmpty else { return true }
+            switch row {
+            case .item(let overview): return (overview.info.map(Self.title) ?? "").localizedCaseInsensitiveContains(needle)
+            case .news: return ["News", news?.items.first?.edition.title ?? ""].contains { $0.localizedCaseInsensitiveContains(needle) }
+            }
+        }
     }
 
     var body: some View {
@@ -24,10 +32,15 @@ struct ConversationSidebar: View {
             header
             List(selection: $selection) {
                 ForEach(rows) { row in
-                    ConversationRow(overview: row, isSelected: selection == row.id)
-                        .tag(row.id)
-                        .listRowInsets(EdgeInsets())
-                        .listRowSeparatorTint(Theme.rule)
+                    Group {
+                        switch row {
+                        case .item(let overview): ConversationRow(overview: overview, isSelected: selection == row.id)
+                        case .news: newsRow
+                        }
+                    }
+                    .tag(row.id)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparatorTint(Theme.rule)
                 }
             }
             .listStyle(.plain)
@@ -40,7 +53,7 @@ struct ConversationSidebar: View {
     private var header: some View {
         VStack(spacing: 10) {
             HStack {
-                Text("Conversations // \(model.sessions.count)").typeRole(.label).foregroundStyle(Theme.secondary)
+                Text("Conversations // \(rows.count)").typeRole(.label).foregroundStyle(Theme.secondary)
                 Spacer()
                 EndfieldButton("New conversation", symbol: Symbol.plus, kind: .quiet, iconOnly: true) { create() }
             }
@@ -50,6 +63,14 @@ struct ConversationSidebar: View {
             }
         }
         .padding(.horizontal, 16).padding(.vertical, 12)
+    }
+
+    @ViewBuilder private var newsRow: some View {
+        if let news = model.news {
+            TimelineView(.periodic(from: .now, by: 30)) { context in
+                NewsRowView(feed: news, isSelected: selection == NewsRowView.id, now: context.date)
+            }
+        }
     }
 
     private var footer: some View {

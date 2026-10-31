@@ -5,7 +5,7 @@ import TrismegistusUI
 /// The menu bar popover (380×560): the sessions list (02, 02b, 02c), with a chat or the settings pushed inside it.
 struct PopoverRoot: View {
     private enum Page: Equatable {
-        case list, chat(String), settings
+        case list, chat(String), news, settings
     }
 
     @Environment(AppModel.self) private var model
@@ -25,11 +25,13 @@ struct PopoverRoot: View {
             switch page {
             case .list: home
             case .chat(let id): ChatPage(sessionID: id) { page = .list }
+            case .news: NewsPage { page = .list }
             case .settings: settings
             }
         }
         .frame(width: 380, height: 560)
         .background(Theme.paper)
+        .refreshesNews(model)
         .onChange(of: model.connection, initial: true) { _, state in reconnect.observe(state) }
         .task { await refresh() }
         // A MenuBarExtra window is created once; becoming key is the nearest thing to "the popover opened".
@@ -50,7 +52,7 @@ struct PopoverRoot: View {
                 }
                 .padding(.horizontal, 16).padding(.bottom, 8)
             }
-            SessionList(isStale: !isConnected, error: $error, onOpen: { page = .chat($0) }, onNew: newSession)
+            SessionList(isStale: !isConnected, error: $error, onOpen: { page = $0 == NewsRowView.id ? .news : .chat($0) }, onNew: newSession)
             KeyHintStrip(homeHints)
         }
     }

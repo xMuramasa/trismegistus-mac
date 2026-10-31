@@ -1,0 +1,298 @@
+{
+  "schema": "news-edition/v1",
+  "feed": "chile",
+  "edition_date": "2026-10-21",
+  "title": "Chile — Wednesday, 21 October 2026",
+  "lead": "Congress passed Kast's bill to speed up migrant expulsions, and the fallout from the AFP Fondo E losses is now in the Senate.",
+  "language": "en",
+  "stories": [
+    {
+      "slug": "migrant-expulsion-law-clears-congress",
+      "section": "top",
+      "rank": 1,
+      "headline": "Faster migrant-expulsion law clears Congress",
+      "summary": "On Tue 20 Oct the Senate approved the comisión mixta report 37–0–1, a day after the Cámara voted 128–11 (the PC plus PS deputy Juan Santana against). With a judge's approval, the PDI can now enter homes to arrest people under final expulsion orders.",
+      "event_date": "2026-10-20",
+      "is_update": false,
+      "thread": "migrant-expulsion-law",
+      "verification": "confirmed",
+      "action": null,
+      "details": [
+        { "label": "Changes", "text": "The minimum re-entry ban rises from 3 to 5 years and the appeal window drops from 10 to 5 days." },
+        { "label": "Next", "text": "The government says it will be signed into law within days." }
+      ],
+      "coverage": [
+        { "group": "right", "covered": true, "outlets": ["Emol", "La Tercera"] },
+        { "group": "center", "covered": true, "outlets": ["T13", "Cooperativa", "BioBioChile", "Meganoticias"] },
+        { "group": "left", "covered": true, "outlets": ["El Mostrador"] },
+        { "group": "foreign", "covered": true, "outlets": ["EFE", "DW"] }
+      ],
+      "framing": [
+        { "group": "right", "text": "Calls it a \"trascendente\" cross-party win and notes the bill started under Boric." },
+        { "group": "left", "text": "Thin coverage: El Mostrador reported it straight; El Desconcierto ran an op-ed (12 Oct) calling the policy a criminalization of migrants." }
+      ],
+      "blindspot": null,
+      "sources": [
+        { "outlet": "Emol", "url": "https://www.emol.com/noticias/Nacional/2026/10/20/1214714/senado-despacha-proyecto-agilizar-expulsiones.html" },
+        { "outlet": "BioBioChile", "url": "https://www.biobiochile.cl/noticias/nacional/chile/2026/10/20/congreso-despacha-ley-que-permite-a-la-pdi-entrar-a-domicilios-para-ejecutar-expulsiones-de-migrantes.shtml" }
+      ],
+      "tags": ["topic:migration", "topic:congress", "region:chile", "org:senado", "org:camara-de-diputados", "org:pdi"]
+    },
+    {
+      "slug": "afp-fondo-e-sanctions",
+      "section": "top",
+      "rank": 2,
+      "headline": "AFP Fondo E: regulator opens cases, Senate sets a session",
+      "summary": "On 20 Oct the Superintendencia de Pensiones opened sanction proceedings against all 7 AFPs. Fondo E is down 10.4% in real terms Jan–Sep, after about US$7.7bn in derivative losses.",
+      "event_date": "2026-10-20",
+      "is_update": true,
+      "thread": "afp-fondo-e-losses",
+      "verification": "confirmed",
+      "action": null,
+      "details": [
+        { "label": "Next", "text": "On 21 Oct the Senate scheduled a special session for Tue 27 Oct, and Socialismo Democrático senators filed a complaint asking for compensation and a referral to prosecutors." }
+      ],
+      "coverage": [
+        { "group": "right", "covered": true, "outlets": ["Emol", "La Tercera", "Ex-Ante"] },
+        { "group": "center", "covered": true, "outlets": ["T13", "DF", "24 Horas"] },
+        { "group": "left", "covered": true, "outlets": ["The Clinic", "El Mostrador", "El Ciudadano"] },
+        { "group": "foreign", "covered": true, "outlets": ["El País"] }
+      ],
+      "framing": [
+        { "group": "right", "text": "Finance Minister Quiroz wants \"máxima severidad\", blames years of inaction before this government and points at AFP directors." },
+        { "group": "left", "text": "El Mostrador frames it as unpunished abuse that echoes the 2019 protests (18-O). El Ciudadano quotes ex-superintendent Osvaldo Macías saying the limits that softened the losses were set before this government." }
+      ],
+      "blindspot": null,
+      "sources": [
+        { "outlet": "El País", "url": "https://elpais.com/chile/2026-10-20/la-superintendencia-de-pensiones-abre-un-proceso-sancionatorio-a-las-afp-por-los-fondos-d-y-e.html" },
+        { "outlet": "Ex-Ante", "url": "https://www.ex-ante.cl/negocios/quiroz-crisis-afp-y-apunta-directores/" }
+      ],
+      "tags": ["topic:pensions", "topic:markets", "region:chile", "org:superintendencia-de-pensiones", "org:senado"]
+    },
+    {
+      "slug": "quiroz-welfare-states-francia",
+      "section": "top",
+      "rank": 3,
+      "headline": "Quiroz: unchecked welfare states \"terminan como Francia\"",
+      "summary": "Speaking at the Enagro farm conference on 21 Oct, Finance Minister Quiroz defended the program cuts in the 2027 budget (\"todos tienen bonitos nombres\"). He kept his targets: 4% trend growth, 6.5% unemployment and a 1.5% structural deficit.",
+      "event_date": "2026-10-21",
+      "is_update": false,
+      "thread": "budget-2027-cuts",
+      "verification": "confirmed",
+      "action": null,
+      "details": [
+        { "label": "Context", "text": "Mayors from all parties oppose the cuts, including cuts to disaster prevention." }
+      ],
+      "coverage": [
+        { "group": "right", "covered": true, "outlets": ["Emol", "La Tercera"] },
+        { "group": "center", "covered": true, "outlets": ["24 Horas", "BioBioChile", "ADN"] },
+        { "group": "left", "covered": false, "outlets": [] }
+      ],
+      "framing": [
+        { "group": "right", "text": "Led with the quote. La Tercera noted the audience applauded, and also pointed to near-zero growth and about 1M unemployed." },
+        { "group": "center", "text": "BioBio framed it as a reply to pressure over the cuts." }
+      ],
+      "blindspot": "I found no left-leaning coverage of the speech.",
+      "sources": [
+        { "outlet": "La Tercera", "url": "https://www.latercera.com/pulso/noticia/quiroz-defiende-los-ajustes-fiscales-y-advierte-que-los-estados-de-bienestar-sin-limite-terminan-como-francia/" },
+        { "outlet": "BioBioChile", "url": "https://www.biobiochile.cl/noticias/nacional/chile/2026/10/21/quiroz-responde-a-presiones-por-recortes-a-programas-para-2027-todos-tienen-bonitos-nombres.shtml" }
+      ],
+      "tags": ["topic:economy", "topic:government", "region:chile", "org:ministerio-de-hacienda"]
+    },
+    {
+      "slug": "araya-removed-constitution-committee",
+      "section": "top",
+      "rank": 4,
+      "headline": "Opposition rift: PPD senator Araya removed as Constitution committee chair",
+      "summary": "On 20 Oct the Socialismo Democrático senators' group, led by Juan Luis Castro (PS), removed Pedro Araya (PPD) as chair after he sided with the government on security bills. The PPD's leadership objected, and Araya called it \"socialismo autoritario\".",
+      "event_date": "2026-10-20",
+      "is_update": false,
+      "thread": "araya-constitution-committee",
+      "verification": "confirmed",
+      "action": null,
+      "details": [
+        { "label": "Next", "text": "The deal that decides who leads the Senate is now in doubt." },
+        { "label": "Context", "text": "Kast told the opposition: \"No pasen facturas políticas.\"" }
+      ],
+      "coverage": [
+        { "group": "right", "covered": true, "outlets": ["La Tercera", "Emol", "Ex-Ante"] },
+        { "group": "center", "covered": true, "outlets": ["BioBioChile", "T13", "Cooperativa", "DF"] },
+        { "group": "left", "covered": true, "outlets": ["The Clinic"] }
+      ],
+      "framing": [
+        { "group": "right", "text": "The opposition is punishing dissent and the security agenda is now \"en jaque\"." },
+        { "group": "left", "text": "The Clinic focuses on the PS–PPD trust breakdown, which could cost the PS's De Urresti the Senate presidency next year." }
+      ],
+      "blindspot": null,
+      "sources": [
+        { "outlet": "La Tercera", "url": "https://www.latercera.com/politica/noticia/remocion-de-araya-hace-tambalear-acuerdo-del-senado-pone-en-jaque-agenda-de-seguridad-y-fractura-lazo-del-ppd-con-el-ps/" },
+        { "outlet": "The Clinic", "url": "https://www.theclinic.cl/2026/10/20/el-quiebre-de-confianzas-entre-el-ps-y-el-ppd-tras-la-remocion-de-pedro-araya-que-pone-en-riesgo-el-respaldo-a-de-urresti-para-presidir-el-senado/" }
+      ],
+      "tags": ["topic:politics", "topic:congress", "region:chile", "org:senado", "org:ppd", "org:partido-socialista"]
+    },
+    {
+      "slug": "storm-red-alert-arauco-sinkhole",
+      "section": "top",
+      "rank": 5,
+      "headline": "Storm: Santiago region on red alert, Arauco evacuated over sinkhole",
+      "summary": "Senapred put the whole Metropolitan Region on red alert on 20 Oct; the government reported minor damage, with 2 people left homeless and 111 sheltered. In Arauco, 152 families were ordered out of Villa El Mirador after a second sinkhole opened.",
+      "event_date": "2026-10-20",
+      "is_update": false,
+      "thread": "october-storm-2026",
+      "verification": "confirmed",
+      "action": null,
+      "details": [
+        { "label": "Status", "text": "BioBio reports about 150 are refusing to leave because they fear robberies." },
+        { "label": "Next", "text": "On 21 Oct the rain moved south and authorities warned of possible tornadoes." }
+      ],
+      "coverage": [
+        { "group": "right", "covered": true, "outlets": ["Emol", "La Tercera"] },
+        { "group": "center", "covered": true, "outlets": ["Cooperativa", "BioBioChile", "CHV"] },
+        { "group": "left", "covered": true, "outlets": ["El Mostrador"] },
+        { "group": "foreign", "covered": true, "outlets": ["Reuters"] }
+      ],
+      "framing": [],
+      "blindspot": null,
+      "sources": [
+        { "outlet": "Cooperativa", "url": "https://www.cooperativa.cl/noticias/pais/tiempo/sistema-frontal-gobierno-destaco-trabajo-preventivo-y-senapred-confirmo/2026-10-20/221044.html" },
+        { "outlet": "La Tercera", "url": "https://www.latercera.com/nacional/noticia/sistema-frontal-senapred-mantiene-alerta-roja-en-rm-y-arauco-hay-danos-en-viviendas-y-cierre-preventivo-de-rutas/" }
+      ],
+      "tags": ["topic:disasters", "region:chile", "org:senapred"]
+    },
+    {
+      "slug": "gonzalo-arenas-government-spokesman",
+      "section": "top",
+      "rank": 6,
+      "headline": "Gonzalo Arenas named government spokesman",
+      "summary": "On 21 Oct Kast appointed the former UDI deputy as Segegob undersecretary and spokesman, replacing José Francisco Lagos. It comes amid criticism of the government's communications and falling approval.",
+      "event_date": "2026-10-21",
+      "is_update": false,
+      "thread": "gonzalo-arenas-spokesman",
+      "verification": "confirmed",
+      "action": null,
+      "details": [],
+      "coverage": [
+        { "group": "right", "covered": true, "outlets": ["Emol", "La Tercera", "Ex-Ante", "El Líbero"] },
+        { "group": "center", "covered": true, "outlets": ["BioBioChile", "24 Horas", "ADN"] },
+        { "group": "left", "covered": false, "outlets": [] },
+        { "group": "foreign", "covered": true, "outlets": ["El País"] }
+      ],
+      "framing": [
+        { "group": "right", "text": "Presented as the spokesman pro-government voices had been asking for; La Tercera looked at his views on Pinochet." },
+        { "group": "center", "text": "BioBio says his arrival \"reabre vieja polémica\" and has drawn opposition criticism." }
+      ],
+      "blindspot": "I found no coverage from left-leaning outlets.",
+      "sources": [
+        { "outlet": "Emol", "url": "https://www.emol.com/noticias/Nacional/2026/10/21/1214737/gonzalo-arenas-vocero-asume.html" },
+        { "outlet": "BioBioChile", "url": "https://www.biobiochile.cl/noticias/nacional/chile/2026/10/20/llegada-de-gonzalo-arenas-como-vocero-a-la-moneda-reabre-vieja-polemica-y-desata-criticas-de-oposicion.shtml" }
+      ],
+      "tags": ["topic:government", "topic:politics", "region:chile", "org:segegob", "org:udi"]
+    },
+    {
+      "slug": "macrozona-sur-emergency-extended",
+      "section": "quick_hit",
+      "rank": 1,
+      "headline": "Senate extends the Macrozona Sur state of emergency by 30 days",
+      "summary": "The Senate extended the state of emergency in the Macrozona Sur (Araucanía, Arauco, Biobío) by 30 days, 36–4 (20 Oct). The government says violent incidents are down 85% since 2021.",
+      "event_date": "2026-10-20",
+      "is_update": false,
+      "thread": "macrozona-sur-state-of-emergency",
+      "verification": "confirmed",
+      "action": null,
+      "details": [],
+      "coverage": [],
+      "framing": [],
+      "blindspot": null,
+      "sources": [],
+      "tags": ["topic:security-crime", "topic:congress", "region:chile", "org:senado"]
+    },
+    {
+      "slug": "tvn-board-sabat-huichalaf",
+      "section": "quick_hit",
+      "rank": 2,
+      "headline": "Senate confirms Marcela Sabat and Pedro Huichalaf to TVN's board",
+      "summary": "The Senate confirmed Marcela Sabat and Pedro Huichalaf to TVN's board, 40–0–2 (20 Oct).",
+      "event_date": "2026-10-20",
+      "is_update": false,
+      "thread": "tvn-board-sabat-huichalaf",
+      "verification": "confirmed",
+      "action": null,
+      "details": [],
+      "coverage": [],
+      "framing": [],
+      "blindspot": null,
+      "sources": [],
+      "tags": ["topic:media", "topic:congress", "region:chile", "org:tvn", "org:senado"]
+    },
+    {
+      "slug": "afp-home-down-payment-fund",
+      "section": "quick_hit",
+      "rank": 3,
+      "headline": "AFPs added as managers of a new home down-payment fund",
+      "summary": "CIPER (21 Oct): the government added the AFPs as managers of a new savings fund for home down payments, part of its capital-markets reform bill.",
+      "event_date": "2026-10-21",
+      "is_update": false,
+      "thread": "afp-home-down-payment-fund",
+      "verification": "confirmed",
+      "action": null,
+      "details": [],
+      "coverage": [{ "group": "independent", "covered": true, "outlets": ["CIPER"] }],
+      "framing": [],
+      "blindspot": null,
+      "sources": [],
+      "tags": ["topic:pensions", "topic:housing", "region:chile"]
+    },
+    {
+      "slug": "anglo-american-q3-copper-output",
+      "section": "quick_hit",
+      "rank": 4,
+      "headline": "Anglo American's Q3 copper output falls 5%",
+      "summary": "Anglo American's Q3 copper output fell 5%, which the company blames on Chilean weather and lower ore grades (20 Oct).",
+      "event_date": "2026-10-20",
+      "is_update": false,
+      "thread": "anglo-american-q3-copper-output",
+      "verification": "confirmed",
+      "action": null,
+      "details": [],
+      "coverage": [],
+      "framing": [],
+      "blindspot": null,
+      "sources": [],
+      "tags": ["topic:economy", "topic:markets", "region:chile", "org:anglo-american"]
+    },
+    {
+      "slug": "fuel-prices-expected-to-rise",
+      "section": "quick_hit",
+      "rank": 5,
+      "headline": "Fuel prices expected to rise on Thu 22 Oct",
+      "summary": "Economists expect fuel prices to rise on Thu 22 Oct, about +$41/L for gasoline and +$90/L for diesel. ENAP hadn't confirmed this.",
+      "event_date": "2026-10-22",
+      "is_update": false,
+      "thread": "fuel-prices",
+      "verification": "unverified",
+      "action": null,
+      "details": [],
+      "coverage": [],
+      "framing": [],
+      "blindspot": null,
+      "sources": [],
+      "tags": ["topic:economy", "region:chile", "org:enap"]
+    }
+  ],
+  "markets": {
+    "as_of": "2026-10-20",
+    "items": [
+      { "name": "IPSA", "value": "10,926.50", "change": "-0.42%" },
+      { "name": "USD/CLP (close, approx.)", "value": "974", "change": null },
+      { "name": "Dólar observado (21 Oct)", "value": "978.56", "change": null },
+      { "name": "LME copper (Cochilco)", "value": "US$6.595/lb", "change": "+0.30%" }
+    ]
+  },
+  "gaps": [
+    "I couldn't find the Wed 21 Oct market close.",
+    "I couldn't open full articles, so this is based on search snippets.",
+    "Yesterday's edition wasn't available to me, so some 20 Oct items may repeat."
+  ],
+  "source_run": { "job_id": "7a38c16d35fd", "file": "2026-10-21_11-56-06.md" },
+  "generated_at": "2026-10-21T11:56:06-03:00"
+}
