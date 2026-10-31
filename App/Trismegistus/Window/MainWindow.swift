@@ -29,7 +29,8 @@ struct MainWindow: View {
                     }
                 } else {
                     Text("No conversation selected").typeRole(.caption).foregroundStyle(Theme.muted)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.paper)
+                        .padding(8).background(Theme.paper)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity).background(EndfieldBackdrop())
                 }
             }
             .inspector(isPresented: $terminalShown) {
@@ -37,6 +38,7 @@ struct MainWindow: View {
                     .inspectorColumnWidth(min: 280, ideal: 360, max: 560)
             }
         }
+        .endfieldPaper()
         .providesCommandLog(model)
         .selectsChatFromNotifications(model.notifications, selection: selection)
         .refreshesNews(model)

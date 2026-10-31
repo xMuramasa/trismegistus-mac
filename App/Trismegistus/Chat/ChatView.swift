@@ -26,13 +26,15 @@ struct ChatView: View {
     private var approval: PendingApproval? { state?.approvals.first }
 
     var body: some View {
+        let items = self.items
+        // An empty, loaded chat shows the window's background across its width; otherwise the column reads on paper.
+        let empty = items.isEmpty && state?.historyLoaded == true && state?.historyError == nil
         VStack(spacing: 0) {
             if let approval { banner(approval) }
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
                     OlderParts(tipID: id, compact: compact)
                     historyStatus
-                    let items = self.items
                     ChatTranscript(items: items, onShowTerminal: showTerminal, retry: retry(_:))
                     if let run { working(run) } else if let info, SessionCapabilities(info).canHandOff, Self.stalled(items) { stallRow(info) }
                 }
@@ -44,10 +46,11 @@ struct ChatView: View {
             .defaultScrollAnchor(.bottom)
             .defaultScrollAnchor(.bottom, for: .sizeChanges)
             .settledWidth()
+            .background { if !compact && !empty { Theme.paper.frame(maxWidth: 760) } }
             if let run { runStrip(run) }
             input
         }
-        .background(Theme.paper)
+        .background { if compact { Theme.paper } else { EndfieldBackdrop() } }
         .task(id: id) { await model.store?.open(id) }
         .onChange(of: run?.id, initial: true) { runSeen = Date() }
         .handoffSheet($handingOff)
@@ -102,6 +105,7 @@ struct ChatView: View {
             act { try await model.approve(approval, choice: choice) }
         }
         .padding([.horizontal, .top], 16)
+        .background(Theme.paper)
         .zIndex(1)
     }
 
@@ -173,6 +177,7 @@ struct ChatView: View {
             }
         }
         .padding(16)
+        .background(Theme.paper)
         .overlay(alignment: .top) { Rectangle().fill(Theme.rule).frame(height: 1) }
     }
 
