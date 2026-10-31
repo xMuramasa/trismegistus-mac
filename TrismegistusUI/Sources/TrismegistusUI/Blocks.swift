@@ -97,14 +97,16 @@ public struct ApprovalBannerView: View {
                     .padding(8).frame(maxWidth: .infinity, alignment: .leading).background(Theme.sunken)
                 Text(explanation).typeRole(.callout).foregroundStyle(Theme.secondary)
                 HStack(spacing: 8) {
-                    EndfieldButton("Once", symbol: Symbol.check, kind: .primary, shortcut: KeyboardShortcut(.return, modifiers: [])) { onChoice(.once) }
+                    // No keyboard shortcuts on approval buttons: macOS fires key equivalents before the focused text field, so
+                    // Return (or ⌘⌫) typed in the steer field would answer the approval. Approvals are click-only.
+                    EndfieldButton("Once", symbol: Symbol.check, kind: .primary) { onChoice(.once) }
                     EndfieldButton("Session", symbol: Symbol.clock) { onChoice(.session) }
                     Spacer()
-                    EndfieldButton("Deny", symbol: Symbol.close, kind: .danger, shortcut: KeyboardShortcut(.delete, modifiers: .command)) {
+                    EndfieldButton("Deny", symbol: Symbol.close, kind: .danger) {
                         onChoice(.deny)
                     }
                 }
-                Text("↩ once · ⌘⌫ deny · “always” is never offered").typeRole(.caption).foregroundStyle(Theme.muted)
+                Text("click to answer · “always” is never offered").typeRole(.caption).foregroundStyle(Theme.muted)
             }
             .padding(12)
         }

@@ -96,7 +96,9 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
 - **Row status for every conversation:** the client subscribes to every listed session (the relay allows 64 per
   socket), so RUN and APPROVAL marks and approval notifications work for conversations that are not open.
 - **Approval banner:** at the top of the chat and as a notification: command, description, buttons Once / Session
-  / Deny (`always` is never offered, as in the protocol). Approving from the Mac runs commands on optiplex, same
+  / Deny (`always` is never offered, as in the protocol). **Click-only, no keyboard shortcuts** (2026-10-31, changed
+  from the draft's ↩ / ⌘⌫): macOS fires key equivalents before the focused text field, so Return or ⌘⌫ typed in the
+  steer field would answer the approval. Approving from the Mac runs commands on optiplex, same
   trust level as the phone.
 - **Settings:** relay URL, device name, connection status, unpair, launch at login (`SMAppService`), notification
   toggles (approval requests, run finished while closed, sound for approvals: on by default).
