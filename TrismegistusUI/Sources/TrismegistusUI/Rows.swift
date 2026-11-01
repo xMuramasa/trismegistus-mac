@@ -141,6 +141,10 @@ private struct RowGround: ViewModifier {
                 .padding(.leading, 3)
                 .background(isSelected ? Theme.raised : Theme.sunken)
                 .overlay { if isSelected { Rectangle().strokeBorder(Theme.yellow, lineWidth: 1) } }
+                // macOS keeps an 8 pt inset on list rows and draws its selection highlight (blue in a key window)
+                // across the full row, so it showed in those margins beside the selected row. A sunken backing
+                // under the margins hides it whatever the window state.
+                .background { Theme.sunken.padding(.horizontal, -8) }
         } else {
             HStack(spacing: 0) {
                 Rectangle().fill(isSelected ? Theme.yellow : .clear).frame(width: 3)

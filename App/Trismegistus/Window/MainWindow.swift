@@ -36,6 +36,9 @@ struct MainWindow: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity).background(EndfieldBackdrop())
                 }
             }
+            // The detail's own grounds (Commands, News, the empty state) reach up under the toolbar and covered the
+            // strip there; this draws it back above them. A conversation's header continues it below.
+            .topBarColumn(.window)
             .inspector(isPresented: $terminalShown) {
                 TerminalPane(sessionID: [NewsRowView.id, CommandsView.id].contains(selectedSession) ? nil : selection.wrappedValue)
                     .inspectorColumnWidth(min: 280, ideal: 360, max: 560)

@@ -114,8 +114,8 @@ struct ContextMeter: View {
     }
 }
 
-/// Ten segments, the filled ones in `color`, with a tick between the fifth and sixth where Hermes compresses. On the
-/// steel strip the empty ones are outlines and the tick is light.
+/// Ten segments, the filled ones in `color`. On the steel strip the empty ones are outlines. (The tick at 50%, where
+/// Hermes compresses, is gone: Martin found it noise; the tooltip still says it.)
 private struct SegmentBar: View {
     let percent: Int
     let color: Color
@@ -131,7 +131,6 @@ private struct SegmentBar: View {
                     .frame(width: 5, height: 10)
             }
         }
-        .overlay { Rectangle().fill(onSteel ? Theme.onSteel : Theme.ink).frame(width: 1, height: 16) }
         .accessibilityHidden(true)
     }
 }

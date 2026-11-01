@@ -9,17 +9,23 @@ struct CommandsRowView: View {
     @Environment(\.sunkenRows) private var sunken
 
     var body: some View {
+        // Title and a meta line, like the conversation rows: on one line "all conversations" wrapped at 260 pt.
         HStack(spacing: 8) {
-            Image(systemName: Symbol.terminal).font(.system(size: 11)).foregroundStyle(sunken ? Theme.secondary : Theme.muted)
-            Text("Commands").typeRole(.headline).foregroundStyle(Theme.ink)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Commands").typeRole(.headline).foregroundStyle(Theme.ink).lineLimit(1)
+                HStack(spacing: 6) {
+                    Image(systemName: Symbol.terminal).font(.system(size: 11))
+                    Text("all conversations").typeRole(.monoSmall).lineLimit(1)
+                }
+                .foregroundStyle(sunken ? Theme.secondary : Theme.muted)
+            }
             Spacer(minLength: 8)
-            Text("all conversations").typeRole(.monoSmall).foregroundStyle(sunken ? Theme.secondary : Theme.muted)
             if isSelected {
                 Image(systemName: Symbol.chevronRight).font(.system(size: 10)).foregroundStyle(Theme.ink)
             }
         }
         .padding(.horizontal, 12)
-        .frame(height: 40)
+        .frame(height: 52)
         .rowGround(isSelected: isSelected)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
