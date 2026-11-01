@@ -51,20 +51,59 @@ private struct TransparentTitlebar: NSViewRepresentable {
     func updateNSView(_ view: Probe, context: Context) {}
 }
 
-/// The strip's left-to-right gradient as it falls under this view. The gradient is window-wide and placed at minus the
-/// view's global origin (like `EndfieldBackdrop`), so a part below the toolbar continues the toolbar's part whatever
-/// the sidebar width; while panes move only the offset changes (#28).
-public struct TopBarBackdrop: View {
-    @Environment(\.topBarWidth) private var width
+public extension View {
+    /// Continues the top bar across a column that draws its own top over the window's strip (the floating sidebar
+    /// panel, the inspector): the strip and its rule in the column's top safe area, over the column's background and
+    /// under the toolbar's items. It takes no clicks, so the toolbar and window dragging work as before.
+    func topBarColumn(_ anchor: TopBarBackdrop.Anchor) -> some View {
+        overlay(alignment: .top) {
+            GeometryReader { proxy in
+                TopBarBackdrop(anchor)
+                    .frame(height: proxy.safeAreaInsets.top)
+                    .overlay(alignment: .bottom) { Rectangle().fill(Theme.steelRule).frame(height: 1) }
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .ignoresSafeArea()
+            }
+            .allowsHitTesting(false)
+        }
+    }
+}
 
-    public init() {}
+/// The strip's left-to-right gradient as it falls under this view. The gradient is window-wide; while panes move only
+/// its offset changes (#28).
+public struct TopBarBackdrop: View {
+    /// Where the window-wide gradient is pinned.
+    public enum Anchor: Sendable {
+        /// At minus the view's global origin (like `EndfieldBackdrop`), for views in the detail column: a part below the
+        /// toolbar continues the toolbar's part whatever the sidebar width.
+        case window
+        /// The gradient's left end at the view's left edge: a column on the window's left (the sidebar).
+        case leadingEdge
+        /// The gradient's right end at the view's right edge: a column on the window's right (the inspector). Each
+        /// column may be hosted in its own view, so its global origin can't be trusted there.
+        case trailingEdge
+    }
+
+    @Environment(\.topBarWidth) private var width
+    private let anchor: Anchor
+
+    public init(_ anchor: Anchor = .window) { self.anchor = anchor }
 
     public var body: some View {
         GeometryReader { proxy in
+            let full = max(width, proxy.size.width)
             LinearGradient(colors: [Theme.steel, Theme.steelDeep, Theme.steelEnd], startPoint: .leading, endPoint: .trailing)
-                .frame(width: max(width, proxy.size.width), height: proxy.size.height)
-                .offset(x: -proxy.frame(in: .global).minX)
+                .frame(width: full, height: proxy.size.height)
+                .offset(x: offset(proxy, full))
         }
         .clipped()
+    }
+
+    private func offset(_ proxy: GeometryProxy, _ full: CGFloat) -> CGFloat {
+        switch anchor {
+        case .window: -proxy.frame(in: .global).minX
+        case .leadingEdge: 0
+        case .trailingEdge: proxy.size.width - full
+        }
     }
 }

@@ -18,6 +18,7 @@ final class TopBarTests: XCTestCase {
         var body: some View {
             NavigationSplitView(columnVisibility: $panes.columns) {
                 List(0..<20, id: \.self) { Text("Conversation \($0)") }
+                    .topBarColumn(.leadingEdge)
                     .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 340)
             } detail: {
                 VStack(spacing: 0) {
@@ -34,6 +35,7 @@ final class TopBarTests: XCTestCase {
                 }
                 .inspector(isPresented: $panes.inspector) {
                     Text("Terminal").frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.raised)
+                        .topBarColumn(.trailingEdge)
                         .inspectorColumnWidth(min: 280, ideal: 360, max: 560)
                 }
             }
@@ -107,6 +109,9 @@ final class TopBarTests: XCTestCase {
                     XCTAssertEqual(rule[i], header[i], accuracy: 0.02, "a seam between the toolbar and the header at x = \(x)")
                 }
             }
+            // The sidebar and inspector columns (and their `topBarColumn` strips) render neither through
+            // `cacheDisplay` nor through `CALayer.render(in:)` offscreen: blank glass and placeholder fills. Checked
+            // on screen only.
         }
         XCTAssertEqual(headers.count, 2)
         for i in 0..<3 where headers.count == 2 { XCTAssertEqual(headers[0][i], headers[1][i], accuracy: 0.01, "the gradient moved with the sidebar") }
