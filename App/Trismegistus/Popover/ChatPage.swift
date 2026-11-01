@@ -18,7 +18,7 @@ struct ChatPage: View {
 
     private var hints: [(key: String, action: String)] {
         var hints: [(key: String, action: String)] = []
-        if info?.isReadOnly != true { hints.append(("⌘↩", runID == nil ? "send" : "steer")) }
+        if !SessionInfo.isReadOnly(id: id, info: info) { hints.append(("⌘↩", runID == nil ? "send" : "steer")) }
         if runID != nil { hints.append(("⌘.", "stop")) }
         hints.append(("esc", "back"))
         return hints

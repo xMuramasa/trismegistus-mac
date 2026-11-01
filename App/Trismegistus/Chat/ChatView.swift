@@ -172,7 +172,7 @@ struct ChatView: View {
             }
             .disabled(isReadOnly)
             if isReadOnly {
-                Text("Read-only: this conversation comes from \(info?.source ?? "another app"); reply there.")
+                Text("Read-only: this conversation comes from \(info?.source ?? (id.hasPrefix("cron_") ? "cron" : "another app")); reply there.")
                     .typeRole(.caption).foregroundStyle(Ink.text.secondary).lineLimit(1)
             }
             if let actionError {
@@ -184,7 +184,7 @@ struct ChatView: View {
         .overlay(alignment: .top) { Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline) }
     }
 
-    private var isReadOnly: Bool { info?.isReadOnly ?? false }
+    private var isReadOnly: Bool { SessionInfo.isReadOnly(id: id, info: info) }
 
     /// The window's keys (the popover's chat page has its own strip). ⌘K is the window's "Conversations" command.
     private var hints: [(key: String, action: String)] {

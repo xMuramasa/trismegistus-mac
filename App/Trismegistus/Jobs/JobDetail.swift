@@ -317,23 +317,20 @@ struct JobDetail: View {
         }
     }
 
-    /// Opens its conversation, read-only like every cron session; a news run opens News. A run older than the window's
-    /// conversation list isn't opened: the chat needs the session's source to know it is read-only.
+    /// Opens its conversation, read-only like every cron session (by its `cron_` id, listed or not); a news run opens News.
     private func run(_ run: JobRun) -> some View {
-        let target = model.news?.sessionIDs.contains(run.id) == true ? NewsRowView.id
-            : model.sessions.contains(where: { $0.id == run.id }) ? run.id : nil
+        let target = model.news?.sessionIDs.contains(run.id) == true ? NewsRowView.id : run.id
         let when = run.startedAt.map { Date(timeIntervalSince1970: $0).formatted(.dateTime.day().month(.abbreviated).hour().minute()) } ?? "—"
-        return Button { if let target { onOpen(target) } } label: {
+        return Button { onOpen(target) } label: {
             HStack(spacing: Space.s) {
                 Text(when).typeRole(.monoSmall)
                 Text(run.title ?? run.id).typeRole(.monoSmall).lineLimit(1)
-                if target != nil { Image(systemName: Symbol.chevronRight).font(.system(size: Icon.xs)) }
+                Image(systemName: Symbol.chevronRight).font(.system(size: Icon.xs))
             }
-            .foregroundStyle(target != nil ? Ink.text.link : Ink.text.muted)
+            .foregroundStyle(Ink.text.link)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(target == nil)
-        .help(target == nil ? "Older than the conversation list" : target == NewsRowView.id ? "Open News" : "Open the conversation")
+        .help(target == NewsRowView.id ? "Open News" : "Open the conversation")
     }
 }

@@ -21,3 +21,11 @@ public struct SessionCapabilities: Sendable, Equatable {
 
     public init(_ info: SessionInfo) { self.init(source: info.source) }
 }
+
+extension SessionInfo {
+    /// Hermes names every cron run session `cron_<job id>_<YYYYMMDD_HHMMSS>` and a cron session is never `api_server`,
+    /// so a cron id is read-only even when the list (the newest 100) doesn't hold it. Any other unlisted id is writable.
+    public static func isReadOnly(id: String, info: SessionInfo?) -> Bool {
+        id.hasPrefix("cron_") || (info?.isReadOnly ?? false)
+    }
+}

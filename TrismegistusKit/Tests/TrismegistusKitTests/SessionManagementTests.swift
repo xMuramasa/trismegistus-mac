@@ -20,6 +20,16 @@ import Testing
         #expect(["api_server", "cron", "cli"].allSatisfy { SessionCapabilities(source: $0).canHandOff })
         #expect(["telegram", "discord", "", nil].allSatisfy { !SessionCapabilities(source: $0).canHandOff })
     }
+
+    @Test func aCronSessionIsReadOnlyEvenWhenUnlisted() {
+        let run = "cron_8f3a1c_20261030_090000"
+        #expect(SessionInfo.isReadOnly(id: run, info: nil))
+        #expect(SessionInfo.isReadOnly(id: run, info: SessionInfo(id: run, source: "cron")))
+        // Other unlisted ids stay writable; a listed non-api_server session is read-only; an api_server one is writable.
+        #expect(!SessionInfo.isReadOnly(id: "api_1", info: nil))
+        #expect(SessionInfo.isReadOnly(id: "tg_1", info: SessionInfo(id: "tg_1", source: "telegram")))
+        #expect(!SessionInfo.isReadOnly(id: "api_1", info: SessionInfo(id: "api_1", source: "api_server")))
+    }
 }
 
 @Suite struct TagRulesTests {
