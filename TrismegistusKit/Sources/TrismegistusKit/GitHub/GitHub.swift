@@ -156,6 +156,13 @@ public struct GitHubError: Error, Sendable, Equatable {
     }
 }
 
+public extension [String] {
+    /// The labels except one that repeats `priority` (the repos label issues `P0`/`P1`/`P2` too), case-insensitively.
+    func withoutPriority(_ priority: String) -> [String] {
+        priority.isEmpty ? self : filter { $0.caseInsensitiveCompare(priority) != .orderedSame }
+    }
+}
+
 /// Starting a Hermes conversation from an issue: its title and first prompt.
 public enum GitHubPrompt {
     /// Characters of the issue body put in the prompt.

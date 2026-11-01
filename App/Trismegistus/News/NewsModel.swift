@@ -48,13 +48,13 @@ enum ConversationListRow<Item: Identifiable>: Identifiable where Item.ID == Stri
         }
     }
 
-    /// The items with the feed runs replaced by one News row, where the first of them was.
-    static func folding(_ items: [Item], news: Set<String>) -> [Self] {
-        var shown = false
-        return items.compactMap { item in
-            guard news.contains(item.id) else { return .item(item) }
-            defer { shown = true }
-            return shown ? nil : .news
-        }
+    /// The items (newest activity first) with the News row in place: see `SessionListing.foldingNews`.
+    static func folding(_ items: [Item], news: Set<String>, newsAt: Date?, activity: (Item) -> Date?) -> [Self] {
+        SessionListing.foldingNews(items, id: \.id, activity: activity, news: news, newsAt: newsAt).map { $0.map(Self.item) ?? .news }
     }
+}
+
+extension NewsFeed {
+    /// When the News row sorts among the conversations: its newest edition's time; nil without editions.
+    var rowTime: Date? { items.isEmpty ? nil : items.lazy.compactMap(\.publishedAt).max() ?? .distantPast }
 }

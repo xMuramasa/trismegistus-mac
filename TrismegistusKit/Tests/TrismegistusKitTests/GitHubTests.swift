@@ -188,6 +188,11 @@ import Testing
         #expect(GitHubPrompt.text(try self.issue(body: "  \n")).contains("(The issue has no description.)"))
     }
 
+    @Test func aLabelThatRepeatsThePriorityIsDropped() {
+        #expect(["bug", "p0", "P1"].withoutPriority("P0") == ["bug", "P1"])
+        #expect(["bug", "P0"].withoutPriority("") == ["bug", "P0"])
+    }
+
     @Test func promptCapsTheBodyAndTheTitle() throws {
         let long = try issue(body: String(repeating: "é", count: 5000), title: String(repeating: "t", count: 300))
         let text = GitHubPrompt.text(long)

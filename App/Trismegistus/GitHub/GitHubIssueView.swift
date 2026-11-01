@@ -61,7 +61,7 @@ struct GitHubIssueView: View {
                         if let issue {
                             Text(issue.isOpen ? "open" : "closed").typeRole(.label).foregroundStyle(Ink.text.secondary)
                             if !issue.priority.isEmpty { PriorityMark(priority: issue.priority) }
-                            TagChips(tags: issue.labels, limit: 4)
+                            TagChips(tags: issue.labels.withoutPriority(issue.priority), limit: 4)
                         }
                     }
                     Text(issue?.title ?? "").typeRole(.title).foregroundStyle(Ink.text.primary)

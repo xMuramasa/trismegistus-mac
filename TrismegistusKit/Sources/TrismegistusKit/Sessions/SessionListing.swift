@@ -38,6 +38,25 @@ public enum SessionListing {
         return items.filter { !hidden.contains(id($0)) }
     }
 
+    /// `items` (newest activity first) with the feed runs in `news` replaced by one `nil`, the News row: where the first
+    /// run was, or, when no run is listed (the cleanup job deletes them), where an edition at `newsAt` falls among the
+    /// activity times. No row when there are neither runs nor `newsAt`.
+    public static func foldingNews<T>(_ items: [T], id: (T) -> String, activity: (T) -> Date?, news: Set<String>, newsAt: Date?) -> [T?] {
+        var shown = false
+        var rows: [T?] = []
+        for item in items {
+            if !news.contains(id(item)) {
+                rows.append(item)
+            } else if !shown {
+                shown = true
+                rows.append(nil)
+            }
+        }
+        guard !shown, let newsAt else { return rows }
+        rows.insert(nil, at: rows.firstIndex { ($0.flatMap(activity) ?? .distantPast) < newsAt } ?? rows.endIndex)
+        return rows
+    }
+
     public static func hasTag(_ tag: String, in tags: [String]) -> Bool {
         tags.contains { TagRules.key($0) == TagRules.key(tag) }
     }

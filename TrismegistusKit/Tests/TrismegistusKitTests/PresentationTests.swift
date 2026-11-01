@@ -132,6 +132,31 @@ private func completed(
         #expect(MarkdownBlocks.parse("").isEmpty)
     }
 
+    @Test func pipeTableWithAlignments() {
+        let md = "| Name | Qty | Note |\n|:--|--:|:-:|\n| a \\| b | 2 | ok |\n| c | 3 |"
+        #expect(MarkdownBlocks.parse(md) == [.table(
+            header: ["Name", "Qty", "Note"], rows: [["a | b", "2", "ok"], ["c", "3", ""]], alignments: [.leading, .trailing, .center])])
+    }
+
+    @Test func tableBetweenParagraphsAndCode() {
+        let md = "Before:\na | b\n--- | ---\n1 | 2\n\nAfter\n```\n| x |\n|---|\n```"
+        #expect(MarkdownBlocks.parse(md) == [
+            .prose("Before:"), .table(header: ["a", "b"], rows: [["1", "2"]], alignments: [.leading, .leading]),
+            .prose("After"), .code(language: nil, text: "| x |\n|---|"),
+        ])
+    }
+
+    @Test func aPipeLineIsNotATableWithoutAMatchingDelimiterRow() {
+        for md in ["a | b\nplain text", "a | b | c\n--- | ---", "just | one line", "a | b\n--- | ---- x", "a | b\n"] {
+            #expect(MarkdownBlocks.parse(md) == [.prose(md.trimmingCharacters(in: .newlines))])
+        }
+    }
+
+    @Test func stripHTMLKeepsTextAndDropsComments() {
+        let md = "Hi<!-- hidden\nnote --> there\n\n<sub>Migrated from Hermes kanban card <b>t_1</b></sub>\na<br/>b see <https://x.test> and 1 < 2"
+        #expect(MarkdownBlocks.stripHTML(md) == "Hi there\n\nMigrated from Hermes kanban card t_1\na\nb see <https://x.test> and 1 < 2")
+    }
+
     @Test func fenceWithInfoString() {
         let md = "Run it:\n\n```swift title=\"a.swift\"\nlet x = 1\nprint(x)\n```\n\nDone."
         #expect(MarkdownBlocks.parse(md) == [

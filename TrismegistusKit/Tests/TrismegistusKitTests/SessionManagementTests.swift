@@ -63,6 +63,27 @@ import Testing
         #expect(SessionListing.pinnedFirst(items, isPinned: \.1).map(\.0) == ["b", "d", "a", "c"])
     }
 
+    private func fold(_ items: [(String, Double)], news: Set<String> = [], at: Double? = nil) -> [String] {
+        SessionListing.foldingNews(items, id: \.0, activity: { Date(timeIntervalSince1970: $0.1) }, news: news,
+                                   newsAt: at.map(Date.init(timeIntervalSince1970:)))
+            .map { $0?.0 ?? "NEWS" }
+    }
+
+    @Test func editionsWithoutFeedRunsPlaceTheNewsRowByTheirTime() {
+        let items: [(String, Double)] = [("a", 300), ("b", 200), ("c", 100)]
+        #expect(fold(items, at: 250) == ["a", "NEWS", "b", "c"])
+        #expect(fold(items, at: 400) == ["NEWS", "a", "b", "c"])
+        #expect(fold(items, at: 50) == ["a", "b", "c", "NEWS"])
+        #expect(fold([], at: 50) == ["NEWS"])
+        #expect(fold(items) == ["a", "b", "c"]) // no editions, no runs: no row
+    }
+
+    @Test func feedRunsFoldIntoOneNewsRowWhereTheFirstWas() {
+        let items: [(String, Double)] = [("a", 300), ("r1", 250), ("b", 200), ("r2", 150)]
+        #expect(fold(items, news: ["r1", "r2"], at: 10) == ["a", "NEWS", "b"])
+        #expect(fold(items, news: ["r1", "r2"]) == ["a", "NEWS", "b"])
+    }
+
     @Test func selectionMovesToTheNextConversationWhenItsOwnLeaves() {
         let old = ["a", "b", "c"]
         #expect(SessionListing.selection("b", from: old, to: ["a", "c"]) == "c")

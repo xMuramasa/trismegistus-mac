@@ -52,12 +52,13 @@ final class ConversationActions {
 }
 
 extension ConversationListRow {
-    /// Pinned items first; the rest folded as usual, so the News row stays where the first feed run was among the
-    /// unpinned ones (a pinned feed run is just a pinned conversation).
-    static func listing(_ items: [Item], news: Set<String>, isPinned: (Item) -> Bool) -> (pinned: [Item], rest: [Self]) {
+    /// Pinned items first; the rest with the News row placed where the first feed run was among the unpinned ones
+    /// (a pinned feed run is just a pinned conversation), or by `newsAt` when no run is listed.
+    static func listing(_ items: [Item], news: Set<String>, newsAt: Date?, activity: (Item) -> Date?,
+                        isPinned: (Item) -> Bool) -> (pinned: [Item], rest: [Self]) {
         let pinned = items.filter { isPinned($0) && !news.contains($0.id) }
         let rest = items.filter { !(isPinned($0) && !news.contains($0.id)) }
-        return (pinned, folding(rest, news: news))
+        return (pinned, folding(rest, news: news, newsAt: newsAt, activity: activity))
     }
 }
 

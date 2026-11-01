@@ -28,7 +28,8 @@ struct ConversationSidebar: View {
         let overviews = threads
             .compactMap { store.overview[$0.id] }
             .sorted { ($0.lastActivity ?? .distantPast) > ($1.lastActivity ?? .distantPast) }
-        return ConversationListRow.listing(overviews, news: model.news?.sessionIDs ?? [], isPinned: { $0.info?.isPinned == true })
+        return ConversationListRow.listing(overviews, news: model.news?.sessionIDs ?? [], newsAt: model.news?.rowTime,
+                                           activity: \.lastActivity, isPinned: { $0.info?.isPinned == true })
     }
 
     /// The listing after the filter field and the tag filter.

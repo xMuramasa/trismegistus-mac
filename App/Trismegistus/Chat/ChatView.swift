@@ -316,6 +316,7 @@ private struct AnswerMessage: View {
     private enum Block {
         case prose(AttributedString)
         case code(language: String?, text: String)
+        case table(header: [String], rows: [[String]], alignments: [MarkdownBlock.Alignment])
     }
 
     private final class Parsed {
@@ -336,6 +337,7 @@ private struct AnswerMessage: View {
             case .prose(let s):
                 .prose((try? AttributedString(markdown: s, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(s))
             case .code(let language, let code): .code(language: language, text: code)
+            case .table(let header, let rows, let alignments): .table(header: header, rows: rows, alignments: alignments)
             }
         }
         parsed.setObject(Parsed(blocks), forKey: text as NSString)
@@ -356,6 +358,8 @@ private struct AnswerMessage: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         case .code(let language, let code):
                             CodeBlockView(language: language, code: code)
+                        case .table(let header, let rows, let alignments):
+                            MarkdownTableView(header: header, rows: rows, alignments: alignments)
                         }
                     }
                 }

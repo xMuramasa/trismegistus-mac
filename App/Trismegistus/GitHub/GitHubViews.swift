@@ -240,7 +240,7 @@ struct GitHubIssueRow: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: Space.s)
-                TagChips(tags: labels, limit: 3)
+                TagChips(tags: labels.withoutPriority(priority), limit: 3)
                 Image(systemName: Symbol.chevronRight).font(.system(size: Icon.s)).foregroundStyle(Ink.text.secondary)
             }
             .padding(.horizontal, Space.m).padding(.vertical, Space.s)
@@ -287,7 +287,7 @@ private struct SetupNote: View {
 }
 
 /// Markdown as the chat renders an answer: prose with inline styles (line breaks kept as written), fenced code as
-/// `CodeBlockView`.
+/// `CodeBlockView`, pipe tables as `MarkdownTableView`. HTML in the prose and the cells is dropped (`stripHTML`).
 struct GitHubMarkdown: View {
     let text: String
 
@@ -296,14 +296,56 @@ struct GitHubMarkdown: View {
             ForEach(Array(MarkdownBlocks.parse(text).enumerated()), id: \.offset) { _, block in
                 switch block {
                 case .prose(let s):
+                    let s = MarkdownBlocks.stripHTML(s)
                     Text((try? AttributedString(markdown: s, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(s))
                         .typeRole(.body).foregroundStyle(Ink.text.primary).textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 case .code(let language, let code):
                     CodeBlockView(language: language, code: code)
+                case .table(let header, let rows, let alignments):
+                    MarkdownTableView(header: header, rows: rows, alignments: alignments, clean: MarkdownBlocks.stripHTML)
                 }
             }
         }
         .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// A Markdown pipe table (`MarkdownBlock.table`): a header row in the label role, hairline rules, cells that size to
+/// their text up to a third of the chat column and wrap past it; a wide table scrolls sideways.
+struct MarkdownTableView: View {
+    let header: [String]
+    let rows: [[String]]
+    let alignments: [MarkdownBlock.Alignment]
+    /// Cell text is run through this first (GitHub text drops its HTML).
+    var clean: (String) -> String = { $0 }
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            Grid(alignment: .topLeading, horizontalSpacing: 0, verticalSpacing: 0) {
+                rule
+                GridRow { ForEach(header.indices, id: \.self) { cell(header[$0], column: $0, role: .label, color: Ink.text.secondary) } }
+                rule
+                ForEach(rows.indices, id: \.self) { r in
+                    GridRow { ForEach(header.indices, id: \.self) { cell(rows[r][$0], column: $0, role: .body, color: Ink.text.primary) } }
+                    rule
+                }
+            }
+        }
+    }
+
+    private var rule: some View {
+        Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline).gridCellColumns(header.count)
+    }
+
+    private func cell(_ text: String, column: Int, role: TypeRole, color: Color) -> some View {
+        let text = clean(text)
+        let alignment = alignments[column]
+        return Text((try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text))
+            .typeRole(role).foregroundStyle(color).textSelection(.enabled)
+            .multilineTextAlignment(alignment == .trailing ? .trailing : alignment == .center ? .center : .leading)
+            .frame(maxWidth: Size.chatColumn / 3, alignment: alignment == .trailing ? .trailing : alignment == .center ? .center : .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, Space.s).padding(.vertical, Space.xs)
     }
 }

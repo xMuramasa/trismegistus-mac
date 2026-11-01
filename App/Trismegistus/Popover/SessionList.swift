@@ -20,7 +20,9 @@ struct SessionList: View {
     private var sessions: [SessionInfo] { SessionListing.threads(model.sessions, id: \.id, links: model.store?.links ?? [:]) }
     /// Pinned conversations first; then the rest with the daily feed runs folded into one News row.
     private var listing: (pinned: [SessionInfo], rest: [ConversationListRow<SessionInfo>]) {
-        ConversationListRow.listing(sessions, news: model.news?.sessionIDs ?? [], isPinned: \.isPinned)
+        ConversationListRow.listing(sessions, news: model.news?.sessionIDs ?? [], newsAt: model.news?.rowTime,
+                                    activity: { model.store?.overview[$0.id]?.lastActivity ?? $0.lastActive.map(Date.init(timeIntervalSince1970:)) },
+                                    isPinned: \.isPinned)
     }
     private var rows: [ConversationListRow<SessionInfo>] {
         let listing = self.listing
