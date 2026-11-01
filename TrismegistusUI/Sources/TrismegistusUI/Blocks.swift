@@ -246,7 +246,7 @@ public struct TerminalEntryView: View {
         .frame(maxWidth: .infinity, minHeight: 54, alignment: .topLeading)
         .overlay(alignment: .topTrailing) {
             VStack(spacing: 0) {
-                ForEach(Self.accents.indices, id: \.self) { Rectangle().fill(Self.accents[$0]).frame(width: 4, height: 10) }
+                ForEach(Self.accents.indices, id: \.self) { Rectangle().fill(Self.accents[$0]).frame(width: 4, height: 11) }
             }
             .padding(.top, 7)
             .accessibilityHidden(true)
