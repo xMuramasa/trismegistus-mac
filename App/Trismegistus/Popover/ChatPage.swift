@@ -16,16 +16,6 @@ struct ChatPage: View {
     private var info: SessionInfo? { model.sessions.first { $0.id == id } }
     private var runID: String? { model.store?.sessions[id]?.run?.id ?? model.store?.overview[id]?.run?.id }
 
-    private var subtitle: String {
-        var parts = [PopoverFormat.sourceName(info?.source)]
-        if let runID {
-            parts.append("run \(runID.prefix(4))")
-        } else if let count = info?.messageCount {
-            parts.append("\(count) \(count == 1 ? "message" : "messages")")
-        }
-        return parts.joined(separator: " · ")
-    }
-
     private var hints: [(key: String, action: String)] {
         var hints: [(key: String, action: String)] = []
         if info?.isReadOnly != true { hints.append(("⌘↩", runID == nil ? "send" : "steer")) }
@@ -41,7 +31,7 @@ struct ChatPage: View {
                 VStack(alignment: .leading, spacing: 2) {
                     TitleRule(info.map(PopoverFormat.title) ?? "Session").lineLimit(1)
                     HStack(spacing: 10) {
-                        Text(subtitle).typeRole(.monoSmall).foregroundStyle(Theme.secondary).lineLimit(1)
+                        Text(PopoverFormat.subtitle(id, info: info, store: model.store)).typeRole(.monoSmall).foregroundStyle(Theme.secondary).lineLimit(1)
                         if let info { ContextMeter(info: info) { handingOff = info } }
                     }
                 }
@@ -53,5 +43,23 @@ struct ChatPage: View {
             KeyHintStrip(hints)
         }
         .handoffSheet($handingOff)
+    }
+}
+
+extension PopoverFormat {
+    /// Under a chat's title (the popover's chat page, the window's conversation header): `Trismegistus · run 7f3a ·
+    /// started 23:46` while a run is active, else `Trismegistus · 12 messages`.
+    @MainActor static func subtitle(_ id: String, info: SessionInfo?, store: SessionStore?) -> String {
+        var parts = [sourceName(info?.source)]
+        let overviewRun = store?.overview[id]?.run
+        if let runID = store?.sessions[id]?.run?.id ?? overviewRun?.id {
+            parts.append("run \(runID.prefix(4))")
+            if let started = overviewRun?.startedAt {
+                parts.append("started " + started.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)))
+            }
+        } else if let count = info?.messageCount {
+            parts.append("\(count) \(count == 1 ? "message" : "messages")")
+        }
+        return parts.joined(separator: " · ")
     }
 }

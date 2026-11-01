@@ -3,9 +3,11 @@ import TrismegistusKit
 import TrismegistusUI
 
 /// Window sidebar: `CONVERSATIONS // n`, icon-only new, filter field, the Commands row, one row per session, the
-/// paired device below.
+/// paired device below. On `SidebarSplit`'s sunken ground: no row separators, rows without their own fill.
 struct ConversationSidebar: View {
     @Binding var selection: String?
+    /// The Filter field's focus (⌘K).
+    var filterFocus: FocusState<Bool>.Binding
 
     @Environment(AppModel.self) private var model
     @State private var filter = ""
@@ -62,11 +64,13 @@ struct ConversationSidebar: View {
                 CommandsRowView(isSelected: selection == CommandsView.id)
                     .tag(CommandsView.id)
                     .listRowInsets(EdgeInsets())
-                    .listRowSeparatorTint(Theme.rule)
+                    .listRowSeparator(.hidden)
                 if !shown.pinned.isEmpty {
-                    SectionLabel(title: "Pinned").listRowInsets(EdgeInsets())
+                    SectionLabel(title: "Pinned").listRowInsets(EdgeInsets()).listRowSeparator(.hidden)
                     ForEach(shown.pinned) { conversation($0) }
-                    if !shown.rest.isEmpty { SectionLabel(title: "Conversations").listRowInsets(EdgeInsets()) }
+                    if !shown.rest.isEmpty {
+                        SectionLabel(title: "Conversations").listRowInsets(EdgeInsets()).listRowSeparator(.hidden)
+                    }
                 }
                 ForEach(shown.rest) { row in
                     switch row {
@@ -75,7 +79,7 @@ struct ConversationSidebar: View {
                         newsRow
                             .tag(row.id)
                             .listRowInsets(EdgeInsets())
-                            .listRowSeparatorTint(Theme.rule)
+                            .listRowSeparator(.hidden)
                     }
                 }
             }
@@ -83,7 +87,6 @@ struct ConversationSidebar: View {
             .scrollContentBackground(.hidden)
             footer
         }
-        .background(Theme.sunken)
         .confirmsDelete(actions, store: model.store)
         .onChange(of: orderedIDs) { old, new in
             // A handed-off conversation leaves the list for the part that continues it: the window stays on the thread.
@@ -112,7 +115,7 @@ struct ConversationSidebar: View {
         }
         .tag(overview.id)
         .listRowInsets(EdgeInsets())
-        .listRowSeparatorTint(Theme.rule)
+        .listRowSeparator(.hidden)
     }
 
     private func header(count: Int) -> some View {
@@ -122,7 +125,7 @@ struct ConversationSidebar: View {
                 Spacer()
                 EndfieldButton("New conversation", symbol: Symbol.plus, kind: .quiet, iconOnly: true) { create() }
             }
-            EndfieldTextField("Filter", text: $filter)
+            EndfieldTextField("Filter", text: $filter, ground: Theme.paper, focus: filterFocus)
             if !tagCounts.isEmpty { tagFilterBar }
             if createFailed {
                 Text("Could not create a conversation. Try again.").typeRole(.caption).foregroundStyle(Theme.red)

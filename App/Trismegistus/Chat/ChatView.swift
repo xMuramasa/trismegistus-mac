@@ -32,23 +32,26 @@ struct ChatView: View {
         VStack(spacing: 0) {
             if let approval { banner(approval) }
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 10) {
+                LazyVStack(alignment: .leading, spacing: compact ? 10 : 20) {
                     OlderParts(tipID: id, compact: compact)
                     historyStatus
                     ChatTranscript(items: items, onShowTerminal: showTerminal, retry: retry(_:))
                     if let run { working(run) } else if let info, SessionCapabilities(info).canHandOff, Self.stalled(items) { stallRow(info) }
                 }
-                .padding(16)
+                // The window: 12 pt under the header's title rule, wider side margins (the draft, #32).
+                .padding(.horizontal, compact ? 16 : 20).padding(.vertical, compact ? 16 : 12)
                 // A readable column: on a wide window, opening a pane or the sidebar doesn't re-wrap the messages.
-                .frame(maxWidth: 760)
+                .frame(maxWidth: 700)
                 .frame(maxWidth: .infinity)
             }
             .defaultScrollAnchor(.bottom)
             .defaultScrollAnchor(.bottom, for: .sizeChanges)
             .settledWidth()
-            .background { if !compact && !empty { Theme.paper.frame(maxWidth: 760) } }
+            .environment(\.plainAnswers, !compact)
+            .background { if !compact && !empty { Theme.paper.frame(maxWidth: 700) } }
             if let run { runStrip(run) }
             input
+            if !compact { KeyHintStrip(hints).background(Theme.paper) }
         }
         .background { if compact { Theme.paper } else { EndfieldBackdrop() } }
         .task(id: id) { await model.store?.open(id) }
@@ -183,6 +186,14 @@ struct ChatView: View {
 
     private var isReadOnly: Bool { info?.isReadOnly ?? false }
 
+    /// The window's keys (the popover's chat page has its own strip). ⌘K is the window's "Conversations" command.
+    private var hints: [(key: String, action: String)] {
+        var hints: [(key: String, action: String)] = []
+        if !isReadOnly { hints.append(("⌘↩", run == nil ? "send" : "steer")) }
+        if run != nil { hints.append(("⌘.", "stop")) }
+        return hints + [("⌘⌥T", "terminal"), ("⌘K", "conversations")]
+    }
+
     /// `⌘↩`: a prompt, or a steer while a run is active (the relay answers a prompt during a run with `busy`).
     private func submit() {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -221,6 +232,11 @@ struct ChatView: View {
 }
 
 /// The rows of a conversation.
+extension EnvironmentValues {
+    /// The window's chat (older parts included): answers as plain text, no yellow bar (#32).
+    @Entry var plainAnswers = false
+}
+
 struct ChatTranscript: View {
     let items: [ChatItem]
     var onShowTerminal: (@MainActor () -> Void)? = nil
@@ -294,6 +310,8 @@ private struct UserMessage: View {
 private struct AnswerMessage: View {
     let text: String
     let label: String
+    /// Plain (the window): the text inset 10 pt, level with a user message's text. Else a yellow bar beside it.
+    @Environment(\.plainAnswers) private var plain
 
     private enum Block {
         case prose(AttributedString)
@@ -328,7 +346,7 @@ private struct AnswerMessage: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label).typeRole(.label).foregroundStyle(Theme.secondary)
             HStack(alignment: .top, spacing: 10) {
-                Rectangle().fill(Theme.yellow).frame(width: 3)
+                if !plain { Rectangle().fill(Theme.yellow).frame(width: 3) }
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(Array(Self.blocks(text).enumerated()), id: \.offset) { _, block in
                         switch block {
@@ -342,6 +360,7 @@ private struct AnswerMessage: View {
                     }
                 }
             }
+            .padding(.horizontal, plain ? 10 : 0)
             .fixedSize(horizontal: false, vertical: true)
         }
     }

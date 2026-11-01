@@ -19,29 +19,28 @@ struct NewsRowView: View {
         return "\(age) · \(count) \(count == 1 ? "edition" : "editions") · read-only"
     }
 
+    @Environment(\.sunkenRows) private var sunken
+
     var body: some View {
-        HStack(spacing: 0) {
-            Rectangle().fill(isSelected ? Theme.yellow : .clear).frame(width: 3)
-            HStack(spacing: 8) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(feed.items.first?.edition.title ?? "News").typeRole(.headline).foregroundStyle(Theme.ink).lineLimit(1)
-                    HStack(spacing: 6) {
-                        Image(systemName: Self.symbol).font(.system(size: 11)).accessibilityLabel("News")
-                        Image(systemName: Symbol.lock).font(.system(size: 10))
-                        Text(detail).typeRole(.monoSmall).lineLimit(1)
-                    }
-                    .foregroundStyle(Theme.muted)
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(feed.items.first?.edition.title ?? "News").typeRole(.headline).foregroundStyle(Theme.ink).lineLimit(1)
+                HStack(spacing: 6) {
+                    Image(systemName: Self.symbol).font(.system(size: 11)).accessibilityLabel("News")
+                    Image(systemName: Symbol.lock).font(.system(size: 10))
+                    Text(detail).typeRole(.monoSmall).lineLimit(1)
                 }
-                Spacer(minLength: 8)
-                Text("News").typeRole(.label).foregroundStyle(Theme.ink)
-                if isSelected {
-                    Image(systemName: Symbol.chevronRight).font(.system(size: 10)).foregroundStyle(Theme.ink)
-                }
+                .foregroundStyle(sunken ? Theme.secondary : Theme.muted)
             }
-            .padding(.horizontal, 12)
+            Spacer(minLength: 8)
+            Text("News").typeRole(.label).foregroundStyle(Theme.ink)
+            if isSelected {
+                Image(systemName: Symbol.chevronRight).font(.system(size: 10)).foregroundStyle(Theme.ink)
+            }
         }
+        .padding(.horizontal, 12)
         .frame(height: 52)
-        .background(Theme.raised)
+        .rowGround(isSelected: isSelected)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }

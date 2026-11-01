@@ -4,43 +4,71 @@ import XCTest
 
 @testable import TrismegistusUI
 
-/// The toolbar and the conversation header are one steel strip: rendered from the window's frame view (toolbar
-/// included) to `.build/snapshots/TopBar*.png`, sidebar open and closed (#30).
+/// The window as laid out since #32: the toolbar's steel strip across the whole window, our own `sunken` sidebar column
+/// (`SidebarSplit`) with a rule, the conversation header continuing the strip with the title rule under it, the chat
+/// and its key hints, the terminal as an inspector. Rendered from the window's frame view (toolbar included) to
+/// `.build/snapshots/Window32*.png`, sidebar open and closed.
 @MainActor
 final class TopBarTests: XCTestCase {
     private final class Panes: ObservableObject {
-        @Published var columns = NavigationSplitViewVisibility.all
+        @Published var sidebar = true
+        @Published var width = 260.0
         @Published var inspector = true
+        /// The inspector's top safe area: the toolbar's height when the pane runs up under the toolbar (its title sits
+        /// on the strip there).
+        var inspectorTop: CGFloat = 0
     }
 
     private struct Window: View {
         @ObservedObject var panes: Panes
+        @State private var filter = ""
+
         var body: some View {
-            NavigationSplitView(columnVisibility: $panes.columns) {
-                List(0..<20, id: \.self) { Text("Conversation \($0)") }
-                    .topBarColumn(.leadingEdge)
-                    .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 340)
-            } detail: {
+            SidebarSplit(isShown: $panes.sidebar, width: $panes.width) {
                 VStack(spacing: 0) {
-                    HStack(spacing: 10) {
-                        Text("Conversation title").typeRole(.title)
-                        Spacer(minLength: 0)
-                        Text("≈ 92K / 1M · 9%").typeRole(.monoSmall).opacity(0.7)
+                    VStack(spacing: 10) {
+                        Text("Conversations // 6").typeRole(.label).foregroundStyle(Theme.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        EndfieldTextField("Filter", text: $filter, ground: Theme.paper)
                     }
-                    .foregroundStyle(Theme.onSteel)
-                    .padding(.horizontal, 16).padding(.vertical, 8)
-                    .background { TopBarBackdrop().padding(.top, -1) }
-                    .overlay(alignment: .bottom) { Rectangle().fill(Theme.steelRule).frame(height: 1) }
-                    Text("chat").frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.paper)
+                    .padding(.horizontal, 16).padding(.vertical, 12)
+                    // As ConversationSidebar lays its rows out: no insets, no separators.
+                    List {
+                        Group {
+                            SessionRowView(name: "Endfield gallery", source: .trismegistus, activity: "1 min", runElapsed: "00:42")
+                            SessionRowView(name: "trismegistus-mac UI", source: .trismegistus, activity: "now", isSelected: true)
+                            SessionRowView(name: "Morning news", source: .cron, activity: "9 h", isReadOnly: true)
+                        }
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                    }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    Text("macbook · paired").typeRole(.monoSmall).foregroundStyle(Theme.secondary)
+                        .padding(.horizontal, 16).padding(.vertical, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .overlay(alignment: .top) { Rectangle().fill(Theme.rule).frame(height: 1) }
                 }
-                .inspector(isPresented: $panes.inspector) {
-                    Text("Terminal").frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.raised)
+            } detail: {
+                // As in the app: the inspector on the detail, inside our split.
+                detail.inspector(isPresented: $panes.inspector) {
+                    Text("Terminal").frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.ink)
+                        .background {
+                            GeometryReader { proxy in
+                                Color.clear.onChange(of: proxy.safeAreaInsets.top, initial: true) { _, top in panes.inspectorTop = top }
+                            }
+                        }
                         .topBarColumn(.trailingEdge)
                         .inspectorColumnWidth(min: 280, ideal: 360, max: 560)
                 }
             }
+            .endfieldPaper()
             .topBar()
             .toolbar {
+                ToolbarItem(placement: .navigation) {
+                    Image(systemName: "sidebar.left").foregroundStyle(Theme.onSteel)
+                }
+                .sharedBackgroundVisibility(.hidden)
                 ToolbarItem(placement: .navigation) { Text("Trismegistus").typeRole(.heading).foregroundStyle(Theme.onSteel) }
                     .sharedBackgroundVisibility(.hidden)
                 ToolbarItem(placement: .primaryAction) {
@@ -49,6 +77,30 @@ final class TopBarTests: XCTestCase {
                 .sharedBackgroundVisibility(.hidden)
             }
             .toolbar(removing: .title)
+        }
+
+        /// Header (steel, with the subtitle), the title rule, the chat column on paper, the key hints.
+        private var detail: some View {
+            VStack(spacing: 0) {
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Conversation title").typeRole(.title)
+                        Text("trismegistus · run 7f3a · started 23:46").typeRole(.monoSmall).opacity(0.7)
+                    }
+                    Spacer(minLength: 0)
+                    Text("≈ 92K / 1M · 9%").typeRole(.monoSmall).opacity(0.7)
+                }
+                .foregroundStyle(Theme.onSteel)
+                .padding(.horizontal, 16).padding(.vertical, 8)
+                .background { TopBarBackdrop().padding(.top, -1) }
+                .overlay(alignment: .bottom) { Rectangle().fill(Theme.steelRule).frame(height: 1) }
+                SegmentRule((48, 120, 24), height: 4, hairline: false)
+                    .padding(.leading, 20)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text("chat").frame(maxWidth: 700, maxHeight: .infinity).background(Theme.paper)
+                KeyHintStrip([("⌘↩", "send"), ("⌘⌥T", "terminal"), ("⌘K", "conversations")]).background(Theme.paper)
+            }
+            .background(EndfieldBackdrop())
         }
     }
 
@@ -71,7 +123,19 @@ final class TopBarTests: XCTestCase {
         return [c?.redComponent ?? -1, c?.greenComponent ?? -1, c?.blueComponent ?? -1]
     }
 
-    func testOneStripUnderToolbarAndHeader() throws {
+    /// Grays come back lighter than their hex through the offscreen bitmap's colour profile (sunken 0xE5 reads as
+    /// about 0xEA), so the checks compare grounds with each other.
+    private func assertDarker(_ a: [CGFloat], than b: [CGFloat], _ what: String) {
+        for i in 0..<3 { XCTAssertLessThan(a[i], b[i] - 0.02, "\(what): \(a) vs \(b)") }
+    }
+
+    private func assertSteel(_ c: [CGFloat], _ what: String) {
+        // Steel, not paper or glass: blue above red, darker than the paper.
+        XCTAssertGreaterThan(c[2], c[0], "\(what) is not steel: \(c)")
+        XCTAssertLessThan(c[0], 0.5, "\(what) is not steel: \(c)")
+    }
+
+    func testWindowLayout() throws {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1100, height: 700),
                               styleMask: [.titled, .resizable, .closable, .miniaturizable, .fullSizeContentView],
                               backing: .buffered, defer: false)
@@ -86,14 +150,36 @@ final class TopBarTests: XCTestCase {
 
         // The header's colour at x = 600 per sidebar state: in window coordinates it doesn't depend on the sidebar.
         var headers: [[CGFloat]] = []
-        for (columns, name) in [(NavigationSplitViewVisibility.all, "TopBarSidebarOpen"), (.detailOnly, "TopBarSidebarClosed")] {
-            withAnimation { panes.columns = columns }
+        for (shown, name) in [(true, "Window32SidebarOpen"), (false, "Window32SidebarClosed")] {
+            withAnimation { panes.sidebar = shown }
             spin(1.5)
             let rep = try render(window.contentView!.superview!, name)
             let scale = CGFloat(rep.pixelsWide) / window.contentView!.bounds.width
             // The toolbar's height: where the content area starts, from the window's top edge.
             let top = window.contentView!.bounds.height - window.contentLayoutRect.maxY
             XCTAssertGreaterThan(top, 30, "no toolbar")
+            XCTAssertGreaterThan(panes.inspectorTop, 30, "the inspector no longer runs up under the toolbar")
+
+            // The strip runs from the window's left edge, above the sidebar too.
+            assertSteel(rgb(rep, CGPoint(x: 150, y: top / 2), scale: scale), "\(name): toolbar above the sidebar")
+            let low = window.contentView!.bounds.height - 60
+            if shown {
+                // One flat sunken column from under the toolbar to the bottom, darker than the chat's paper, then the
+                // 1 pt rule at x = 260, darker again.
+                let under = rgb(rep, CGPoint(x: 150, y: top + 2), scale: scale)
+                let ground = rgb(rep, CGPoint(x: 150, y: low), scale: scale)
+                let rule = rgb(rep, CGPoint(x: 260.5, y: low), scale: scale)
+                let paper = rgb(rep, CGPoint(x: 600, y: low), scale: scale)
+                print("window32 \(name): sidebar under the toolbar \(under), ground \(ground), rule \(rule), chat paper \(paper)")
+                for i in 0..<3 { XCTAssertEqual(under[i], ground[i], accuracy: 0.01, "the sidebar is not one flat ground") }
+                assertDarker(ground, than: paper, "\(name): sidebar ground against the paper")
+                assertDarker(rule, than: ground, "\(name): sidebar rule against its ground")
+                // The second row (selected) is white: under the 89 pt header and the first 52 pt row.
+                assertDarker(ground, than: rgb(rep, CGPoint(x: 200, y: top + 89 + 52 + 26), scale: scale), "\(name): selected row")
+            } else {
+                assertSteel(rgb(rep, CGPoint(x: 150, y: top + 4), scale: scale), "\(name): header at the window's left")
+            }
+
             // Away from the toolbar items, in the detail column (the inspector doesn't render offscreen).
             for x in [450.0, 600] {
                 let toolbar = rgb(rep, CGPoint(x: x, y: top / 2), scale: scale)
@@ -101,17 +187,12 @@ final class TopBarTests: XCTestCase {
                 let header = rgb(rep, CGPoint(x: x, y: top + 4), scale: scale)
                 if x == 600 { headers.append(header) }
                 print("topBar \(name) x=\(x): toolbar \(toolbar), toolbar's last row \(rule), header \(header)")
-                // Steel, not paper or glass: blue above red, darker than the paper.
-                XCTAssertGreaterThan(header[2], header[0], "header is not steel")
-                XCTAssertLessThan(header[0], 0.5, "header is not steel")
+                assertSteel(header, "\(name): header at x = \(x)")
                 for i in 0..<3 {
                     XCTAssertEqual(toolbar[i], header[i], accuracy: 0.02, "a step between the toolbar and the header at x = \(x)")
                     XCTAssertEqual(rule[i], header[i], accuracy: 0.02, "a seam between the toolbar and the header at x = \(x)")
                 }
             }
-            // The sidebar and inspector columns (and their `topBarColumn` strips) render neither through
-            // `cacheDisplay` nor through `CALayer.render(in:)` offscreen: blank glass and placeholder fills. Checked
-            // on screen only.
         }
         XCTAssertEqual(headers.count, 2)
         for i in 0..<3 where headers.count == 2 { XCTAssertEqual(headers[0][i], headers[1][i], accuracy: 0.01, "the gradient moved with the sidebar") }

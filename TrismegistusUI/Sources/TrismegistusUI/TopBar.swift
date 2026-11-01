@@ -52,9 +52,9 @@ private struct TransparentTitlebar: NSViewRepresentable {
 }
 
 public extension View {
-    /// Continues the top bar across a column that draws its own top over the window's strip (the floating sidebar
-    /// panel, the inspector): the strip and its rule in the column's top safe area, over the column's background and
-    /// under the toolbar's items. It takes no clicks, so the toolbar and window dragging work as before.
+    /// Continues the top bar across a column that draws its own top over the window's strip (the inspector): the strip
+    /// and its rule in the column's top safe area, over the column's background and under the toolbar's items. It
+    /// takes no clicks, so the toolbar and window dragging work as before.
     func topBarColumn(_ anchor: TopBarBackdrop.Anchor) -> some View { topBarColumn(anchor) { EmptyView() } }
 
     /// The same, with a label on the strip at the column's leading edge, in `onSteel` (the terminal pane's title).
@@ -84,8 +84,6 @@ public struct TopBarBackdrop: View {
         /// At minus the view's global origin (like `EndfieldBackdrop`), for views in the detail column: a part below the
         /// toolbar continues the toolbar's part whatever the sidebar width.
         case window
-        /// The gradient's left end at the view's left edge: a column on the window's left (the sidebar).
-        case leadingEdge
         /// The gradient's right end at the view's right edge: a column on the window's right (the inspector). Each
         /// column may be hosted in its own view, so its global origin can't be trusted there.
         case trailingEdge
@@ -109,7 +107,6 @@ public struct TopBarBackdrop: View {
     private func offset(_ proxy: GeometryProxy, _ full: CGFloat) -> CGFloat {
         switch anchor {
         case .window: -proxy.frame(in: .global).minX
-        case .leadingEdge: 0
         case .trailingEdge: proxy.size.width - full
         }
     }

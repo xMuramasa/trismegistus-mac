@@ -86,16 +86,68 @@ public struct TitleRule: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title).typeRole(.heading).foregroundStyle(Theme.ink)
-            HStack(spacing: 0) {
-                Rectangle().fill(Theme.magenta).frame(width: 34)
-                Rectangle().fill(Theme.yellow).frame(width: 88)
-                Rectangle().fill(Theme.green).frame(width: 18)
-                Rectangle().fill(Theme.rule)
-            }
-            .frame(height: 2)
+            SegmentRule()
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// Endfield's title rule alone: magenta, yellow and green segments, then a hairline to the end unless `hairline` is
+/// off. `TitleRule` draws it at 34/88/18 × 2 pt; the window's conversation header at 48/120/24 × 4 pt (#32).
+public struct SegmentRule: View {
+    let widths: (magenta: CGFloat, yellow: CGFloat, green: CGFloat)
+    let height: CGFloat
+    let hairline: Bool
+
+    public init(_ widths: (magenta: CGFloat, yellow: CGFloat, green: CGFloat) = (34, 88, 18), height: CGFloat = 2, hairline: Bool = true) {
+        self.widths = widths
+        self.height = height
+        self.hairline = hairline
+    }
+
+    public var body: some View {
+        HStack(spacing: 0) {
+            Rectangle().fill(Theme.magenta).frame(width: widths.magenta)
+            Rectangle().fill(Theme.yellow).frame(width: widths.yellow)
+            Rectangle().fill(Theme.green).frame(width: widths.green)
+            if hairline { Rectangle().fill(Theme.rule) }
+        }
+        .frame(height: height)
+        .accessibilityHidden(true)
+    }
+}
+
+public extension EnvironmentValues {
+    /// True in the window's sidebar (`SidebarSplit` sets it): rows sit on its `sunken` ground, the selected one white
+    /// with a 1 pt yellow border, meta text in `secondary` (muted is too faint on sunken). Off (the popover): white
+    /// rows, a yellow bar on the selected one, meta in `muted`.
+    @Entry var sunkenRows = false
+}
+
+public extension View {
+    /// The ground and selection mark of a list row (`SessionRowView`, the app's News and Commands rows); see
+    /// `sunkenRows`. On sunken the fill is opaque so the list's own selection highlight never shows through.
+    func rowGround(isSelected: Bool) -> some View { modifier(RowGround(isSelected: isSelected)) }
+}
+
+private struct RowGround: ViewModifier {
+    let isSelected: Bool
+    @Environment(\.sunkenRows) private var sunken
+
+    func body(content: Content) -> some View {
+        if sunken {
+            content
+                .padding(.leading, 3)
+                .background(isSelected ? Theme.raised : Theme.sunken)
+                .overlay { if isSelected { Rectangle().strokeBorder(Theme.yellow, lineWidth: 1) } }
+        } else {
+            HStack(spacing: 0) {
+                Rectangle().fill(isSelected ? Theme.yellow : .clear).frame(width: 3)
+                content
+            }
+            .background(Theme.raised)
+        }
     }
 }
 
@@ -122,36 +174,35 @@ public struct SessionRowView: View {
         self.needsApproval = needsApproval
     }
 
+    @Environment(\.sunkenRows) private var sunken
+
     public var body: some View {
-        HStack(spacing: 0) {
-            Rectangle().fill(isSelected ? Theme.yellow : .clear).frame(width: 3)
-            HStack(spacing: 8) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(name).typeRole(.headline).foregroundStyle(Theme.ink).lineLimit(1)
-                    HStack(spacing: 6) {
-                        SourceIcon(source)
-                        if isReadOnly { Image(systemName: Symbol.lock).font(.system(size: 10)) }
-                        Text(isReadOnly ? "\(activity) · read-only" : activity).typeRole(.monoSmall)
-                    }
-                    .foregroundStyle(Theme.muted)
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(name).typeRole(.headline).foregroundStyle(Theme.ink).lineLimit(1)
+                HStack(spacing: 6) {
+                    SourceIcon(source)
+                    if isReadOnly { Image(systemName: Symbol.lock).font(.system(size: 10)) }
+                    Text(isReadOnly ? "\(activity) · read-only" : activity).typeRole(.monoSmall)
                 }
-                Spacer(minLength: 8)
-                if needsApproval {
-                    Text("Approval").typeRole(.label).foregroundStyle(Theme.ink)
-                        .padding(.horizontal, 6).padding(.vertical, 2).background(Theme.magenta)
-                } else if let runElapsed {
-                    HStack(spacing: 6) {
-                        Text("Run").typeRole(.label).foregroundStyle(Theme.blue)
-                        Text(runElapsed).typeRole(.monoSmall).foregroundStyle(Theme.ink)
-                    }
-                } else if isSelected {
-                    Image(systemName: Symbol.chevronRight).font(.system(size: 10)).foregroundStyle(Theme.ink)
-                }
+                .foregroundStyle(sunken ? Theme.secondary : Theme.muted)
             }
-            .padding(.horizontal, 12)
+            Spacer(minLength: 8)
+            if needsApproval {
+                Text("Approval").typeRole(.label).foregroundStyle(Theme.ink)
+                    .padding(.horizontal, 6).padding(.vertical, 2).background(Theme.magenta)
+            } else if let runElapsed {
+                HStack(spacing: 6) {
+                    Text("Run").typeRole(.label).foregroundStyle(Theme.blue)
+                    Text(runElapsed).typeRole(.monoSmall).foregroundStyle(Theme.ink)
+                }
+            } else if isSelected {
+                Image(systemName: Symbol.chevronRight).font(.system(size: 10)).foregroundStyle(Theme.ink)
+            }
         }
+        .padding(.horizontal, 12)
         .frame(height: 52)
-        .background(Theme.raised)
+        .rowGround(isSelected: isSelected)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }

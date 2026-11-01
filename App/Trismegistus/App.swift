@@ -36,6 +36,7 @@ struct TrismegistusApp: App {
                 .onDisappear { NSApp.setActivationPolicy(.accessory) }
         }
         .defaultLaunchBehavior(.suppressed)
+        .commands { SidebarMenuCommands() }
 
         Settings {
             SettingsView()

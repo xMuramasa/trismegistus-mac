@@ -93,26 +93,35 @@ public struct EndfieldTextField: View {
     let placeholder: String
     @Binding var text: String
     let isError: Bool
+    /// The fill while not focused: `sunken`, or `paper` on a sunken ground (the window's sidebar).
+    let ground: Color
+    /// Focus from outside (the window's ⌘K focuses the sidebar's Filter field).
+    let focus: FocusState<Bool>.Binding?
     var forceFocused = false  // snapshots and previews: focus can't be set from outside
     @FocusState private var focused: Bool
     @Environment(\.isEnabled) private var isEnabled
 
-    public init(_ placeholder: String, text: Binding<String>, isError: Bool = false) {
+    public init(
+        _ placeholder: String, text: Binding<String>, isError: Bool = false, ground: Color = Theme.sunken,
+        focus: FocusState<Bool>.Binding? = nil
+    ) {
         self.placeholder = placeholder
         self._text = text
         self.isError = isError
+        self.ground = ground
+        self.focus = focus
     }
 
     public var body: some View {
-        let isFocused = focused || forceFocused
-        TextField(placeholder, text: $text)
+        let isFocused = (focus?.wrappedValue ?? focused) || forceFocused
+        TextField(placeholder, text: $text, prompt: Text(placeholder).foregroundStyle(Theme.secondary))
             .textFieldStyle(.plain)
             .typeRole(.body)
             .foregroundStyle(isEnabled ? Theme.ink : Theme.muted)
-            .focused($focused)
+            .focused(focus ?? $focused)
             .padding(.horizontal, 10)
             .frame(height: 30)
-            .background(isFocused ? Theme.raised : Theme.sunken)
+            .background(isFocused ? Theme.raised : ground)
             .edge(isError ? Theme.red : isFocused ? Theme.ink : Theme.rule)
     }
 }

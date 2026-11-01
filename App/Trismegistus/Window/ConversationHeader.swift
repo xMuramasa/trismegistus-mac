@@ -2,8 +2,9 @@ import SwiftUI
 import TrismegistusKit
 import TrismegistusUI
 
-/// Above the open conversation in the window: source, title, pin, tags and the same actions menu as its row. Its top
-/// row continues the toolbar's steel strip (#30); the tag editor and errors open below it on white.
+/// Above the open conversation in the window: source, title, pin, tags, the subtitle (source · run · started) and the
+/// same actions menu as its row. Its top row continues the toolbar's steel strip (#30); the tag editor and errors open
+/// below it on white; the title rule ends it.
 struct ConversationHeader: View {
     let sessionID: String
 
@@ -20,15 +21,21 @@ struct ConversationHeader: View {
             VStack(spacing: 0) {
                 HStack(spacing: 10) {
                     SourceIcon(PopoverFormat.source(info.source))
-                    if actions.renaming == info.id {
-                        RenameField(info: info, actions: actions, store: model.store).frame(height: 30)
-                    } else {
-                        Text(PopoverFormat.title(info)).typeRole(.title).lineLimit(1)
-                        if info.isPinned {
-                            Image(systemName: "pin.fill").font(.system(size: 11)).opacity(0.7)
-                                .accessibilityLabel("Pinned")
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 10) {
+                            if actions.renaming == info.id {
+                                RenameField(info: info, actions: actions, store: model.store).frame(height: 30)
+                            } else {
+                                Text(PopoverFormat.title(info)).typeRole(.title).lineLimit(1)
+                                if info.isPinned {
+                                    Image(systemName: "pin.fill").font(.system(size: 11)).opacity(0.7)
+                                        .accessibilityLabel("Pinned")
+                                }
+                                TagChips(tags: tags, limit: 4)
+                            }
                         }
-                        TagChips(tags: tags, limit: 4)
+                        Text(PopoverFormat.subtitle(info.id, info: info, store: model.store))
+                            .typeRole(.monoSmall).opacity(0.7).lineLimit(1)
                     }
                     Spacer(minLength: 0)
                     ContextMeter(info: info) { actions.handingOff = info }
@@ -64,6 +71,12 @@ struct ConversationHeader: View {
                     .background(Theme.raised)
                     .overlay(alignment: .bottom) { Rectangle().fill(Theme.rule).frame(height: 1) }
                 }
+                // Endfield's title rule between the header and the messages (the draft, #32); the chat's padding is
+                // the space below it.
+                SegmentRule((48, 120, 24), height: 4, hairline: false)
+                    .padding(.leading, 20)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(EndfieldBackdrop())
             }
             .confirmsDelete(actions, store: model.store)
             // A header for another conversation starts clean; a handoff stays in the same thread (its oldest part), so

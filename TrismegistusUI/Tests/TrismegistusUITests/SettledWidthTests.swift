@@ -9,13 +9,15 @@ import XCTest
 @MainActor
 final class SettledWidthTests: XCTestCase {
     private final class Panes: ObservableObject {
+        @Published var sidebar = true
+        @Published var width = 260.0
         @Published var inspector = true
     }
 
     private struct Window: View {
         @ObservedObject var panes: Panes
         var body: some View {
-            NavigationSplitView {
+            SidebarSplit(isShown: $panes.sidebar, width: $panes.width) {
                 List(0..<20, id: \.self) { Text("Conversation \($0)") }
             } detail: {
                 VStack(spacing: 0) {
@@ -79,17 +81,20 @@ final class SettledWidthTests: XCTestCase {
         XCTAssertLessThanOrEqual(resize, 4)
         XCTAssertEqual(afterResize, 0, "settled width keeps changing after a resize")
 
-        // Closing and opening the inspector with animation: a few settles each, then quiet.
-        for _ in 0..<2 {
-            let before = SettledWidth.settleCount
-            withAnimation { panes.inspector.toggle() }
-            spin(1.0)
-            let toggled = SettledWidth.settleCount - before
-            spin(1.0)
-            let quiet = SettledWidth.settleCount - before - toggled
-            print("settledWidth: \(toggled) settles after toggling the inspector (now \(panes.inspector ? "open" : "closed")), \(quiet) after that")
-            XCTAssertLessThanOrEqual(toggled, 3)
-            XCTAssertEqual(quiet, 0, "settled width keeps changing after toggling the inspector")
+        // Closing and opening the inspector, then the sidebar (our own column, #32), with animation: a few settles
+        // each, not one per frame, then quiet.
+        for (pane, toggle) in [("inspector", { panes.inspector.toggle() }), ("sidebar", { panes.sidebar.toggle() })] {
+            for _ in 0..<2 {
+                let before = SettledWidth.settleCount
+                withAnimation { toggle() }
+                spin(1.0)
+                let toggled = SettledWidth.settleCount - before
+                spin(1.0)
+                let quiet = SettledWidth.settleCount - before - toggled
+                print("settledWidth: \(toggled) settles after toggling the \(pane), \(quiet) after that")
+                XCTAssertLessThanOrEqual(toggled, 3, "the \(pane)'s animation re-lays the chat out more than a few times")
+                XCTAssertEqual(quiet, 0, "settled width keeps changing after toggling the \(pane)")
+            }
         }
     }
 }

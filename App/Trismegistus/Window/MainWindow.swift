@@ -2,21 +2,23 @@ import SwiftUI
 import TrismegistusKit
 import TrismegistusUI
 
-/// Conversations | chat | terminal pane (inspector).
+/// Conversations | chat | terminal pane (inspector). The sidebar is our own column (`SidebarSplit`, #32), not the
+/// system's floating glass panel; the toolbar's toggle, the View menu and ⌃⌘S show and hide it.
 struct MainWindow: View {
     @Environment(AppModel.self) private var model
     @AppStorage("window.selectedSession") private var selectedSession = ""
     @AppStorage("window.terminalShown") private var terminalShown = true
+    @AppStorage("window.sidebarShown") private var sidebarShown = true
+    @AppStorage("window.sidebarWidth") private var sidebarWidth = 260.0
+    @FocusState private var filterFocused: Bool
 
     private var selection: Binding<String?> {
         Binding(get: { selectedSession.isEmpty ? nil : selectedSession }, set: { selectedSession = $0 ?? "" })
     }
 
     var body: some View {
-        NavigationSplitView {
-            ConversationSidebar(selection: selection)
-                .topBarColumn(.leadingEdge)
-                .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 340)
+        SidebarSplit(isShown: $sidebarShown, width: $sidebarWidth) {
+            ConversationSidebar(selection: selection, filterFocus: $filterFocused)
         } detail: {
             Group {
                 if selection.wrappedValue == NewsRowView.id {
@@ -46,11 +48,37 @@ struct MainWindow: View {
         .refreshesNews(model)
         .toolbar { toolbar }
         .toolbar(removing: .title)
+        .focusedSceneValue(\.sidebar, SidebarActions(isShown: sidebarShown, toggle: toggleSidebar, find: findConversation))
         .frame(minWidth: 1100, minHeight: 640)
         .background(WindowFrameMemory(name: "TrismegistusMainWindow"))
     }
 
+    private func toggleSidebar() {
+        withAnimation { sidebarShown.toggle() }
+    }
+
+    /// ⌘K: the sidebar's Filter field, showing the sidebar first if it is hidden.
+    private func findConversation() {
+        guard !sidebarShown else { filterFocused = true; return }
+        withAnimation { sidebarShown = true }
+        // The field is only in the hierarchy once the sidebar is back.
+        Task {
+            try? await Task.sleep(for: .milliseconds(50))
+            filterFocused = true
+        }
+    }
+
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
+        ToolbarItem(placement: .navigation) {
+            Button(action: toggleSidebar) {
+                Image(systemName: "sidebar.left").typeRole(.button).foregroundStyle(Theme.onSteel)
+                    .padding(6).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(sidebarShown ? "Hide sidebar (⌃⌘S)" : "Show sidebar (⌃⌘S)")
+            .accessibilityLabel(sidebarShown ? "Hide sidebar" : "Show sidebar")
+        }
+        .sharedBackgroundVisibility(.hidden)
         ToolbarItem(placement: .navigation) {
             HStack(spacing: 8) {
                 Image(nsImage: MenuBarGlyph.image(glyph)).renderingMode(.template).accessibilityHidden(true)
@@ -136,6 +164,34 @@ private struct TerminalToggle: View {
         .help("Terminal (⌥⌘T)")
         .accessibilityLabel("Terminal")
         .accessibilityAddTraits(isOn ? .isSelected : [])
+    }
+}
+
+/// What the window's View menu items act on, from the key main window.
+struct SidebarActions {
+    let isShown: Bool
+    let toggle: @MainActor () -> Void
+    let find: @MainActor () -> Void
+}
+
+extension FocusedValues {
+    @Entry var sidebar: SidebarActions?
+}
+
+/// View menu: show or hide the sidebar (⌃⌘S, the system's key for it) and ⌘K for the conversations filter. Disabled
+/// unless the main window is key.
+struct SidebarMenuCommands: Commands {
+    @FocusedValue(\.sidebar) private var sidebar
+
+    var body: some Commands {
+        CommandGroup(before: .sidebar) {
+            Button(sidebar?.isShown == false ? "Show Sidebar" : "Hide Sidebar") { sidebar?.toggle() }
+                .keyboardShortcut("s", modifiers: [.control, .command])
+                .disabled(sidebar == nil)
+            Button("Find Conversation") { sidebar?.find() }
+                .keyboardShortcut("k")
+                .disabled(sidebar == nil)
+        }
     }
 }
 

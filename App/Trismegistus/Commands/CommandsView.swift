@@ -6,22 +6,21 @@ import TrismegistusUI
 struct CommandsRowView: View {
     let isSelected: Bool
 
+    @Environment(\.sunkenRows) private var sunken
+
     var body: some View {
-        HStack(spacing: 0) {
-            Rectangle().fill(isSelected ? Theme.yellow : .clear).frame(width: 3)
-            HStack(spacing: 8) {
-                Image(systemName: Symbol.terminal).font(.system(size: 11)).foregroundStyle(Theme.muted)
-                Text("Commands").typeRole(.headline).foregroundStyle(Theme.ink)
-                Spacer(minLength: 8)
-                Text("all conversations").typeRole(.monoSmall).foregroundStyle(Theme.muted)
-                if isSelected {
-                    Image(systemName: Symbol.chevronRight).font(.system(size: 10)).foregroundStyle(Theme.ink)
-                }
+        HStack(spacing: 8) {
+            Image(systemName: Symbol.terminal).font(.system(size: 11)).foregroundStyle(sunken ? Theme.secondary : Theme.muted)
+            Text("Commands").typeRole(.headline).foregroundStyle(Theme.ink)
+            Spacer(minLength: 8)
+            Text("all conversations").typeRole(.monoSmall).foregroundStyle(sunken ? Theme.secondary : Theme.muted)
+            if isSelected {
+                Image(systemName: Symbol.chevronRight).font(.system(size: 10)).foregroundStyle(Theme.ink)
             }
-            .padding(.horizontal, 12)
         }
+        .padding(.horizontal, 12)
         .frame(height: 40)
-        .background(Theme.raised)
+        .rowGround(isSelected: isSelected)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
