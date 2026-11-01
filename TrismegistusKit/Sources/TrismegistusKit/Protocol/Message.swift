@@ -21,6 +21,9 @@ public enum ErrorCode: String, Codable, Sendable, CaseIterable {
     case busy
     case notFound = "not_found"
     case readOnly = "read_only"
+    /// REST only (HTTP 403): a write from a `viewer` device, or GitHub refusing the relay. Not one of `schema.json`'s
+    /// WebSocket codes.
+    case forbidden
     case replayGap = "replay_gap"
     case hermesUnavailable = "hermes_unavailable"
     case hermesError = "hermes_error"

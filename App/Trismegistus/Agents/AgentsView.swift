@@ -61,7 +61,6 @@ struct AgentsView: View {
             if let board = model.agents {
                 content(board)
                     .task(id: ObjectIdentifier(board)) {
-                        await board.refreshRole()
                         while !Task.isCancelled {
                             await board.refresh()
                             try? await Task.sleep(for: .seconds(3))

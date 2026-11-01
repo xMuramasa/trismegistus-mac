@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Observation
 import TrismegistusKit
@@ -16,11 +17,14 @@ final class AppModel {
     private(set) var store: SessionStore?
     /// The News conversation (#19): the daily feed runs folded into one; a new one per connection.
     private(set) var news: NewsFeed?
-    /// Hermes' cron jobs (#21) and this device's role, refreshed on each (re)connect.
+    /// This device's name and role (`GET /api/me`), fetched on each (re)connect and when the app comes to the
+    /// foreground; Jobs, GitHub and Agents all read it.
+    private(set) var device: DeviceProfile?
+    /// Hermes' cron jobs (#21), refreshed on each (re)connect.
     private(set) var jobs: JobBoard?
-    /// The GitHub row and view (#22): the Work board and this device's role; a new one per connection.
+    /// The GitHub row and view (#22): the Work board; a new one per connection.
     private(set) var github: GitHubModel?
-    /// Background agents (#23) and this device's role: polled every 15 s while connected for the menu bar glyph's mark
+    /// Background agents (#23): polled every 15 s while connected for the menu bar glyph's mark
     /// (the Agents view polls faster while shown).
     private(set) var agents: AgentBoard?
     /// The token couldn't be read at launch; shown on the pairing screen.
@@ -28,6 +32,7 @@ final class AppModel {
     /// The last session list refresh failed.
     private(set) var sessionsError: String?
 
+    var role: DeviceRole? { device?.role }
     var connection: RelayClient.ConnectionState { store?.connection ?? .disconnected }
     var sessions: [SessionInfo] { store?.sessionList ?? [] }
     var pendingApprovals: [PendingApproval] { store?.pendingApprovals ?? [] }
@@ -55,6 +60,10 @@ final class AppModel {
             keychainError = "Can't read the device token from the Keychain."
         }
         notifications.start(model: self)
+        // `devices set-role` applies from the device's next request.
+        NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in await self?.device?.refresh() }
+        }
     }
 
     /// Trades a pairing code for a device token, keeps it in the Keychain and connects. Throws RelayAPIError (a bad,
@@ -117,16 +126,19 @@ final class AppModel {
         )
         self.store = store
         news = NewsFeed(rest: store.rest)
-        let jobs = JobBoard(rest: store.rest)
+        let device = DeviceProfile(rest: store.rest)
+        self.device = device
+        let jobs = JobBoard(rest: store.rest, device: device)
         self.jobs = jobs
-        github = GitHubModel(rest: store.rest)
-        let agents = AgentBoard(rest: store.rest)
+        github = GitHubModel(rest: store.rest, device: device)
+        let agents = AgentBoard(rest: store.rest, device: device)
         self.agents = agents
         store.start()
         // The session list and the jobs are reloaded on every (re)connect.
         watch = Task { [weak self] in
             for await state in Observations({ store.connection }) {
                 guard case .connected = state else { continue }
+                Task { await device.refresh() }
                 Task { await jobs.refresh() }
                 Task { await agents.refresh() }
                 do {
@@ -153,6 +165,7 @@ final class AppModel {
         await store?.stop()
         store = nil
         news = nil
+        device = nil
         jobs = nil
         github = nil
         agents = nil

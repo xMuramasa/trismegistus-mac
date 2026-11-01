@@ -1,14 +1,12 @@
 import Foundation
 import Observation
 
-/// Background agents through the relay, and whether this device may stop them. A new one per pairing; the list is
-/// fetched on every connect, every 15 s in the background and every 3 s while the Agents view is shown.
+/// Background agents through the relay; the shared `DeviceProfile` says whether this device may stop them. A new one per
+/// pairing; the list is fetched on every connect, every 15 s in the background and every 3 s while the Agents view is shown.
 @MainActor @Observable
 public final class AgentBoard {
     /// Running first, then newest first (the relay's order).
     public private(set) var agents: [Agent] = []
-    /// Nil until the relay answered: no stop button until then.
-    public private(set) var role: DeviceRole?
     /// The last refresh failed. The agents it had stay, except for `not_configured`, which empties the list.
     public private(set) var error: AgentsError?
     public private(set) var isLoaded = false
@@ -16,12 +14,15 @@ public final class AgentBoard {
     public private(set) var stopping: Set<String> = []
 
     public let rest: RelayREST
+    let device: DeviceProfile
 
-    public init(rest: RelayREST) {
+    public init(rest: RelayREST, device: DeviceProfile) {
         self.rest = rest
+        self.device = device
     }
 
-    public var canManage: Bool { role == .manager }
+    /// No stop button until the relay has said this device is a manager.
+    public var canManage: Bool { device.canManage }
     public var runningCount: Int { agents.filter(\.alive).count }
     /// A run is alive: the menu bar glyph's mark.
     public var anyRunning: Bool { agents.contains(where: \.alive) }
@@ -40,11 +41,6 @@ public final class AgentBoard {
         }
         stopping.formIntersection(agents.filter(\.alive).map(\.id))
         isLoaded = true
-    }
-
-    /// Every time the view opens: `devices set-role` applies from the device's next request.
-    public func refreshRole() async {
-        role = try? await rest.role()
     }
 
     /// Manager only. Returns once the helper accepted; `alive` turns false in a later `refresh()`.

@@ -118,7 +118,7 @@ public struct AgentTranscriptPage: Decodable, Sendable, Equatable {
 }
 
 /// The relay's agents errors (`{"error": {code, message}}`); `not_configured` (the host helper isn't installed or
-/// isn't running) and `forbidden` are REST-only codes, so not `ErrorCode`.
+/// isn't running) is a REST-only code, so not `ErrorCode`.
 public struct AgentsError: Error, Sendable, Equatable {
     /// HTTP status; 0 when the request was refused before it was sent (a bad id) or never answered.
     public let status: Int
@@ -149,7 +149,7 @@ public struct AgentsError: Error, Sendable, Equatable {
     public static func describe(_ error: any Error) -> String {
         switch error {
         case let e as AgentsError where e.isNotConfigured: "The agents helper isn't running."
-        case let e as AgentsError where e.code == "forbidden": "This device can read agents but not stop them."
+        case let e as AgentsError where e.code == "forbidden": DeviceRole.viewerNotice
         case let e as AgentsError: e.message
         case let e as RelayAPIError: e.message
         default: "Can't reach the relay."

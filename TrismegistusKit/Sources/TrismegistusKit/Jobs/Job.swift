@@ -116,4 +116,7 @@ public struct JobRun: Decodable, Sendable, Equatable, Identifiable {
 /// What the relay lets this device do (`GET /api/me`): a `viewer` only reads jobs, a `manager` changes them.
 public enum DeviceRole: String, Sendable, Equatable {
     case manager, viewer
+
+    /// What every write refused with 403 `forbidden` says.
+    public static let viewerNotice = "This device can only view: change its role on the relay (`devices set-role`)."
 }

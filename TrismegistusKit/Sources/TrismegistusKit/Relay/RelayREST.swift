@@ -18,7 +18,7 @@ public struct RelayAPIError: Error, Sendable, Equatable {
 
     /// relay/internal/server/server.go statusOf, reversed: for error bodies that aren't the relay's JSON.
     static let codeOfStatus: [Int: ErrorCode] = [
-        400: .badRequest, 401: .unauthorized, 403: .readOnly, 404: .notFound, 409: .busy, 410: .replayGap,
+        400: .badRequest, 401: .unauthorized, 403: .forbidden, 404: .notFound, 409: .busy, 410: .replayGap,
         413: .tooLarge, 429: .rateLimited, 502: .hermesError, 503: .hermesUnavailable,
     ]
 
@@ -30,7 +30,7 @@ public struct RelayAPIError: Error, Sendable, Equatable {
         let inner = (try? Wire.decode(Body.self, from: body))?.error
         self.status = status
         code = inner?.code.flatMap(ErrorCode.init(rawValue:)) ?? Self.codeOfStatus[status] ?? .internal
-        message = String((inner?.message ?? "The relay answered \(status).").prefix(512))
+        message = code == .forbidden ? DeviceRole.viewerNotice : String((inner?.message ?? "The relay answered \(status).").prefix(512))
     }
 
     static let unexpected = RelayAPIError(status: 0, code: .hermesError, message: "The relay sent an unexpected response.")
@@ -239,16 +239,6 @@ public struct RelayREST: Sendable {
         return (page.items, page.count)
     }
 
-    /// This device's role (`GET /api/me`); a relay that predates roles (404) treats every device as a viewer.
-    public func role() async throws -> DeviceRole {
-        struct Body: Decodable { var role: String }
-        do {
-            return DeviceRole(rawValue: try decode(Body.self, try await call("GET", "/api/me")).role) ?? .viewer
-        } catch let error as RelayAPIError where error.status == 404 {
-            return .viewer
-        }
-    }
-
     /// Hermes' cron jobs, paused ones included. Every device.
     public func jobs() async throws -> [Job] {
         struct Body: Decodable { var jobs: Lossy<Job> }
@@ -291,7 +281,7 @@ public struct RelayREST: Sendable {
 
     private struct JobEnvelope: Decodable { var job: Job }
 
-    /// The device's name and role. A relay that predates roles answers 404 (RelayAPIError).
+    /// The device's name and role; `DeviceProfile` is the one caller. A relay that predates roles answers 404 (RelayAPIError).
     public func me() async throws -> DeviceInfo {
         try decode(DeviceInfo.self, try await call("GET", "/api/me"))
     }

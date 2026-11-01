@@ -226,15 +226,6 @@ let sampleJob = #"""
         return (RelayREST(baseURL: URL(string: "https://relay.invalid")!, token: fakeToken, http: http), http)
     }
 
-    @Test func role() async throws {
-        #expect(try await rest { _ in (200, #"{"device":"mac","role":"manager"}"#) }.0.role() == .manager)
-        #expect(try await rest { _ in (200, #"{"device":"mac","role":"owner"}"#) }.0.role() == .viewer)
-        #expect(try await rest { _ in (404, "404 page not found") }.0.role() == .viewer)
-        let (api, http) = rest { _ in (200, #"{"device":"mac","role":"viewer"}"#) }
-        _ = try await api.role()
-        #expect(http.requests.current.first?.url?.path == "/api/me")
-    }
-
     @Test func listAndRuns() async throws {
         let (api, http) = rest { r in
             r.url!.path.hasSuffix("/runs")
@@ -281,16 +272,25 @@ let sampleJob = #"""
 }
 
 @MainActor @Suite struct JobBoardTests {
-    @Test func refreshLearnsRoleAndLists() async throws {
+    /// A board over `http` and the shared device profile (fetched by the caller).
+    func board(_ http: FakeHTTP) -> (JobBoard, DeviceProfile) {
+        let rest = RelayREST(baseURL: URL(string: "https://relay.invalid")!, token: fakeToken, http: http)
+        let device = DeviceProfile(rest: rest)
+        return (JobBoard(rest: rest, device: device), device)
+    }
+
+    @Test func refreshLists() async throws {
         let http = FakeHTTP { r in
             r.url!.path == "/api/me" ? (200, #"{"device":"mac","role":"manager"}"#) : (200, #"{"jobs":[\#(sampleJob)]}"#)
         }
-        let board = JobBoard(rest: RelayREST(baseURL: URL(string: "https://relay.invalid")!, token: fakeToken, http: http))
+        let (board, device) = board(http)
         #expect(!board.canManage && !board.isLoaded)
+        await device.refresh()
         await board.refresh()
         await board.refresh()
         #expect(board.canManage && board.isLoaded && board.jobs.count == 1 && board.anyFailed)
-        #expect(http.requests.current.map { $0.url!.path } == ["/api/me", "/api/jobs", "/api/me", "/api/jobs"])
+        // The board never asks for the role: one /api/me, from the profile.
+        #expect(http.requests.current.map { $0.url!.path } == ["/api/me", "/api/jobs", "/api/jobs"])
     }
 
     @Test func hermesWithoutCron() async {
@@ -298,7 +298,8 @@ let sampleJob = #"""
             r.url!.path == "/api/me" ? (200, #"{"device":"phone","role":"viewer"}"#)
                 : (503, #"{"error":{"code":"hermes_unavailable","message":"Hermes' cron scheduler is not available"}}"#)
         }
-        let board = JobBoard(rest: RelayREST(baseURL: URL(string: "https://relay.invalid")!, token: fakeToken, http: http))
+        let (board, device) = board(http)
+        await device.refresh()
         await board.refresh()
         #expect(board.error?.code == .hermesUnavailable && board.role == .viewer && board.isLoaded && board.jobs.isEmpty)
     }
@@ -307,7 +308,6 @@ let sampleJob = #"""
         let paused = sampleJob.replacingOccurrences(of: #""enabled":true,"state":"scheduled""#, with: #""enabled":false,"state":"paused""#)
         let http = FakeHTTP { r in
             switch (r.httpMethod!, r.url!.path) {
-            case ("GET", "/api/me"): (200, #"{"device":"mac","role":"manager"}"#)
             case ("GET", "/api/jobs"): (200, #"{"jobs":[\#(sampleJob)]}"#)
             case ("POST", "/api/jobs/0000000000a1/pause"): (200, #"{"job":\#(paused)}"#)
             case ("DELETE", _): (200, #"{"ok":true}"#)
@@ -315,7 +315,7 @@ let sampleJob = #"""
             default: (404, "")
             }
         }
-        let board = JobBoard(rest: RelayREST(baseURL: URL(string: "https://relay.invalid")!, token: fakeToken, http: http))
+        let (board, _) = board(http)
         await board.refresh()
         let job = try #require(board.jobs.first)
         try await board.perform(.pause, on: job)
@@ -329,7 +329,7 @@ let sampleJob = #"""
             try await board.save(draft, to: job)
         }
         // The failed write reloaded the list.
-        #expect(http.requests.current.suffix(3).map { "\($0.httpMethod!) \($0.url!.path)" } == ["PATCH /api/jobs/0000000000a1", "GET /api/me", "GET /api/jobs"])
+        #expect(http.requests.current.suffix(2).map { "\($0.httpMethod!) \($0.url!.path)" } == ["PATCH /api/jobs/0000000000a1", "GET /api/jobs"])
 
         try await board.delete(board.jobs[0])
         #expect(board.jobs.isEmpty)

@@ -2,8 +2,8 @@ import Foundation
 import Observation
 import TrismegistusKit
 
-/// The Work board behind the sidebar's GitHub row and the GitHub view, and whether this device may act on GitHub.
-/// One per connection, like `NewsFeed`. The relay caches GitHub reads for 30 s and drops the cache on every write.
+/// The Work board behind the sidebar's GitHub row and the GitHub view; the shared `DeviceProfile` says whether this
+/// device may act on GitHub. One per connection, like `NewsFeed`. The relay caches GitHub reads for 30 s and drops the cache on every write.
 @MainActor @Observable
 final class GitHubModel {
     let rest: RelayREST
@@ -12,13 +12,17 @@ final class GitHubModel {
     private(set) var error: String?
     /// The relay has no GitHub token (or GitHub refused it): the view explains the setup.
     private(set) var notConfigured = false
-    /// Write controls only for a `manager` device; a viewer, a relay without roles or a failed `/api/me` gets none.
-    private(set) var isManager = false
+    let device: DeviceProfile
 
-    init(rest: RelayREST) { self.rest = rest }
+    /// Write controls only for a `manager` device; a viewer, a relay without roles or a failed `/api/me` gets none.
+    var isManager: Bool { device.canManage }
+
+    init(rest: RelayREST, device: DeviceProfile) {
+        self.rest = rest
+        self.device = device
+    }
 
     func refresh() async {
-        async let me = try? rest.me()
         do {
             board = try await rest.githubBoard()
             error = nil
@@ -29,6 +33,5 @@ final class GitHubModel {
             self.error = GitHubError.describe(error)
             notConfigured = (error as? GitHubError)?.isNotConfigured == true
         }
-        isManager = await me?.isManager ?? false
     }
 }

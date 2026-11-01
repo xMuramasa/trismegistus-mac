@@ -110,7 +110,7 @@ import Testing
         #expect(listError?.isNotConfigured == true && listError?.status == 503)
         let stopError = await #expect(throws: AgentsError.self) { try await api.stopAgent("proc_a1") }
         #expect(stopError?.code == "forbidden")
-        #expect(AgentsError.describe(stopError!) == "This device can read agents but not stop them.")
+        #expect(AgentsError.describe(stopError!) == DeviceRole.viewerNotice)
     }
 
     @Test func stopPostsToTheAgent() async throws {
@@ -216,21 +216,23 @@ import Testing
     // MARK: Board
 
     @MainActor @Test func boardCountsAndRole() async throws {
-        let (api, _) = rest { r in
+        let (api, http) = rest { r in
             r.url?.path == "/api/me" ? (200, #"{"device":"macbook","role":"manager"}"#) : (200, Self.list)
         }
-        let board = AgentBoard(rest: api)
+        let device = DeviceProfile(rest: api)
+        let board = AgentBoard(rest: api, device: device)
         #expect(!board.canManage && !board.anyRunning)
+        await device.refresh()
         await board.refresh()
-        await board.refreshRole()
         #expect(board.agents.count == 5 && board.runningCount == 2 && board.anyRunning && board.canManage && board.isLoaded)
+        #expect(http.requests.current.map { $0.url!.path } == ["/api/me", "/api/agents"])
     }
 
     @MainActor @Test func viewerCannotManage() async {
         let (api, _) = rest { _ in (200, #"{"device":"phone","role":"viewer"}"#) }
-        let board = AgentBoard(rest: api)
-        await board.refreshRole()
-        #expect(!board.canManage)
+        let device = DeviceProfile(rest: api)
+        await device.refresh()
+        #expect(!AgentBoard(rest: api, device: device).canManage)
     }
 
     @MainActor @Test func notConfiguredEmptiesTheList() async {
@@ -238,7 +240,7 @@ import Testing
         let (api, _) = rest { _ in
             configured.current ? (200, Self.list) : (503, #"{"error":{"code":"not_configured","message":"agents helper not configured"}}"#)
         }
-        let board = AgentBoard(rest: api)
+        let board = AgentBoard(rest: api, device: DeviceProfile(rest: api))
         await board.refresh()
         configured.mutate { $0 = false }
         await board.refresh()
@@ -248,7 +250,7 @@ import Testing
     @MainActor @Test func otherFailuresKeepTheList() async {
         let up = Watched(true)
         let (api, _) = rest { _ in up.current ? (200, Self.list) : (502, "bad gateway") }
-        let board = AgentBoard(rest: api)
+        let board = AgentBoard(rest: api, device: DeviceProfile(rest: api))
         await board.refresh()
         up.mutate { $0 = false }
         await board.refresh()
@@ -261,7 +263,7 @@ import Testing
             if r.httpMethod == "POST" { stopped.mutate { $0 = true }; return (202, #"{"stopping":true}"#) }
             return (200, stopped.current ? Self.list.replacingOccurrences(of: #""alive":true"#, with: #""alive":false"#) : Self.list)
         }
-        let board = AgentBoard(rest: api)
+        let board = AgentBoard(rest: api, device: DeviceProfile(rest: api))
         await board.refresh()
         let agent = try #require(board.agents.first)
         try await board.stop(agent)
@@ -273,7 +275,7 @@ import Testing
         let (api, _) = rest { r in
             r.httpMethod == "POST" ? (403, #"{"error":{"code":"forbidden","message":"manager only"}}"#) : (200, Self.list)
         }
-        let board = AgentBoard(rest: api)
+        let board = AgentBoard(rest: api, device: DeviceProfile(rest: api))
         await board.refresh()
         await #expect(throws: AgentsError.self) { try await board.stop(board.agents[0]) }
         #expect(board.stopping.isEmpty && board.runningCount == 2)

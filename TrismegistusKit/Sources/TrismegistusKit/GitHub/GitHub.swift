@@ -107,7 +107,7 @@ public struct GitHubComment: Decodable, Sendable, Equatable {
     enum CodingKeys: String, CodingKey { case author, body, createdAt = "created_at", url }
 }
 
-/// The relay's GitHub errors (`{"error": {code, message, retry_at?}}`); their codes are REST-only, so not `ErrorCode`.
+/// The relay's GitHub errors (`{"error": {code, message, retry_at?}}`); `not_configured` and `rate_limited` are REST-only, so not `ErrorCode`.
 public struct GitHubError: Error, Sendable, Equatable {
     /// HTTP status; 0 when the request was refused before it was sent (a bad repo name).
     public let status: Int
