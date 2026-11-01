@@ -32,8 +32,9 @@ struct ModelMenu: View {
                     } label: {
                         ModelLabel(choice: current)
                     }
-                    .menuStyle(.borderlessButton)
-                    .menuIndicator(.hidden)
+                    // `.button` + `.plain` draws `ModelLabel` as it is; `.borderlessButton` swaps it for AppKit's own
+                    // (a leading chevron, system text colour, no border).
+                    .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden)
                     .fixedSize()
                     .help("Model: \(catalog.providerName(current.provider)) · applies from the next message")
                     .accessibilityLabel("Model \(current.label)")

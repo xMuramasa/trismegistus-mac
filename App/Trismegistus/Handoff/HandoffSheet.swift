@@ -42,7 +42,7 @@ struct HandoffSheet: View {
                     } label: {
                         ModelLabel(choice: choice)
                     }
-                    .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                    .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
                     .help(choice.map { catalog.providerName($0.provider) } ?? "Model")
                 }
             }

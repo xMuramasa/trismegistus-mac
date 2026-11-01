@@ -37,7 +37,9 @@ struct ContextMeter: View {
         .contentShape(Rectangle())
         Group {
             if !loaded {
-                EmptyView()
+                // Not `EmptyView`: SwiftUI never runs a `.task` attached to an empty view, so the estimate never
+                // loaded and the meter never showed.
+                Color.clear.frame(width: 0, height: 0)
             } else if canHandOff {
                 Button(action: onHandOff) { label }.buttonStyle(.plain)
             } else {
