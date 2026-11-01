@@ -32,6 +32,13 @@ public struct EndfieldBackground: View {
         }
         context.stroke(marks, with: .color(Theme.ink.opacity(0.55)), style: StrokeStyle(lineWidth: 0.5, lineCap: .butt))
 
+        drawContours(&context, size, color: Theme.rule)
+    }
+
+    /// The topographic lines: 18 closed curves around (78%, 72%) of `size`, every fifth one stronger. `opacity` scales
+    /// both strengths (the terminal pane draws them faintly on ink).
+    static func drawContours(_ context: inout GraphicsContext, _ size: CGSize, color: Color, opacity: Double = 1) {
+        let w = size.width, h = size.height
         let cx = w * 0.78, cy = h * 0.72
         for k in 1...18 {
             let r0 = Double(k) * Double(min(w, h)) * 0.045
@@ -42,8 +49,25 @@ public struct EndfieldBackground: View {
                 let p = CGPoint(x: cx + r * cos(t) * 1.35, y: cy + r * sin(t))
                 if i == 0 { contour.move(to: p) } else { contour.addLine(to: p) }
             }
-            context.stroke(contour, with: .color(Theme.rule.opacity(k % 5 == 0 ? 0.9 : 0.55)), lineWidth: 1)
+            context.stroke(contour, with: .color(color.opacity((k % 5 == 0 ? 0.9 : 0.55) * opacity)), lineWidth: 1)
         }
+    }
+}
+
+/// Endfield's contour lines alone, in one colour on a transparent ground (the terminal pane: `sunken` on ink). Put it
+/// inside a `settledWidth` so a pane animation doesn't redraw it every frame (#28).
+public struct EndfieldContours: View {
+    let color: Color
+    let opacity: Double
+
+    public init(color: Color, opacity: Double = 1) {
+        self.color = color
+        self.opacity = opacity
+    }
+
+    public var body: some View {
+        Canvas { context, size in EndfieldBackground.drawContours(&context, size, color: color, opacity: opacity) }
+            .accessibilityHidden(true)
     }
 }
 

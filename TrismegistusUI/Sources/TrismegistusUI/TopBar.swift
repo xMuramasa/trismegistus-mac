@@ -55,12 +55,19 @@ public extension View {
     /// Continues the top bar across a column that draws its own top over the window's strip (the floating sidebar
     /// panel, the inspector): the strip and its rule in the column's top safe area, over the column's background and
     /// under the toolbar's items. It takes no clicks, so the toolbar and window dragging work as before.
-    func topBarColumn(_ anchor: TopBarBackdrop.Anchor) -> some View {
-        overlay(alignment: .top) {
+    func topBarColumn(_ anchor: TopBarBackdrop.Anchor) -> some View { topBarColumn(anchor) { EmptyView() } }
+
+    /// The same, with a label on the strip at the column's leading edge, in `onSteel` (the terminal pane's title).
+    func topBarColumn<Label: View>(_ anchor: TopBarBackdrop.Anchor, @ViewBuilder label: () -> Label) -> some View {
+        let label = label()
+        return overlay(alignment: .top) {
             GeometryReader { proxy in
                 TopBarBackdrop(anchor)
                     .frame(height: proxy.safeAreaInsets.top)
                     .overlay(alignment: .bottom) { Rectangle().fill(Theme.steelRule).frame(height: 1) }
+                    .overlay(alignment: .leading) {
+                        label.foregroundStyle(Theme.onSteel).environment(\.onSteel, true).padding(.horizontal, 16)
+                    }
                     .frame(maxHeight: .infinity, alignment: .top)
                     .ignoresSafeArea()
             }

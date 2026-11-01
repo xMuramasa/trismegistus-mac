@@ -36,7 +36,6 @@ struct MainWindow: View {
             }
             .inspector(isPresented: $terminalShown) {
                 TerminalPane(sessionID: [NewsRowView.id, CommandsView.id].contains(selectedSession) ? nil : selection.wrappedValue)
-                    .topBarColumn(.trailingEdge)
                     .inspectorColumnWidth(min: 280, ideal: 360, max: 560)
             }
         }

@@ -21,17 +21,19 @@ struct TerminalPane: View {
     var body: some View {
         let entries = entries
         VStack(spacing: 0) {
-            header(entries)
-            Rectangle().fill(Theme.rule).frame(height: 1)
             transcript(entries)
             Text("Live output arrives when a command finishes, cut at 4,000 characters; the history has it in full.")
                 .typeRole(.caption).foregroundStyle(Theme.muted)
                 .padding(.horizontal, 16).padding(.vertical, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .overlay(alignment: .top) { Rectangle().fill(Theme.rule).frame(height: 1) }
+                .overlay(alignment: .top) { Rectangle().fill(Theme.onSteel.opacity(0.12)).frame(height: 1) }
         }
+        // Ink with Endfield's contour lines in `sunken` (Martin); inside the settled width, so drawn once per width.
+        .background { EndfieldContours(color: Theme.sunken, opacity: Self.contourOpacity).background(Theme.ink) }
         .settledWidth(minimum: 280)
-        .background(Theme.paper)
+        .background(Theme.ink)
+        // The title sits on the top bar's dark end, above the pane; no header row of its own.
+        .topBarColumn(.trailingEdge) { title(entries) }
         // Runs started elsewhere (Telegram, cron, the CLI) send no live events: ask the history while the pane shows.
         .task(id: TaskKey(sessionID: sessionID, log: log.map(ObjectIdentifier.init))) {
             guard let sessionID, let log else { return }
@@ -49,15 +51,16 @@ struct TerminalPane: View {
         var log: ObjectIdentifier?
     }
 
-    private func header(_ entries: [TerminalEntry]) -> some View {
+    /// How strong the contours are on ink (1 = the paper's own strength).
+    static let contourOpacity = 0.3
+
+    private func title(_ entries: [TerminalEntry]) -> some View {
         HStack(spacing: 8) {
             Text("Terminal").typeRole(.label).lineLimit(1)
             if let run = (state?.run?.id ?? entries.last?.runID), !run.isEmpty {
-                Text("run \(run.prefix(4))").typeRole(.monoSmall).foregroundStyle(Theme.secondary).lineLimit(1)
+                Text("run \(run.prefix(4))").typeRole(.monoSmall).opacity(0.7).lineLimit(1)
             }
-            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 16).padding(.vertical, 10)
     }
 
     @ViewBuilder private func transcript(_ entries: [TerminalEntry]) -> some View {

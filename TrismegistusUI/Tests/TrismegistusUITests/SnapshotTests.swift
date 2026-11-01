@@ -161,6 +161,24 @@ final class SnapshotTests: XCTestCase {
         }
     }
 
+    /// The terminal pane's ground: ink with the contour lines in `sunken` (the app's pane uses opacity 0.3), cards on it.
+    func testTerminalPaneGround() throws {
+        try snap("TerminalPaneGround") {
+            VStack(alignment: .leading, spacing: 12) {
+                TerminalEntryView(title: "21:40:12 terminal", command: "git status", exitCode: 0, duration: 0.1)
+                TerminalEntryView(
+                    title: "21:40:15 terminal", detail: "~/Projects/homelab", command: "ls apps",
+                    output: "homepage\nhindsight-ui\npenpot", exitCode: 0, duration: 0.2, startsFolded: false)
+                TerminalEntryView(title: "21:41:02 read_file", command: "SPEC.md", exitCode: 0, duration: 0.0)
+                Spacer(minLength: 0)
+            }
+            .padding(16)
+            .frame(height: 620)
+            .background { EndfieldContours(color: Theme.sunken, opacity: 0.3).background(Theme.ink) }
+            .padding(-16)
+        }
+    }
+
     func testTerminalOutputPreview() {
         let lines = (1...40).map(String.init)
         let preview = TerminalEntryView.preview(lines.joined(separator: "\n"))
