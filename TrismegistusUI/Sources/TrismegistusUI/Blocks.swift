@@ -121,7 +121,8 @@ public struct ApprovalBannerView: View {
 /// thousands of lines is what a row costs when it scrolls into view.
 /// One tool call in the terminal pane, after Arknights' item cards (Martin's reference): an orange header (a dash, the
 /// time and tool in white, the duration, a chevron that folds the entry), then the command and its output with the
-/// cyan/magenta/yellow accent column on the right, and a rule under it.
+/// cyan/magenta/yellow accent column on the right, and a rule under it; a white box with a rounded top-right corner
+/// and a faded shadow for an outline.
 public struct TerminalEntryView: View {
     public static let previewLines = 12
     /// The accent column, top to bottom (sampled from the reference card), then a grey track.
@@ -157,6 +158,9 @@ public struct TerminalEntryView: View {
         self.duration = duration
     }
 
+    /// Square but for the top-right corner (Martin's pick, against Endfield's zero rounding).
+    private static let shape = UnevenRoundedRectangle(topTrailingRadius: 8, style: .continuous)
+
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
@@ -164,6 +168,10 @@ public struct TerminalEntryView: View {
             Rectangle().fill(Theme.rule).frame(height: 1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.raised)
+        .clipShape(Self.shape)
+        // A faded shadow instead of an outline. It is the shadow of a plain shape, cheap to draw (#28).
+        .background { Self.shape.fill(Theme.raised).shadow(color: Theme.ink.opacity(0.16), radius: 5, y: 1) }
     }
 
     private var header: some View {
