@@ -260,7 +260,7 @@ struct PriorityMark: View {
 
     var body: some View {
         Text(priority).typeRole(.label).foregroundStyle(Ink.surface.window)
-            .padding(.horizontal, Space.s).padding(.vertical, Space.xxs).background(Palette.ink)
+            .padding(.horizontal, Space.s).padding(.vertical, Space.xxs).background(Ink.surface.inverse)
             .accessibilityLabel("Priority \(priority)")
     }
 }

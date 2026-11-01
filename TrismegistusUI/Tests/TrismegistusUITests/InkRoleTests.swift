@@ -4,7 +4,7 @@ import XCTest
 
 @testable import TrismegistusUI
 
-/// The roles added in #36 resolve to exactly what the views composed by hand before (no visible change).
+/// The roles added in #36 and #38 resolve to exactly what the views composed by hand before (no visible change).
 final class InkRoleTests: XCTestCase {
     private func rgba(_ color: Color) throws -> [CGFloat] {
         let c = try XCTUnwrap(NSColor(color).usingColorSpace(.sRGB))
@@ -26,5 +26,14 @@ final class InkRoleTests: XCTestCase {
         try assertSame(Ink.line.outlineOnDark, Ink.text.onDark.opacity(Opacity.outlineOnDark), "line.outlineOnDark")
         XCTAssertEqual(try rgba(Ink.line.onDark)[3], 0.12, accuracy: 0.0001)
         XCTAssertEqual(try rgba(Ink.line.outlineOnDark)[3], 0.5, accuracy: 0.0001)
+    }
+
+    func testRolesForTheLastRawPaletteColours() throws {
+        try assertSame(Ink.surface.inverse, Palette.ink, "surface.inverse")
+        try assertSame(Ink.mark.empty, Palette.borderInactive, "mark.empty")
+        try assertSame(Ink.marker, Palette.magenta, "marker")
+        try assertSame(Ink.card.onHeader, Palette.raised, "card.onHeader")
+        try assertSame(Ink.line.paperCross, Palette.ink.opacity(Opacity.paperCrosses), "line.paperCross")
+        XCTAssertEqual(try rgba(Ink.line.paperCross)[3], 0.55, accuracy: 0.0001)
     }
 }

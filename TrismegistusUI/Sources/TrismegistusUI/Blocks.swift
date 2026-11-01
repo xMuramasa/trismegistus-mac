@@ -93,7 +93,7 @@ public struct ApprovalBannerView: View {
             Rectangle().fill(Ink.selection).frame(height: Stroke.mark)
             VStack(alignment: .leading, spacing: Space.m) {
                 HStack(spacing: Space.s) {
-                    Rectangle().fill(Palette.magenta).frame(width: Size.marker, height: Size.marker)
+                    Rectangle().fill(Ink.marker).frame(width: Size.marker, height: Size.marker)
                     Text("Approval // Required").typeRole(.label)
                     Spacer()
                     Text(tool).typeRole(.monoSmall).foregroundStyle(Ink.text.muted)
@@ -201,7 +201,7 @@ public struct TerminalEntryView: View {
                     .font(.system(size: Icon.xs, weight: .bold)).frame(width: Icon.s)
             }
             .typeRole(.monoSmall, weight: .semibold)
-            .foregroundStyle(Palette.raised)
+            .foregroundStyle(Ink.card.onHeader)
             .padding(.horizontal, Space.m)
             .frame(maxWidth: .infinity, minHeight: Self.headerHeight, maxHeight: Self.headerHeight, alignment: .leading)
             .background(Ink.card.header)

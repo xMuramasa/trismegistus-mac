@@ -30,7 +30,7 @@ public struct EndfieldButtonStyle: ButtonStyle {
 
         private var palette: (fill: Color, edge: Color, text: Color) {
             if !isEnabled { return (Ink.surface.sunken, Ink.line.rule, Ink.text.muted) }
-            if configuration.isPressed { return (Palette.ink, Ink.line.strong, Ink.selection) }
+            if configuration.isPressed { return (Ink.surface.inverse, Ink.line.strong, Ink.selection) }
             switch style.kind {
             case .primary: return (Ink.selection, Ink.line.strong, Ink.text.primary)
             case .secondary: return (Ink.surface.raised, Ink.line.strong, Ink.text.primary)
@@ -129,7 +129,7 @@ public struct EndfieldTextField: View {
 extension View {
     /// `.switch` toggle tinted ink (yellow fails contrast as a track on paper).
     public func endfieldSwitch() -> some View {
-        toggleStyle(.switch).tint(Palette.ink)
+        toggleStyle(.switch).tint(Ink.surface.inverse)
     }
 }
 

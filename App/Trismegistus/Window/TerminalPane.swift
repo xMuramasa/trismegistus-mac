@@ -103,7 +103,7 @@ struct FilterChip: View {
             .padding(.horizontal, Space.m).padding(.vertical, Space.s)
             .frame(maxWidth: fills ? .infinity : nil)
             .foregroundStyle(isOn ? Ink.selection : Ink.text.primary)
-            .background(isOn ? Palette.ink : .clear)
+            .background(isOn ? Ink.surface.inverse : .clear)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

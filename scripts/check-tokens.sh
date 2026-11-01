@@ -6,6 +6,7 @@
 #       shadow radii. 0 and ±1 (the hairline) are allowed. Skipped: the generated file, tests, `#Preview` blocks, and
 #       the files and folders listed in scripts/token-allowlist.txt (one per line, from the repo root).
 #   (c) any Swift source (tests included) still says `Theme.`: the old compatibility names are gone (#37).
+#   (d) a Swift source outside Tokens.swift and the tests says `Palette.`: views use the `Ink` roles (#38).
 #
 #   scripts/check-tokens.sh            both checks
 #   scripts/check-tokens.sh --all      (b) only, ignoring the allow-list: every literal left (the App/ inventory)
@@ -67,6 +68,14 @@ for path in sorted(p for top in ("App", "TrismegistusUI", "TrismegistusKit") for
         if re.search(r"\bTheme\.", line.split("//")[0]):  # the removed compatibility names (#37)
             print(f"{path}:{n}: old Theme name: {line.strip()}")
             found += 1
+for top in ("TrismegistusUI/Sources", "App/Trismegistus"):  # raw palette colours: views read the Ink roles (#38)
+    for path in sorted(pathlib.Path(top).rglob("*.swift")):
+        if str(path) == generated:
+            continue
+        for n, line in enumerate(path.read_text().splitlines(), 1):
+            if re.search(r"\bPalette\.", line.split("//")[0]):
+                print(f"{path}:{n}: raw palette colour, use an Ink role: {line.strip()}")
+                found += 1
 for top in ("TrismegistusUI/Sources", "App/Trismegistus"):
     for path in sorted(pathlib.Path(top).rglob("*.swift")):
         p = str(path)

@@ -52,6 +52,8 @@ public enum Ink {
         public let raised = Palette.raised
         public let sunken = Palette.sunken
         public let terminal = Palette.ink
+        /// ink behind a chip, a toggle that is on, a pressed button, a switch that is on
+        public let inverse = Palette.ink
     }
     public static let surface = Surface()
     public struct Line: Sendable {
@@ -61,8 +63,17 @@ public enum Ink {
         public let onDark = Palette.onSteel.opacity(Opacity.ruleOnDark)
         /// an outline on the steel bar
         public let outlineOnDark = Palette.onSteel.opacity(Opacity.outlineOnDark)
+        /// the crosses on the paper ground
+        public let paperCross = Palette.ink.opacity(Opacity.paperCrosses)
     }
     public static let line = Line()
+    public struct Mark: Sendable {
+        /// the mark of an empty list
+        public let empty = Palette.borderInactive
+    }
+    public static let mark = Mark()
+    /// the square beside an approval, and the approval badge
+    public static let marker = Palette.magenta
     public static let selection = Palette.yellow
     public struct Status: Sendable {
         public let ok = Palette.terminalGreen
@@ -83,6 +94,8 @@ public enum Ink {
     public static let bar = Bar()
     public struct Card: Sendable {
         public let header = Palette.arkOrange
+        /// the title and chevron on a card's header
+        public let onHeader = Palette.raised
         /// top to bottom; the last at opacity.track
         public let accents = [Palette.accentCyan, Palette.accentMagenta, Palette.yellow, Palette.muted]
     }

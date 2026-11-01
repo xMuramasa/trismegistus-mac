@@ -168,7 +168,7 @@ private struct TerminalToggle: View {
                 .typeRole(.button)
                 .foregroundStyle(isOn ? Ink.selection : Ink.text.onDark)
                 .padding(.vertical, Space.s).padding(.horizontal, Space.s)
-                .background(isOn ? Palette.ink : .clear)
+                .background(isOn ? Ink.surface.inverse : .clear)
                 .overlay(Rectangle().strokeBorder(isOn ? Ink.line.strong : Ink.text.onDark, lineWidth: Stroke.hairline))
                 .contentShape(Rectangle())
         }

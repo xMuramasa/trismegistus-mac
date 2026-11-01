@@ -35,7 +35,7 @@ public struct EndfieldBackground: View {
             }
         }
         context.stroke(
-            marks, with: .color(Palette.ink.opacity(Opacity.paperCrosses)),
+            marks, with: .color(Ink.line.paperCross),
             style: StrokeStyle(lineWidth: Stroke.hairlineFine, lineCap: .butt))
 
         drawContours(&context, size, color: Ink.line.rule)

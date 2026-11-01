@@ -217,7 +217,7 @@ struct TagChip: View {
         Text(tag).typeRole(.monoSmall).lineLimit(1)
             .foregroundStyle(isOn ? Ink.selection : Ink.text.secondary)
             .padding(.horizontal, Space.s).padding(.vertical, 1)
-            .background(isOn ? Palette.ink : Ink.surface.sunken)
+            .background(isOn ? Ink.surface.inverse : Ink.surface.sunken)
             .overlay(Rectangle().strokeBorder(isOn ? Ink.line.strong : Ink.line.rule, lineWidth: Stroke.hairline))
     }
 }

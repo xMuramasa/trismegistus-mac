@@ -155,7 +155,7 @@ struct SessionList: View {
     private var empty: some View {
         VStack(spacing: Space.m) {
             Spacer()
-            TMark().scaleEffect(3).frame(width: Size.emptyMark, height: Size.emptyMark).foregroundStyle(Palette.borderInactive)
+            TMark().scaleEffect(3).frame(width: Size.emptyMark, height: Size.emptyMark).foregroundStyle(Ink.mark.empty)
             Text("No sessions yet").typeRole(.label).foregroundStyle(Ink.text.primary)
             Text("Start one here. Sessions from Telegram, cron or the CLI show up too, read-only.")
                 .typeRole(.callout).foregroundStyle(Ink.text.secondary).multilineTextAlignment(.center)

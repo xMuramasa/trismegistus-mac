@@ -208,7 +208,7 @@ public struct SessionRowView: View {
             Spacer(minLength: Space.s)
             if needsApproval {
                 Text("Approval").typeRole(.label).foregroundStyle(Ink.text.primary)
-                    .padding(.horizontal, Space.s).padding(.vertical, Space.xxs).background(Palette.magenta)
+                    .padding(.horizontal, Space.s).padding(.vertical, Space.xxs).background(Ink.marker)
             } else if let runElapsed {
                 HStack(spacing: Space.s) {
                     Text("Run").typeRole(.label).foregroundStyle(Ink.text.link)

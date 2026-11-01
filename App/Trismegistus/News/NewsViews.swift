@@ -85,7 +85,7 @@ struct NewsView: View {
         Group {
             if days.isEmpty {
                 VStack(spacing: Space.s) {
-                    Image(systemName: NewsRowView.symbol).font(.system(size: Icon.empty)).foregroundStyle(Palette.borderInactive)
+                    Image(systemName: NewsRowView.symbol).font(.system(size: Icon.empty)).foregroundStyle(Ink.mark.empty)
                     Text("No editions yet").typeRole(.label).foregroundStyle(Ink.text.primary)
                     Text("The daily news runs show up here when one finishes.").typeRole(.callout).foregroundStyle(Ink.text.secondary)
                 }
@@ -161,7 +161,7 @@ private struct EditionView: View {
         VStack(alignment: .leading, spacing: Space.m) {
             HStack(spacing: Space.s) {
                 Text(edition.tag).typeRole(.label).foregroundStyle(Ink.surface.window)
-                    .padding(.horizontal, Space.s).padding(.vertical, Space.xxs).background(Palette.ink)
+                    .padding(.horizontal, Space.s).padding(.vertical, Space.xxs).background(Ink.surface.inverse)
                 Spacer(minLength: Space.s)
                 if let at = item.publishedAt {
                     Text(at.formatted(date: .omitted, time: .shortened)).typeRole(.monoSmall).foregroundStyle(Ink.text.muted)
