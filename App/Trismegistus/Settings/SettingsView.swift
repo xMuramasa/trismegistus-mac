@@ -52,7 +52,7 @@ struct SettingsView: View {
     private var linkState: (LinkState, String) {
         switch model.connection {
         case .connected: (.linked, model.relayURL.host() ?? "")
-        case .connecting: (.reconnecting, "connecting")
+        case .connecting, .reconnecting: (.reconnecting, "connecting")
         case .authFailed: (.offline, "token refused")
         case .disconnected: (.offline, "not paired")
         }

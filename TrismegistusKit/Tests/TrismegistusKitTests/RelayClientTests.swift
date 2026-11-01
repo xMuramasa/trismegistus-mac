@@ -12,7 +12,7 @@ struct RelayClientTests {
     init() {
         let clock = clock
         client = RelayClient(relayURL: relayURL, token: fakeToken, transport: transport,
-                             sleep: { try await clock.sleep(for: $0) }, jitter: { 0 })
+                             sleep: { try await clock.sleep(for: $0) }, jitter: { 0 }, now: clock.date)
     }
 
     static let ready = ServerMessage.ready(device: "macbook", serverVersion: "0.1.0")
@@ -156,11 +156,67 @@ struct RelayClientTests {
         #expect(await out.nextState() == .connecting)
         #expect(await out.nextState() == .connected(device: "macbook", serverVersion: "0.1.0"))
         c0.drop()
-        #expect(await out.nextState() == .disconnected)
+        #expect(await out.nextState() == .reconnecting(attempt: 1, at: Date(timeIntervalSince1970: 1)))
         await clock.fire(.seconds(1))
         _ = await connect(1)
         #expect(await out.nextState() == .connecting)
         #expect(await out.nextState() == .connected(device: "macbook", serverVersion: "0.1.0"))
+    }
+
+    @Test func reconnectingCarriesAttemptAndJitteredTime() async {
+        let clock = clock
+        // 0.625 makes the jitter 1/8 of the wait, exact in binary: 1.125 s, 2.25 s, 4.5 s.
+        let client = RelayClient(relayURL: relayURL, token: fakeToken, transport: transport,
+                                 sleep: { try await clock.sleep(for: $0) }, jitter: { 0.625 }, now: clock.date)
+        var out = client.outputs.makeAsyncIterator()
+        await client.start()
+        var at = 0.0
+        for (attempt, wait) in [(1, 1.125), (2, 2.25), (3, 4.5)] {
+            await connect(attempt - 1).drop() // never stable: the wait keeps doubling
+            while case let s? = await out.nextState(), s != .reconnecting(attempt: attempt, at: Date(timeIntervalSince1970: at + wait)) {
+                if case .reconnecting = s { Issue.record("unexpected \(s)") }
+            }
+            await clock.fire(.milliseconds(Int(wait * 1000)))
+            at += wait
+        }
+        #expect(await out.nextState() == .connecting)
+    }
+
+    @Test func retryNowSkipsTheWaitOnly() async {
+        var out = client.outputs.makeAsyncIterator()
+        await client.subscribe("s1")
+        await client.start()
+        let c0 = await connect(0)
+        c0.push(.event(event("s1", 3, .steerQueued)))
+        _ = await out.nextMessage() // ready
+        _ = await out.nextMessage()
+        await client.retryNow() // connected: nothing happens
+        c0.drop()
+        while await out.nextState() != .reconnecting(attempt: 1, at: Date(timeIntervalSince1970: 1)) {}
+
+        await client.retryNow() // no clock advance
+        let c1 = await connect(1)
+        #expect(await c1.sent(2).last == .subscribe(sessionID: "s1", afterSeq: 3))
+        #expect(clock.state.current.sleepers.allSatisfy { $0.duration != .seconds(1) }) // the wait was cancelled
+        #expect(transport.connections.current.count == 2)
+
+        // The attempt count goes on: the next wait is 2 s.
+        c1.drop()
+        while await out.nextState() != .reconnecting(attempt: 2, at: Date(timeIntervalSince1970: 2)) {}
+        await clock.fire(.seconds(2))
+        _ = await connect(2)
+    }
+
+    @Test func retryNowAfterAuthFailureDoesNothing() async {
+        var out = client.outputs.makeAsyncIterator()
+        await client.start()
+        let c = await transport.connection(0)
+        _ = await c.sent(1)
+        c.push(.error(code: .unauthorized, message: "unauthorized"))
+        while await out.nextState() != .authFailed(message: "unauthorized") {}
+        await client.retryNow()
+        #expect(await !client.isRunning)
+        #expect(transport.connections.current.count == 1)
     }
 
     @Test func noReadyInTimeReconnects() async {

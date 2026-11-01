@@ -82,8 +82,7 @@ struct PopoverRoot: View {
 
     private var reconnectNotice: some View {
         let connecting = model.connection == .connecting
-        let attempt = max(reconnect.attempt, 1)
-        return countdownNotice(connecting: connecting, attempt: attempt)
+        return countdownNotice(connecting: connecting, attempt: max(reconnect.attempt, 1))
     }
 
     /// The message is rebuilt every second for the countdown.
@@ -92,12 +91,12 @@ struct PopoverRoot: View {
             let message: String
             if connecting {
                 message = "Showing the last known state. Attempt \(attempt), connecting."
-            } else if let at = reconnect.retryAt {
+            } else if case .reconnecting(_, let at) = model.connection {
                 message = "Showing the last known state. Attempt \(attempt), next in \(max(0, Int(at.timeIntervalSince(context.date).rounded(.up)))) s."
             } else {
                 message = "Showing the last known state. Attempt \(attempt)."
             }
-            return Notice(title: connecting && attempt == 1 ? "Connecting" : "Relay unreachable", message: message) {
+            return Notice(title: connecting && reconnect.attempt == 0 ? "Connecting" : "Relay unreachable", message: message) {
                 EndfieldButton("Retry", symbol: Symbol.retry, iconOnly: true, shortcut: KeyboardShortcut("r")) { retryNow() }
             }
         }
@@ -130,13 +129,9 @@ struct PopoverRoot: View {
         }
     }
 
-    /// Restarting the client skips the backoff wait; the Kit has no "retry now".
     private func retryNow() {
         guard let client = model.store?.client else { return }
-        Task {
-            await client.stop()
-            await client.start()
-        }
+        Task { await client.retryNow() }
     }
 
     private func refresh() async {

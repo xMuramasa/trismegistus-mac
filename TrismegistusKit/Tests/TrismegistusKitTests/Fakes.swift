@@ -85,6 +85,9 @@ final class TestClock: Sendable {
         }
     }
 
+    /// The clock's time as a date (RelayClient's `now`), from the epoch.
+    @Sendable func date() -> Date { Date(timeIntervalSince1970: state.current.now.timeInterval) }
+
     /// Waits until something sleeps for `duration`, then moves time forward by it.
     func fire(_ duration: Duration) async {
         await state.wait { $0.sleepers.contains { $0.duration == duration } }

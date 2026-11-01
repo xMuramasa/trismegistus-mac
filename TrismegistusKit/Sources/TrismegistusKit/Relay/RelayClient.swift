@@ -7,6 +7,8 @@ public actor RelayClient {
         case disconnected
         case connecting
         case connected(device: String, serverVersion: String)
+        /// Waiting out the backoff after a drop or a failed connect: `attempt` (1, 2, …) starts at `at`.
+        case reconnecting(attempt: Int, at: Date)
         /// The relay refused the token (revoked, or never paired). The client stopped and won't retry on its own.
         case authFailed(message: String)
     }
@@ -36,6 +38,7 @@ public actor RelayClient {
     private let transport: any WebSocketTransport
     private let sleep: @Sendable (Duration) async throws -> Void
     private let jitter: @Sendable () -> Double
+    private let now: @Sendable () -> Date
 
     public private(set) var state: ConnectionState = .disconnected
     /// Followed sessions and the last seq seen in each (0: none yet, subscribe without after_seq).
@@ -45,6 +48,8 @@ public actor RelayClient {
     private var socket: (any WebSocketConnection)?
     private var ready = false
     private var loop: Task<Void, Never>?
+    /// The backoff wait in progress; retryNow() cancels it.
+    private var backoff: Task<Void, any Error>?
     private var awaitingPong = false
     private var missedPongs = 0
     /// A pong came back on this connection: it was healthy for a ping interval, so the backoff starts over.
@@ -53,13 +58,14 @@ public actor RelayClient {
     public var isRunning: Bool { loop != nil }
 
     /// relayURL is the relay's https base URL (as in the pairing QR); the socket is `<base>/ws`.
-    /// sleep and jitter (0..<1) are injectable so tests control time.
+    /// sleep, jitter (0..<1) and now are injectable so tests control time.
     public init(
         relayURL: URL,
         token: String,
         transport: any WebSocketTransport = URLSessionWebSocketTransport(),
         sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
-        jitter: @escaping @Sendable () -> Double = { Double.random(in: 0..<1) }
+        jitter: @escaping @Sendable () -> Double = { Double.random(in: 0..<1) },
+        now: @escaping @Sendable () -> Date = Date.init
     ) {
         (outputs, output) = AsyncStream.makeStream(of: Output.self)
         url = Self.webSocketURL(relayURL)
@@ -67,6 +73,7 @@ public actor RelayClient {
         self.transport = transport
         self.sleep = sleep
         self.jitter = jitter
+        self.now = now
     }
 
     static func webSocketURL(_ base: URL) -> URL {
@@ -86,11 +93,18 @@ public actor RelayClient {
     public func stop() async {
         loop?.cancel()
         loop = nil
+        backoff?.cancel()
         let s = socket
         socket = nil
         ready = false
         await s?.close(code: 1000)
         setState(.disconnected)
+    }
+
+    /// Ends the backoff wait and connects now. Nothing else changes: the next wait follows on from this attempt.
+    /// A no-op unless `.reconnecting`.
+    public func retryNow() {
+        backoff?.cancel()
     }
 
     /// Follows a session: subscribes now if connected, and again after every reconnect from the last seq seen.
@@ -143,7 +157,13 @@ public actor RelayClient {
             if Task.isCancelled { return }
             let base = min(Self.maxBackoff, .seconds(1 << min(attempt, 5)))
             attempt += 1
-            do { try await sleep(base + base * (0.2 * jitter())) } catch { return }
+            let wait = base + base * (0.2 * jitter())
+            setState(.reconnecting(attempt: attempt, at: now().addingTimeInterval(wait.timeInterval)))
+            let sleep = self.sleep
+            let task = Task { try await sleep(wait) }
+            backoff = task
+            _ = await task.result // cancelled by retryNow() or stop()
+            if backoff == task { backoff = nil }
         }
     }
 
@@ -152,7 +172,6 @@ public actor RelayClient {
         setState(.connecting)
         let c: any WebSocketConnection
         do { c = try await transport.connect(to: url) } catch {
-            setState(.disconnected)
             return false
         }
         if Task.isCancelled {
@@ -164,7 +183,6 @@ public actor RelayClient {
         if socket === c { // else stop() already cleaned up
             socket = nil
             ready = false
-            if result != nil { setState(.disconnected) }
         }
         return result
     }
@@ -249,5 +267,11 @@ public actor RelayClient {
             awaitingPong = true
             try? await c.send(Self.text(.ping))
         }
+    }
+}
+
+extension Duration {
+    var timeInterval: TimeInterval {
+        Double(components.seconds) + Double(components.attoseconds) * 1e-18
     }
 }

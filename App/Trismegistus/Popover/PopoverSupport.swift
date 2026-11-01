@@ -49,22 +49,15 @@ enum PopoverFormat {
     }
 }
 
-/// Attempt number and next-retry time while the socket is down. The Kit doesn't expose them, so this follows its
-/// state changes and repeats its backoff (1 s doubling to 30 s, jitter ignored): the countdown is an estimate.
+/// The last attempt number the client reported, kept through `.connecting` (0: the first connect since launch).
 struct Reconnect {
     private(set) var attempt = 0
-    private(set) var retryAt: Date?
 
-    mutating func observe(_ state: RelayClient.ConnectionState, now: Date = .now) {
+    mutating func observe(_ state: RelayClient.ConnectionState) {
         switch state {
-        case .connecting:
-            attempt += 1
-            retryAt = nil
-        case .disconnected:
-            retryAt = now.addingTimeInterval(min(30, Double(1 << min(max(attempt - 1, 0), 5))))
-        case .connected, .authFailed:
-            attempt = 0
-            retryAt = nil
+        case .reconnecting(let n, _): attempt = n
+        case .connecting: break
+        case .disconnected, .connected, .authFailed: attempt = 0
         }
     }
 }

@@ -123,7 +123,7 @@ struct MainWindow: View {
         let host = model.relayURL.host() ?? ""
         switch model.connection {
         case .connected: return (.linked, host)
-        case .connecting: return (.reconnecting, host)
+        case .connecting, .reconnecting: return (.reconnecting, host)
         case .disconnected: return (.offline, "not connected")
         case .authFailed: return (.offline, "token refused")
         }
