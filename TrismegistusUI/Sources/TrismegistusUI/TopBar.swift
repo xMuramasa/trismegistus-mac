@@ -61,7 +61,7 @@ public struct TopBarBackdrop: View {
 
     public var body: some View {
         GeometryReader { proxy in
-            LinearGradient(colors: [Theme.steel, Theme.steelDeep, Theme.steel], startPoint: .leading, endPoint: .trailing)
+            LinearGradient(colors: [Theme.steel, Theme.steelDeep, Theme.steelEnd], startPoint: .leading, endPoint: .trailing)
                 .frame(width: max(width, proxy.size.width), height: proxy.size.height)
                 .offset(x: -proxy.frame(in: .global).minX)
         }

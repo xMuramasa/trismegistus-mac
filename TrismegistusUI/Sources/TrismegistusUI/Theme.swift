@@ -68,10 +68,11 @@ public enum Symbol {
 }
 
 /// The window's top bar (Martin, 2026-10-31, after Arknights' in-game bars; it overrides Endfield's "no gradients"):
-/// Endfield `secondary` at the ends, `dark-panel` in the middle (the Penpot library's colours).
+/// left to right Endfield `secondary` → `dark-panel` → `ink` (the Penpot library's colours).
 extension Theme {
     public static let steel = Theme.secondary
     public static let steelDeep = Theme.darkPanel
+    public static let steelEnd = Theme.ink
     /// Text and icons on the steel strip.
     public static let onSteel = Color(hex: 0xE9E9E9)
     /// The 1 pt rule under the strip: darker than its darkest point.
