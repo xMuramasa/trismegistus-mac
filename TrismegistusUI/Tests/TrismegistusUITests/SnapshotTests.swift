@@ -148,12 +148,14 @@ final class SnapshotTests: XCTestCase {
         }
         try snap("TerminalEntryView") {
             VStack(alignment: .leading, spacing: 12) {
-                TerminalEntryView(meta: "terminal · 12:04:31 · 0.3 s", command: "ls ~/Projects", output: "endfield-dotfiles\nhomelab", exitCode: 0)
-                TerminalEntryView(meta: "terminal · 12:04:40 · 4.8 s", command: "pytest -q tests/", exitCode: 1)
-                TerminalEntryView(meta: "terminal · 12:04:50", command: "sleep 30", isRunning: true)
                 TerminalEntryView(
-                    meta: "terminal · 12:05:02 · 1.2 s", command: "seq 40",
-                    output: (1...40).map(String.init).joined(separator: "\n"), exitCode: 0)
+                    title: "12:04:31 terminal", detail: "~/Projects/homelab", command: "ls ~/Projects",
+                    output: "endfield-dotfiles\nhomelab", exitCode: 0, duration: 0.3)
+                TerminalEntryView(title: "12:04:40 terminal", command: "pytest -q tests/", exitCode: 1, duration: 4.8)
+                TerminalEntryView(title: "12:04:50 terminal", command: "sleep 30", isRunning: true, startedAt: .now)
+                TerminalEntryView(
+                    title: "12:05:02 terminal", command: "seq 40",
+                    output: (1...40).map(String.init).joined(separator: "\n"), exitCode: 0, duration: 1.2)
             }
         }
     }

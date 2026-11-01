@@ -80,7 +80,7 @@ struct TerminalPane: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 16) {
+                LazyVStack(alignment: .leading, spacing: 12) {
                     ForEach(entries) { EntryRow(entry: $0) }
                 }
                 .padding(16)
@@ -122,12 +122,10 @@ struct EntryRow: View {
     let entry: TerminalEntry
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            TerminalEntryView(
-                meta: "── \(Self.time(entry.time)) \(entry.tool)" + (entry.cwd.map { " · \($0)" } ?? ""),
-                command: entry.command ?? "…", output: output, exitCode: entry.exitCode, isRunning: entry.isRunning)
-            trailing
-        }
+        TerminalEntryView(
+            title: "\(Self.time(entry.time)) \(entry.tool)", detail: entry.cwd,
+            command: entry.command ?? "…", output: output, exitCode: entry.exitCode, isRunning: entry.isRunning,
+            startedAt: Date(timeIntervalSince1970: Double(entry.time) / 1000), duration: entry.duration)
     }
 
     /// The running entry says why it has no output yet, as in the draft.
@@ -140,17 +138,6 @@ struct EntryRow: View {
         if let text = entry.output, !text.isEmpty { lines.append(text) }
         if let text = entry.errorText, !text.isEmpty { lines.append(text) }
         return lines.isEmpty ? nil : lines.joined(separator: "\n")
-    }
-
-    @ViewBuilder private var trailing: some View {
-        if entry.isRunning {
-            TimelineView(.periodic(from: .now, by: 1)) { context in
-                let s = max(0, Int(context.date.timeIntervalSince1970 - Double(entry.time) / 1000))
-                Text(String(format: "%02d:%02d", s / 60, s % 60)).typeRole(.monoSmall).foregroundStyle(Theme.blue)
-            }
-        } else if let duration = entry.duration {
-            Text(String(format: "%.1f s", duration)).typeRole(.monoSmall).foregroundStyle(Theme.muted)
-        }
     }
 
     /// `14:02:11`, with the day before it when it isn't today (history reaches back days).

@@ -20,6 +20,8 @@ public enum Theme {
     /// Endfield `dark-panel`: dark strips (the top bar's middle).
     public static let darkPanel = Color(hex: 0x35373C)
     public static let yellow = Color(hex: 0xFFFA00)
+    /// Arknights' item-card orange (Martin's reference): the terminal entries' headers.
+    public static let arkOrange = Color(hex: 0xE86600)
     public static let blue = Color(hex: 0x0040E8)
     public static let green = Color(hex: 0x00FFA2)
     public static let magenta = Color(hex: 0xFF1AAC)

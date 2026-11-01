@@ -119,27 +119,92 @@ public struct ApprovalBannerView: View {
 /// One tool call in the terminal pane: meta line, `$ command`, output, exit code or a running cursor. Output longer than
 /// `previewLines` shows its first lines and a button for the rest: the history has outputs in full, and typesetting
 /// thousands of lines is what a row costs when it scrolls into view.
+/// One tool call in the terminal pane, after Arknights' item cards (Martin's reference): an orange header (a dash, the
+/// time and tool in white, the duration, a chevron that folds the entry), then the command and its output with the
+/// cyan/magenta/yellow accent column on the right, and a rule under it.
 public struct TerminalEntryView: View {
     public static let previewLines = 12
+    /// The accent column, top to bottom (sampled from the reference card), then a grey track.
+    static let accents = [Color(hex: 0x1FE5E0), Color(hex: 0xDA16DC), Theme.yellow, Theme.muted.opacity(0.5)]
 
-    let meta: String
+    let title: String
+    let detail: String?
     let command: String
     let output: String?
     let exitCode: Int?
     let isRunning: Bool
+    let startedAt: Date?
+    let duration: Double?
     @State private var expanded = false
+    @State private var folded = false
 
-    public init(meta: String, command: String, output: String? = nil, exitCode: Int? = nil, isRunning: Bool = false) {
-        self.meta = meta
+    /// - Parameters:
+    ///   - title: the header's text, e.g. `14:02:11 terminal`.
+    ///   - detail: a line above the command (the working directory).
+    ///   - startedAt: while running, the header counts up from it.
+    ///   - duration: once finished, seconds, shown in the header.
+    public init(
+        title: String, detail: String? = nil, command: String, output: String? = nil, exitCode: Int? = nil,
+        isRunning: Bool = false, startedAt: Date? = nil, duration: Double? = nil
+    ) {
+        self.title = title
+        self.detail = detail
         self.command = command
         self.output = output
         self.exitCode = exitCode
         self.isRunning = isRunning
+        self.startedAt = startedAt
+        self.duration = duration
     }
 
     public var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            header
+            if !folded { content }
+            Rectangle().fill(Theme.rule).frame(height: 1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var header: some View {
+        Button { folded.toggle() } label: {
+            HStack(spacing: 8) {
+                Rectangle().frame(width: 8, height: 1.5)
+                Text(title).lineLimit(1).truncationMode(.middle)
+                Spacer(minLength: 8)
+                headerTrailing
+                Image(systemName: folded ? Symbol.chevronRight : Symbol.chevronDown)
+                    .font(.system(size: 9, weight: .bold)).frame(width: 10)
+            }
+            .typeRole(.monoSmall).fontWeight(.semibold)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 10).padding(.vertical, 5)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.arkOrange)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(folded ? "Show the command" : "Fold the command")
+        .accessibilityLabel(title)
+        .accessibilityHint(folded ? "Shows the command and its output" : "Hides the command and its output")
+    }
+
+    @ViewBuilder private var headerTrailing: some View {
+        if isRunning, let startedAt {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                let s = max(0, Int(context.date.timeIntervalSince(startedAt)))
+                Text(String(format: "%02d:%02d", s / 60, s % 60))
+            }
+        } else if let duration {
+            Text(String(format: "%.1f s", duration)).opacity(0.85)
+        }
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(meta).typeRole(.monoSmall).foregroundStyle(Theme.muted)
+            if let detail {
+                Text(detail).typeRole(.monoSmall).foregroundStyle(Theme.muted).lineLimit(1).truncationMode(.head)
+            }
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("$").foregroundStyle(Theme.blue)
                 Text(command).foregroundStyle(Theme.ink)
@@ -168,7 +233,15 @@ public struct TerminalEntryView: View {
                     .foregroundStyle(exitCode == 0 ? Theme.terminalGreen : Theme.terminalRed)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.leading, 10).padding(.trailing, 20).padding(.top, 8).padding(.bottom, 10)
+        .frame(maxWidth: .infinity, minHeight: 54, alignment: .topLeading)
+        .overlay(alignment: .topTrailing) {
+            VStack(spacing: 0) {
+                ForEach(Self.accents.indices, id: \.self) { Rectangle().fill(Self.accents[$0]).frame(width: 3, height: 10) }
+            }
+            .padding(.top, 7).padding(.trailing, 6)
+            .accessibilityHidden(true)
+        }
         .textSelection(.enabled)
         .accessibilityElement(children: .combine)
     }
@@ -194,9 +267,9 @@ public struct TerminalEntryView: View {
         ApprovalBannerView(
             tool: "terminal", command: "rm -rf ~/.cache/trismegistus-build",
             explanation: "Clear the stale build cache before the release build.", onChoice: { _ in })
-        TerminalEntryView(meta: "terminal · 12:04:31", command: "ls ~/Projects", output: "endfield-dotfiles\nhomelab", exitCode: 0)
-        TerminalEntryView(meta: "terminal · 12:04:40", command: "pytest -q tests/", exitCode: 1)
-        TerminalEntryView(meta: "terminal · 12:04:50", command: "sleep 30", isRunning: true)
+        TerminalEntryView(title: "12:04:31 terminal", command: "ls ~/Projects", output: "endfield-dotfiles\nhomelab", exitCode: 0, duration: 0.3)
+        TerminalEntryView(title: "12:04:40 terminal", command: "pytest -q tests/", exitCode: 1, duration: 4.8)
+        TerminalEntryView(title: "12:04:50 terminal", command: "sleep 30", isRunning: true, startedAt: .now)
     }
     .padding().frame(width: 360).background(Theme.paper)
 }
