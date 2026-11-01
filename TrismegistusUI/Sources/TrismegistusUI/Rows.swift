@@ -101,8 +101,9 @@ public struct SegmentRule: View {
     let hairline: Bool
     let stretches: Bool
 
-    /// - Parameter stretches: the three segments share the whole width offered, in proportion to `widths` (the window's
-    ///   rule under the conversation header, Martin); otherwise they keep their widths and a hairline may follow.
+    /// - Parameter stretches: magenta and yellow keep their widths and green fills the rest of the width (the window's
+    ///   rule under the conversation header, as in the Penpot frame); otherwise all three keep their widths and a
+    ///   hairline may follow.
     public init(
         _ widths: (magenta: CGFloat, yellow: CGFloat, green: CGFloat) = (34, 88, 18), height: CGFloat = 2,
         hairline: Bool = true, stretches: Bool = false
@@ -114,26 +115,14 @@ public struct SegmentRule: View {
     }
 
     public var body: some View {
-        Group {
+        HStack(spacing: 0) {
+            Rectangle().fill(Theme.magenta).frame(width: widths.magenta)
+            Rectangle().fill(Theme.yellow).frame(width: widths.yellow)
             if stretches {
-                // A fill per segment, scaled to the width: no GeometryReader in the row, and no per-frame layout
-                // beyond the width itself.
-                Canvas { context, size in
-                    let total = widths.magenta + widths.yellow + widths.green
-                    var x: CGFloat = 0
-                    for (w, color) in [(widths.magenta, Theme.magenta), (widths.yellow, Theme.yellow), (widths.green, Theme.green)] {
-                        let width = size.width * w / total
-                        context.fill(Path(CGRect(x: x, y: 0, width: width, height: size.height)), with: .color(color))
-                        x += width
-                    }
-                }
+                Rectangle().fill(Theme.green).frame(minWidth: widths.green, maxWidth: .infinity)
             } else {
-                HStack(spacing: 0) {
-                    Rectangle().fill(Theme.magenta).frame(width: widths.magenta)
-                    Rectangle().fill(Theme.yellow).frame(width: widths.yellow)
-                    Rectangle().fill(Theme.green).frame(width: widths.green)
-                    if hairline { Rectangle().fill(Theme.rule) }
-                }
+                Rectangle().fill(Theme.green).frame(width: widths.green)
+                if hairline { Rectangle().fill(Theme.rule) }
             }
         }
         .frame(height: height)

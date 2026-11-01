@@ -72,7 +72,7 @@ struct ConversationHeader: View {
                     .overlay(alignment: .bottom) { Rectangle().fill(Theme.rule).frame(height: 1) }
                 }
                 // Endfield's title rule between the header and the messages (the draft, #32), across the whole chat
-                // panel in the draft's proportions (Martin); the chat's padding is the space below it.
+                // panel: magenta 48, yellow 120, green the rest (Martin's 07c); the chat's padding is the space below.
                 SegmentRule((48, 120, 24), height: 4, stretches: true)
             }
             .confirmsDelete(actions, store: model.store)
