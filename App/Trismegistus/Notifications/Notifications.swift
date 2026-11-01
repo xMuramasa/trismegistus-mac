@@ -58,7 +58,7 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
                     guard let self else { return }
                     // lostTrack (reconnect, replay_gap) also drops the run but resets lastSeq: not an ending.
                     for (id, runID) in runs where rows[id]?.run?.id != runID && (rows[id]?.lastSeq ?? 0) > 0 {
-                        runEnded(session: id, runID: runID)
+                        runEnded(session: id, runID: runID, outcome: rows[id]?.lastOutcome)
                     }
                     runs = rows.compactMapValues(\.run?.id)
                 }
@@ -79,15 +79,12 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
         center.add(UNNotificationRequest(identifier: "approval.\(approval.id)", content: content, trigger: nil))
     }
 
-    private func runEnded(session: String, runID: String) {
+    private func runEnded(session: String, runID: String, outcome: SessionOverview.Outcome?) {
         guard NotificationSettings.isOn(NotificationSettings.runFinished), !isOnScreen else { return }
-        // shortcut: the row only knows the run is gone; an open session's events say how it ended. A closed one
-        // reads "finished" even if it failed or was stopped. Upgrade when SessionOverview keeps the end status.
-        let end = model?.store?.sessions[session]?.events.last { $0.runID == runID && $0.payload.isTerminal }?.payload
         let body: String
-        switch end {
-        case .runCancelled: return // stopped by someone
-        case .runFailed: body = "Run failed"
+        switch outcome?.runID == runID ? outcome?.status : nil {
+        case .cancelled: return // stopped by someone
+        case .failed: body = "Run failed"
         default: body = "Run finished"
         }
         let content = UNMutableNotificationContent()

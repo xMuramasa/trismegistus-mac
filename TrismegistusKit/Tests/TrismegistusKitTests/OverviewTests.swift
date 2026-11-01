@@ -57,6 +57,36 @@ let t0 = Date(timeIntervalSince1970: 1_792_801_000) // before every event() time
         o.apply(.event(event("s1", 5, .toolStarted(ToolStarted(tool: "terminal")))), at: t0)
         #expect(o.run?.startedAt == Date(timeIntervalSince1970: 1_792_801_004.588))
     }
+
+    @Test func keepsHowTheLastRunEnded() {
+        var o = SessionOverview(id: "s1")
+        o.apply(.event(event("s1", 1, .toolStarted(ToolStarted(tool: "terminal")))), at: t0)
+        o.apply(.event(event("s1", 2, .runFailed(error: "provider error"))), at: t0)
+        let failed = SessionOverview.Outcome(runID: "run_1", status: .failed, at: Date(timeIntervalSince1970: 1_792_801_004.585))
+        #expect(o.lastOutcome == failed)
+        o.apply(.run(runID: "run_1", sessionID: "s1", status: .failed), at: t0.addingTimeInterval(60)) // the relay's echo
+        #expect(o.lastOutcome == failed)
+
+        o.apply(.event(event("s1", 3, run: "run_2", .runCancelled(reason: nil))), at: t0)
+        #expect(o.lastOutcome?.runID == "run_2" && o.lastOutcome?.status == .cancelled)
+        o.apply(.event(event("s1", 4, run: "run_3", .runCompleted)), at: t0)
+        #expect(o.lastOutcome?.runID == "run_3" && o.lastOutcome?.status == .completed)
+        // Only the relay's `run` message: ended now.
+        o.apply(.run(runID: "run_4", sessionID: "s1", status: .running), at: t0)
+        o.apply(.run(runID: "run_4", sessionID: "s1", status: .completed), at: t0.addingTimeInterval(5))
+        #expect(o.lastOutcome == SessionOverview.Outcome(runID: "run_4", status: .completed, at: t0.addingTimeInterval(5)))
+    }
+
+    @Test func lostTrackIsNotAnEnding() {
+        var o = SessionOverview(id: "s1")
+        o.apply(.event(event("s1", 1, .runCompleted)), at: t0)
+        o.apply(.event(event("s1", 2, run: "run_2", .toolStarted(ToolStarted(tool: "terminal")))), at: t0)
+        o.lostTrack() // reconnect
+        #expect(o.run == nil && o.lastSeq == 0 && o.lastOutcome?.runID == "run_1")
+        o.apply(.event(event("s1", 3, run: "run_2", .toolStarted(ToolStarted(tool: "terminal")))), at: t0)
+        o.apply(.error(code: .replayGap, message: "reload the history", ref: "s1"), at: t0)
+        #expect(o.run == nil && o.lastOutcome?.runID == "run_1")
+    }
 }
 
 /// SessionStore following the whole list over FakeTransport, FakeHTTP and TestClock.

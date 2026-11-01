@@ -12,6 +12,13 @@ public struct SessionOverview: Sendable, Equatable, Identifiable {
         public var toolCount = 0
     }
 
+    /// How a run ended: status is completed, failed or cancelled.
+    public struct Outcome: Sendable, Equatable {
+        public var runID: String
+        public var status: RunStatus
+        public var at: Date
+    }
+
     public let id: String
     /// From the REST list; nil for an open session the list doesn't have (yet).
     public var info: SessionInfo?
@@ -21,6 +28,8 @@ public struct SessionOverview: Sendable, Equatable, Identifiable {
     public var lastSeq = 0
     /// The newest event's time.
     public var lastEventAt: Date?
+    /// The last run that ended while followed. A lost track (reconnect, replay_gap) is not an ending.
+    public var lastOutcome: Outcome?
 
     public init(id: String, info: SessionInfo? = nil) {
         self.id = id
@@ -44,7 +53,7 @@ public struct SessionOverview: Sendable, Equatable, Identifiable {
             apply(e)
         case .run(let runID, let sessionID, let status) where sessionID == id:
             if status.isTerminal {
-                end(runID)
+                end(runID, status, at: now)
             } else {
                 if run?.id != runID { run = Run(id: runID, status: status, startedAt: now) }
                 run?.status = status
@@ -61,7 +70,12 @@ public struct SessionOverview: Sendable, Equatable, Identifiable {
         lastSeq = e.seq
         let at = Date(timeIntervalSince1970: Double(e.ts) / 1000)
         lastEventAt = max(lastEventAt ?? at, at)
-        if e.payload.isTerminal { return end(e.runID) }
+        switch e.payload {
+        case .runCompleted: return end(e.runID, .completed, at: at)
+        case .runFailed: return end(e.runID, .failed, at: at)
+        case .runCancelled: return end(e.runID, .cancelled, at: at)
+        default: break
+        }
         if run?.id != e.runID {
             run = Run(id: e.runID, status: .running, startedAt: at)
         } else if let started = run?.startedAt, at < started {
@@ -91,8 +105,10 @@ public struct SessionOverview: Sendable, Equatable, Identifiable {
         approvals = []
     }
 
-    private mutating func end(_ runID: String) {
+    private mutating func end(_ runID: String, _ status: RunStatus, at: Date) {
         if run?.id == runID { run = nil }
+        // The event and the relay's `run` message both report the end; the event came first and has its time.
+        if lastOutcome?.runID != runID { lastOutcome = Outcome(runID: runID, status: status, at: at) }
         approvals.removeAll { $0.runID == runID }
     }
 }
