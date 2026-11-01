@@ -181,7 +181,8 @@ public struct TerminalEntryView: View {
                 Text(title).lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: 8)
                 headerTrailing
-                Image(systemName: folded ? Symbol.chevronRight : Symbol.chevronDown)
+                // A dropdown's convention: down opens, up closes.
+                Image(systemName: folded ? Symbol.chevronDown : Symbol.chevronUp)
                     .font(.system(size: 9, weight: .bold)).frame(width: 10)
             }
             .typeRole(.monoSmall).fontWeight(.semibold)
@@ -241,13 +242,13 @@ public struct TerminalEntryView: View {
                     .foregroundStyle(exitCode == 0 ? Theme.terminalGreen : Theme.terminalRed)
             }
         }
-        .padding(.leading, 10).padding(.trailing, 20).padding(.top, 8).padding(.bottom, 10)
+        .padding(.leading, 10).padding(.trailing, 14).padding(.top, 8).padding(.bottom, 10)
         .frame(maxWidth: .infinity, minHeight: 54, alignment: .topLeading)
         .overlay(alignment: .topTrailing) {
             VStack(spacing: 0) {
                 ForEach(Self.accents.indices, id: \.self) { Rectangle().fill(Self.accents[$0]).frame(width: 3, height: 10) }
             }
-            .padding(.top, 7).padding(.trailing, 6)
+            .padding(.top, 7)
             .accessibilityHidden(true)
         }
         .textSelection(.enabled)

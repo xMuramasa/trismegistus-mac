@@ -65,6 +65,7 @@ public enum Symbol {
     public static let lock = "lock.fill"
     public static let chevronRight = "chevron.right"
     public static let chevronDown = "chevron.down"
+    public static let chevronUp = "chevron.up"
 }
 
 /// The window's top bar (Martin, 2026-10-31, after Arknights' in-game bars; it overrides Endfield's "no gradients"):
