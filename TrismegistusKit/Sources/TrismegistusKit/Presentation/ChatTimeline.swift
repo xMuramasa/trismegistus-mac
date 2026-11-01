@@ -1,17 +1,16 @@
 import Foundation
-import TrismegistusKit
 
 /// A tool call as a chat row shows it.
-struct ToolRow {
-    var tool: String
-    var summary: String
-    var duration: String
-    var output: String?
-    var exitCode: Int?
+public struct ToolRow: Sendable, Equatable {
+    public var tool: String
+    public var summary: String
+    public var duration: String
+    public var output: String?
+    public var exitCode: Int?
 }
 
 /// One row of the chat.
-enum ChatItem: Identifiable {
+public enum ChatItem: Sendable, Equatable, Identifiable {
     case user(id: String, text: String, time: Date?)
     /// A prompt from the outbox: pending, sent (time of its run's first event) or failed.
     case prompt(OutgoingPrompt, time: Date?)
@@ -22,7 +21,7 @@ enum ChatItem: Identifiable {
     case marker(id: String, RunSummary)
     case note(id: String, text: String, isError: Bool)
 
-    var id: String {
+    public var id: String {
         switch self {
         case .user(let id, _, _), .answer(let id, _, _), .tool(let id, _), .subagent(let id, _, _, _),
             .marker(let id, _), .note(let id, _, _):
@@ -35,8 +34,8 @@ enum ChatItem: Identifiable {
 /// Builds the chat from a session's state: REST history, then the live events grouped by run (each run after the
 /// prompt that started it), then the prompts still waiting. `compact` (popover) shows tool and subagent rows inline;
 /// otherwise (window) each run gets one marker.
-enum ChatTimeline {
-    static func items(_ s: SessionState, compact: Bool) -> [ChatItem] {
+public enum ChatTimeline {
+    public static func items(_ s: SessionState, compact: Bool) -> [ChatItem] {
         var items = history(s.history, compact: compact)
         var runs: [String: [Event]] = [:]
         var order: [String] = []
@@ -58,7 +57,7 @@ enum ChatTimeline {
     }
 
     /// Tool calls started so far in a run.
-    static func toolCount(_ s: SessionState, runID: String) -> Int {
+    public static func toolCount(_ s: SessionState, runID: String) -> Int {
         s.events.filter { $0.runID == runID && $0.kind == "tool.started" }.count
     }
 
@@ -168,12 +167,4 @@ enum ChatTimeline {
     private static func firstLine(_ s: String) -> String {
         String(s.split(whereSeparator: \.isNewline).first ?? "")
     }
-}
-
-/// The terminal tool's result JSON (the same shape TerminalTranscript reads from `tool.completed` previews).
-private struct TerminalResult: Decodable {
-    var output: String?
-    var exitCode: Int?
-    var error: String?
-    enum CodingKeys: String, CodingKey { case output, exitCode = "exit_code", error }
 }
