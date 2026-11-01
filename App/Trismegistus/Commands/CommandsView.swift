@@ -41,7 +41,6 @@ struct CommandsView: View {
 
     @Environment(AppModel.self) private var model
     @Environment(CommandLog.self) private var log: CommandLog?
-    @AppStorage("commands.commandsOnly") private var commandsOnly = true
     @State private var failedOnly = false
     @State private var conversation: String?
     @State private var search = ""
@@ -56,7 +55,7 @@ struct CommandsView: View {
     private var entries: [TerminalEntry] {
         let needle = search.trimmingCharacters(in: .whitespaces)
         return (log?.all ?? []).filter { e in
-            (!commandsOnly || e.isCommand) && (!failedOnly || e.failed) && (conversation == nil || e.sessionID == conversation)
+            (!failedOnly || e.failed) && (conversation == nil || e.sessionID == conversation)
                 && (needle.isEmpty || [e.command, e.cwd, e.output, e.errorText].contains { $0?.localizedCaseInsensitiveContains(needle) == true })
         }
     }
@@ -120,8 +119,6 @@ struct CommandsView: View {
                     Text("can't reach the relay").typeRole(.caption).foregroundStyle(Theme.red)
                 }
                 Spacer(minLength: 8)
-                FilterChip(title: "Commands", symbol: Symbol.terminal, isOn: commandsOnly) { commandsOnly = true }
-                FilterChip(title: "All tools", symbol: Symbol.list, isOn: !commandsOnly) { commandsOnly = false }
                 FilterChip(title: "Failed", symbol: "exclamationmark.triangle", isOn: failedOnly) { failedOnly.toggle() }
             }
             HStack(spacing: 8) {

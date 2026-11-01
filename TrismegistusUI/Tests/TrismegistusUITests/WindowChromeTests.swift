@@ -65,7 +65,7 @@ final class WindowChromeTests: XCTestCase {
                 List(selection: $selection) {
                     ForEach(0..<3, id: \.self) { i in
                         SessionRowView(name: "Row \(i)", source: .trismegistus, activity: "now", isSelected: selection == i)
-                            .tag(i).listRowInsets(EdgeInsets()).listRowSeparator(.hidden)
+                            .tag(i).listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Theme.sunken)
                     }
                 }
                 .listStyle(.plain).scrollContentBackground(.hidden)

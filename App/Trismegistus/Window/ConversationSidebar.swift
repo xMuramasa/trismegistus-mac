@@ -60,16 +60,18 @@ struct ConversationSidebar: View {
         let shown = self.shown
         VStack(spacing: 0) {
             header(count: shown.pinned.count + shown.rest.count)
+            // Every row sets `listRowBackground`: it replaces the row view's ground, where macOS draws its selection
+            // highlight (a thin blue line still showed past the rows' sunken backing in a key window).
             List(selection: $selection) {
                 CommandsRowView(isSelected: selection == CommandsView.id)
                     .tag(CommandsView.id)
                     .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
+                    .listRowSeparator(.hidden).listRowBackground(Theme.sunken)
                 if !shown.pinned.isEmpty {
-                    SectionLabel(title: "Pinned").listRowInsets(EdgeInsets()).listRowSeparator(.hidden)
+                    SectionLabel(title: "Pinned").listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Theme.sunken)
                     ForEach(shown.pinned) { conversation($0) }
                     if !shown.rest.isEmpty {
-                        SectionLabel(title: "Conversations").listRowInsets(EdgeInsets()).listRowSeparator(.hidden)
+                        SectionLabel(title: "Conversations").listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Theme.sunken)
                     }
                 }
                 ForEach(shown.rest) { row in
@@ -79,7 +81,7 @@ struct ConversationSidebar: View {
                         newsRow
                             .tag(row.id)
                             .listRowInsets(EdgeInsets())
-                            .listRowSeparator(.hidden)
+                            .listRowSeparator(.hidden).listRowBackground(Theme.sunken)
                     }
                 }
             }
@@ -115,7 +117,7 @@ struct ConversationSidebar: View {
         }
         .tag(overview.id)
         .listRowInsets(EdgeInsets())
-        .listRowSeparator(.hidden)
+        .listRowSeparator(.hidden).listRowBackground(Theme.sunken)
     }
 
     private func header(count: Int) -> some View {
