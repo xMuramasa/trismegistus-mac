@@ -67,12 +67,13 @@ public enum Symbol {
     public static let chevronDown = "chevron.down"
 }
 
-/// The window's top bar (Martin, 2026-10-31, after Arknights' in-game bars; it overrides Endfield's "no gradients").
+/// The window's top bar (Martin, 2026-10-31, after Arknights' in-game bars; it overrides Endfield's "no gradients"):
+/// Endfield `secondary` at the ends, `dark-panel` in the middle (the Penpot library's colours).
 extension Theme {
-    public static let steel = Color(hex: 0x686F80)
-    public static let steelDeep = Color(hex: 0x5B6171)
+    public static let steel = Theme.secondary
+    public static let steelDeep = Theme.darkPanel
     /// Text and icons on the steel strip.
     public static let onSteel = Color(hex: 0xE9E9E9)
-    /// The 1 pt rule under the strip.
-    public static let steelRule = Color(hex: 0x474C59)
+    /// The 1 pt rule under the strip: darker than its darkest point.
+    public static let steelRule = Theme.ink
 }

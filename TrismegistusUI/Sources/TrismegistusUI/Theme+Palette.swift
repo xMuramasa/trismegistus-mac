@@ -17,6 +17,8 @@ public enum Theme {
     public static let ink = Color(hex: 0x191919)
     public static let secondary = Color(hex: 0x666666)
     public static let muted = Color(hex: 0x999999)
+    /// Endfield `dark-panel`: dark strips (the top bar's middle).
+    public static let darkPanel = Color(hex: 0x35373C)
     public static let yellow = Color(hex: 0xFFFA00)
     public static let blue = Color(hex: 0x0040E8)
     public static let green = Color(hex: 0x00FFA2)
