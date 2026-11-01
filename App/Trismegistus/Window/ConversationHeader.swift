@@ -71,12 +71,9 @@ struct ConversationHeader: View {
                     .background(Theme.raised)
                     .overlay(alignment: .bottom) { Rectangle().fill(Theme.rule).frame(height: 1) }
                 }
-                // Endfield's title rule between the header and the messages (the draft, #32); the chat's padding is
-                // the space below it.
-                SegmentRule((48, 120, 24), height: 4, hairline: false)
-                    .padding(.leading, 20)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(EndfieldBackdrop())
+                // Endfield's title rule between the header and the messages (the draft, #32), across the whole chat
+                // panel in the draft's proportions (Martin); the chat's padding is the space below it.
+                SegmentRule((48, 120, 24), height: 4, stretches: true)
             }
             .confirmsDelete(actions, store: model.store)
             // A header for another conversation starts clean; a handoff stays in the same thread (its oldest part), so

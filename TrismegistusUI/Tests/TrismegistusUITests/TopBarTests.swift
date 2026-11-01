@@ -94,9 +94,7 @@ final class TopBarTests: XCTestCase {
                 .padding(.horizontal, 16).padding(.vertical, 8)
                 .background { TopBarBackdrop().padding(.top, -1) }
                 .overlay(alignment: .bottom) { Rectangle().fill(Theme.steelRule).frame(height: 1) }
-                SegmentRule((48, 120, 24), height: 4, hairline: false)
-                    .padding(.leading, 20)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                SegmentRule((48, 120, 24), height: 4, stretches: true)
                 Text("chat").frame(maxWidth: 700, maxHeight: .infinity).background(Theme.paper)
                 KeyHintStrip([("⌘↩", "send"), ("⌘⌥T", "terminal"), ("⌘K", "conversations")]).background(Theme.paper)
             }

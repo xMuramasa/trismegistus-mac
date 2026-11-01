@@ -99,19 +99,42 @@ public struct SegmentRule: View {
     let widths: (magenta: CGFloat, yellow: CGFloat, green: CGFloat)
     let height: CGFloat
     let hairline: Bool
+    let stretches: Bool
 
-    public init(_ widths: (magenta: CGFloat, yellow: CGFloat, green: CGFloat) = (34, 88, 18), height: CGFloat = 2, hairline: Bool = true) {
+    /// - Parameter stretches: the three segments share the whole width offered, in proportion to `widths` (the window's
+    ///   rule under the conversation header, Martin); otherwise they keep their widths and a hairline may follow.
+    public init(
+        _ widths: (magenta: CGFloat, yellow: CGFloat, green: CGFloat) = (34, 88, 18), height: CGFloat = 2,
+        hairline: Bool = true, stretches: Bool = false
+    ) {
         self.widths = widths
         self.height = height
-        self.hairline = hairline
+        self.hairline = hairline && !stretches
+        self.stretches = stretches
     }
 
     public var body: some View {
-        HStack(spacing: 0) {
-            Rectangle().fill(Theme.magenta).frame(width: widths.magenta)
-            Rectangle().fill(Theme.yellow).frame(width: widths.yellow)
-            Rectangle().fill(Theme.green).frame(width: widths.green)
-            if hairline { Rectangle().fill(Theme.rule) }
+        Group {
+            if stretches {
+                // A fill per segment, scaled to the width: no GeometryReader in the row, and no per-frame layout
+                // beyond the width itself.
+                Canvas { context, size in
+                    let total = widths.magenta + widths.yellow + widths.green
+                    var x: CGFloat = 0
+                    for (w, color) in [(widths.magenta, Theme.magenta), (widths.yellow, Theme.yellow), (widths.green, Theme.green)] {
+                        let width = size.width * w / total
+                        context.fill(Path(CGRect(x: x, y: 0, width: width, height: size.height)), with: .color(color))
+                        x += width
+                    }
+                }
+            } else {
+                HStack(spacing: 0) {
+                    Rectangle().fill(Theme.magenta).frame(width: widths.magenta)
+                    Rectangle().fill(Theme.yellow).frame(width: widths.yellow)
+                    Rectangle().fill(Theme.green).frame(width: widths.green)
+                    if hairline { Rectangle().fill(Theme.rule) }
+                }
+            }
         }
         .frame(height: height)
         .accessibilityHidden(true)
