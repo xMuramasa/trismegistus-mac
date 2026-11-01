@@ -81,7 +81,7 @@ struct Notice<Trailing: View>: View {
         }
         .padding(.vertical, Space.s).padding(.horizontal, Space.m)
         .background(Ink.surface.raised)
-        .overlay(alignment: .leading) { Rectangle().fill(isError ? Palette.red : Ink.selection).frame(width: Stroke.mark) }
+        .overlay(alignment: .leading) { Rectangle().fill(isError ? Ink.status.bad : Ink.selection).frame(width: Stroke.mark) }
         .overlay(Rectangle().strokeBorder(Ink.line.rule, lineWidth: Stroke.hairline))
         .accessibilityElement(children: .combine)
     }

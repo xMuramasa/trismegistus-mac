@@ -5,6 +5,7 @@
 #       and spacings, frame sizes, `.font(.system(size:`, `Color(hex:`, `lineWidth:`, `.opacity(0.x)`, corner and
 #       shadow radii. 0 and ±1 (the hairline) are allowed. Skipped: the generated file, tests, `#Preview` blocks, and
 #       the files and folders listed in scripts/token-allowlist.txt (one per line, from the repo root).
+#   (c) any Swift source (tests included) still says `Theme.`: the old compatibility names are gone (#37).
 #
 #   scripts/check-tokens.sh            both checks
 #   scripts/check-tokens.sh --all      (b) only, ignoring the allow-list: every literal left (the App/ inventory)
@@ -60,6 +61,12 @@ def calls(line, opener):
 
 
 found = 0
+for path in sorted(p for top in ("App", "TrismegistusUI", "TrismegistusKit") for p in pathlib.Path(top).rglob("*.swift")
+                   if ".build" not in p.parts):
+    for n, line in enumerate(path.read_text().splitlines(), 1):
+        if re.search(r"\bTheme\.", line.split("//")[0]):  # the removed compatibility names (#37)
+            print(f"{path}:{n}: old Theme name: {line.strip()}")
+            found += 1
 for top in ("TrismegistusUI/Sources", "App/Trismegistus"):
     for path in sorted(pathlib.Path(top).rglob("*.swift")):
         p = str(path)

@@ -90,6 +90,11 @@ out += ["}", ""]
 
 
 def role_value(v):
+    if isinstance(v, dict):  # {"color": ref, "opacity": "{opacity.x}"}: a colour at an opacity token
+        m = re.fullmatch(r"\{opacity\.([\w-]+)\}", v["opacity"])
+        if not m or m.group(1) not in tokens["opacity"]:
+            sys.exit(f"unknown reference {v['opacity']}")
+        return f"{palette_ref(v['color'])}.opacity(Opacity.{camel(m.group(1))})"
     return f"[{', '.join(palette_ref(r) for r in v)}]" if isinstance(v, list) else palette_ref(v)
 
 
@@ -107,13 +112,6 @@ for name, t in leaves(tokens["color"]["role"]):
         out += doc(t, "    ") + [f"    public static let {ident(name)} = {role_value(t['$value'])}"]
     else:
         out += role_group(name, t, "    ")
-out += ["}", ""]
-
-# Theme: source compatibility for App/ until #33 phase 2 moves it to Palette and Ink.
-theme_aliases = {"steel": "Ink.bar.start", "steelDeep": "Ink.bar.middle", "steelEnd": "Ink.bar.end", "steelRule": "Ink.bar.rule"}
-out += ["/// The old names (App/ until #33 phase 2): every palette colour, and the top bar's steel.", "public enum Theme {"]
-out += [f"    public static let {camel(n)} = Palette.{camel(n)}" for n, _ in leaves(tokens["color"]["palette"])]
-out += [f"    public static let {k} = {v}" for k, v in theme_aliases.items()]
 out += ["}", ""]
 
 

@@ -22,13 +22,13 @@ struct TerminalPane: View {
         let entries = entries
         VStack(spacing: 0) {
             title(entries)
-            Rectangle().fill(Ink.text.onDark.opacity(Opacity.ruleOnDark)).frame(height: Stroke.hairline)
+            Rectangle().fill(Ink.line.onDark).frame(height: Stroke.hairline)
             transcript(entries)
             Text("Live output arrives when a command finishes, cut at 4,000 characters; the history has it in full.")
                 .typeRole(.caption).foregroundStyle(Ink.text.muted)
                 .padding(.horizontal, Space.l).padding(.vertical, Space.s)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .overlay(alignment: .top) { Rectangle().fill(Ink.text.onDark.opacity(Opacity.ruleOnDark)).frame(height: Stroke.hairline) }
+                .overlay(alignment: .top) { Rectangle().fill(Ink.line.onDark).frame(height: Stroke.hairline) }
         }
         // Ink with Endfield's contour lines in `sunken` (Martin); inside the settled width, so drawn once per width.
         .background { EndfieldContours(color: Ink.surface.sunken, opacity: Opacity.terminalContours).background(Ink.surface.terminal, ignoresSafeAreaEdges: []) }

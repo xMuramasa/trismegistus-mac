@@ -75,13 +75,13 @@ struct ContextMeter: View {
         if onSteel {
             return switch band {
             case .normal: text ? Ink.text.onDark.opacity(Opacity.secondaryOnDark) : Ink.text.onDark
-            case .warn: text ? Ink.text.onDark : Palette.yellow
-            case .bad, .critical: text ? Ink.text.onDark : Palette.red
+            case .warn: text ? Ink.text.onDark : Ink.status.warn
+            case .bad, .critical: text ? Ink.text.onDark : Ink.status.bad
             }
         }
         return switch band {
         case .normal: text ? Ink.text.secondary : Ink.line.strong
-        case .warn: text ? Ink.text.primary : Palette.yellow
+        case .warn: text ? Ink.text.primary : Ink.status.warn
         case .bad, .critical: Ink.text.error
         }
     }
@@ -127,7 +127,7 @@ private struct SegmentBar: View {
         HStack(spacing: 1) {
             ForEach(0..<10, id: \.self) { i in
                 Rectangle().fill(i < filled ? color : onSteel ? .clear : Ink.surface.sunken)
-                    .overlay(Rectangle().strokeBorder(i < filled ? Ink.line.strong : onSteel ? Ink.text.onDark.opacity(Opacity.outlineOnDark) : Ink.line.rule, lineWidth: Stroke.hairline))
+                    .overlay(Rectangle().strokeBorder(i < filled ? Ink.line.strong : onSteel ? Ink.line.outlineOnDark : Ink.line.rule, lineWidth: Stroke.hairline))
                     .frame(width: Size.meterCell.width, height: Size.meterCell.height)
             }
         }

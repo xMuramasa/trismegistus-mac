@@ -14,7 +14,7 @@ struct ModelMenu: View {
     var body: some View {
         if let store = model.store, let catalog = store.models {
             HStack(spacing: Space.s) {
-                if let error { Text(error).typeRole(.caption).foregroundStyle(onSteel ? Palette.yellow : Ink.text.error).lineLimit(1) }
+                if let error { Text(error).typeRole(.caption).foregroundStyle(onSteel ? Ink.status.warn : Ink.text.error).lineLimit(1) }
                 if info.isReadOnly {
                     if let id = info.model {
                         Text(ModelChoice.label(id)).typeRole(.monoSmall).lineLimit(1)
@@ -57,7 +57,7 @@ struct ModelLabel: View {
         }
         .foregroundStyle(onSteel ? Ink.text.onDark : Ink.text.primary)
         .padding(.horizontal, Space.s).padding(.vertical, Space.xs)
-        .overlay(Rectangle().strokeBorder(onSteel ? Ink.text.onDark.opacity(Opacity.outlineOnDark) : Ink.line.rule, lineWidth: Stroke.hairline))
+        .overlay(Rectangle().strokeBorder(onSteel ? Ink.line.outlineOnDark : Ink.line.rule, lineWidth: Stroke.hairline))
         .contentShape(Rectangle())
     }
 }

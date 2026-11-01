@@ -57,6 +57,10 @@ public enum Ink {
     public struct Line: Sendable {
         public let rule = Palette.rule
         public let strong = Palette.ink
+        /// a rule on the ink terminal pane
+        public let onDark = Palette.onSteel.opacity(Opacity.ruleOnDark)
+        /// an outline on the steel bar
+        public let outlineOnDark = Palette.onSteel.opacity(Opacity.outlineOnDark)
     }
     public static let line = Line()
     public static let selection = Palette.yellow
@@ -64,6 +68,10 @@ public enum Ink {
         public let ok = Palette.terminalGreen
         public let error = Palette.terminalRed
         public let online = Palette.green
+        /// the warn band and errors on steel (bright, for fills)
+        public let warn = Palette.yellow
+        /// the bad and critical band, error bars (bright, for fills; text on paper uses error)
+        public let bad = Palette.red
     }
     public static let status = Status()
     public struct Bar: Sendable {
@@ -80,34 +88,6 @@ public enum Ink {
     }
     public static let card = Card()
     public static let titleRule = [Palette.magenta, Palette.yellow, Palette.green]
-}
-
-/// The old names (App/ until #33 phase 2): every palette colour, and the top bar's steel.
-public enum Theme {
-    public static let paper = Palette.paper
-    public static let raised = Palette.raised
-    public static let sunken = Palette.sunken
-    public static let rule = Palette.rule
-    public static let ink = Palette.ink
-    public static let darkPanel = Palette.darkPanel
-    public static let secondary = Palette.secondary
-    public static let muted = Palette.muted
-    public static let yellow = Palette.yellow
-    public static let blue = Palette.blue
-    public static let green = Palette.green
-    public static let magenta = Palette.magenta
-    public static let red = Palette.red
-    public static let borderInactive = Palette.borderInactive
-    public static let terminalGreen = Palette.terminalGreen
-    public static let terminalRed = Palette.terminalRed
-    public static let arkOrange = Palette.arkOrange
-    public static let onSteel = Palette.onSteel
-    public static let accentCyan = Palette.accentCyan
-    public static let accentMagenta = Palette.accentMagenta
-    public static let steel = Ink.bar.start
-    public static let steelDeep = Ink.bar.middle
-    public static let steelEnd = Ink.bar.end
-    public static let steelRule = Ink.bar.rule
 }
 
 /// `opacity`: opacities.
