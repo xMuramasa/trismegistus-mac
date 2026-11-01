@@ -296,6 +296,46 @@ public struct RelayREST: Sendable {
         try decode(DeviceInfo.self, try await call("GET", "/api/me"))
     }
 
+    // MARK: Background agents (the relay's `/api/agents`); failures are AgentsError
+
+    /// Running first, then newest first. `not_configured` (503) when the host helper isn't running.
+    public func agents() async throws -> [Agent] {
+        struct Body: Decodable { var agents: Lossy<Agent> }
+        return try decode(Body.self, try await agentsCall("GET", "/api/agents")).agents.items
+    }
+
+    /// Steps after stream line `after` (at most 200 per answer: ask again with the page's `next`).
+    public func agentTranscript(_ id: String, after: Int) async throws -> AgentTranscriptPage {
+        try decode(AgentTranscriptPage.self, try await agentsCall("GET", try agentPath(id) + "/transcript?after=\(max(0, after))"))
+    }
+
+    /// Manager only (`forbidden` otherwise), for an alive agent (else `not_found`). Answers 202 at once.
+    public func stopAgent(_ id: String) async throws {
+        _ = try await agentsCall("POST", try agentPath(id) + "/stop", body: [:])
+    }
+
+    private func agentsCall(_ method: String, _ path: String, body: [String: JSONValue]? = nil) async throws -> Data {
+        try await call(method, path, body: body, failure: { AgentsError(status: $0, body: $1) })
+    }
+
+    /// `proc_` and up to 64 letters or digits, or `run_` and a name of letters, digits, `.`, `_`, `-` (the relay
+    /// answers not_found to anything else).
+    private func agentPath(_ id: String) throws -> String {
+        let alnum = Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".utf8)
+        let valid: Bool
+        if id.hasPrefix("proc_") {
+            let rest = id.dropFirst(5).utf8
+            valid = (1...64).contains(rest.count) && rest.allSatisfy(alnum.contains)
+        } else if id.hasPrefix("run_") {
+            let rest = id.dropFirst(4).utf8
+            valid = (1...128).contains(rest.count) && rest.allSatisfy { alnum.contains($0) || [46, 95, 45].contains($0) }
+        } else {
+            valid = false
+        }
+        guard valid else { throw AgentsError(status: 0, code: "not_found", message: "Unknown agent.") }
+        return "/api/agents/" + id
+    }
+
     // MARK: GitHub (the relay's `/api/github/*`); failures are GitHubError
 
     public func githubBoard() async throws -> GitHubBoard {

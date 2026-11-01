@@ -18,7 +18,7 @@ struct TrismegistusApp: App {
             }
             .environment(model)
         } label: {
-            StatusGlyph(activity: model.store?.activity ?? .disconnected)
+            StatusGlyph(activity: model.store?.activity ?? .disconnected, agentsRunning: model.agents?.anyRunning ?? false)
                 // The label is the one view that is always alive: it opens the window for a clicked notification.
                 .opensChatFromNotifications(model.notifications)
                 .opensMainWindow(on: launch)  // when Martin opens the app himself, not at login

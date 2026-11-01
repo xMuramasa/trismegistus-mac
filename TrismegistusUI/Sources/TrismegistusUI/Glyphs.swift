@@ -65,6 +65,8 @@ enum GlyphData {
     /// The menu bar glyph's outline stroke (disconnected) and approval dot.
     static let outlineWidth: CGFloat = 1.5
     static let approvalDot = CGRect(x: 16.5, y: 1, width: 5, height: 5)
+    /// Background agents alive: a small dot at the bottom right, under where the run's bars end.
+    static let agentsDot = CGRect(x: 18.5, y: 14.5, width: 3, height: 3)
 }
 
 /// The T mark of the Trismegistus source (14×14, template-friendly: draws in the foreground color).
@@ -117,11 +119,12 @@ public enum GlyphState: CaseIterable, Sendable {
 }
 
 /// The menu bar glyph as a template `NSImage` (22×18 pt): outline when disconnected, solid mark when idle, bars for
-/// a run in progress, a dot for an approval waiting. State is shape, never color.
+/// a run in progress, a dot for an approval waiting. State is shape, never color. `agents` adds a small dot at the
+/// bottom right while background agents run (not while the bars show: they sit there, and a run is already marked).
 public enum MenuBarGlyph {
     public static let size = NSSize(width: 22, height: 18)
 
-    public static func image(_ state: GlyphState) -> NSImage {
+    public static func image(_ state: GlyphState, agents: Bool = false) -> NSImage {
         let image = NSImage(size: size, flipped: true) { _ in
             guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
             ctx.setFillColor(NSColor.black.cgColor)
@@ -144,6 +147,9 @@ public enum MenuBarGlyph {
             }
             if state == .approval {
                 ctx.fillEllipse(in: GlyphData.approvalDot)
+            }
+            if agents, state != .disconnected, state != .running {
+                ctx.fillEllipse(in: GlyphData.agentsDot)
             }
             return true
         }

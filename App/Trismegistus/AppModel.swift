@@ -20,6 +20,9 @@ final class AppModel {
     private(set) var jobs: JobBoard?
     /// The GitHub row and view (#22): the Work board and this device's role; a new one per connection.
     private(set) var github: GitHubModel?
+    /// Background agents (#23) and this device's role: polled every 15 s while connected for the menu bar glyph's mark
+    /// (the Agents view polls faster while shown).
+    private(set) var agents: AgentBoard?
     /// The token couldn't be read at launch; shown on the pairing screen.
     private(set) var keychainError: String?
     /// The last session list refresh failed.
@@ -39,6 +42,7 @@ final class AppModel {
     private let tokens: any TokenStore
     private let defaults: UserDefaults
     @ObservationIgnored private var watch: Task<Void, Never>?
+    @ObservationIgnored private var agentsWatch: Task<Void, Never>?
 
     init(tokens: any TokenStore = KeychainTokenStore(), defaults: UserDefaults = .standard) {
         self.tokens = tokens
@@ -116,12 +120,15 @@ final class AppModel {
         let jobs = JobBoard(rest: store.rest)
         self.jobs = jobs
         github = GitHubModel(rest: store.rest)
+        let agents = AgentBoard(rest: store.rest)
+        self.agents = agents
         store.start()
         // The session list and the jobs are reloaded on every (re)connect.
         watch = Task { [weak self] in
             for await state in Observations({ store.connection }) {
                 guard case .connected = state else { continue }
                 Task { await jobs.refresh() }
+                Task { await agents.refresh() }
                 do {
                     try await store.refreshSessions()
                     self?.sessionsError = nil
@@ -130,16 +137,25 @@ final class AppModel {
                 }
             }
         }
+        agentsWatch = Task {
+            while !Task.isCancelled {
+                if case .connected = store.connection { await agents.refresh() }
+                try? await Task.sleep(for: .seconds(15))
+            }
+        }
     }
 
     private func disconnect() async {
         watch?.cancel()
         watch = nil
+        agentsWatch?.cancel()
+        agentsWatch = nil
         await store?.stop()
         store = nil
         news = nil
         jobs = nil
         github = nil
+        agents = nil
     }
 
     private enum Keys {

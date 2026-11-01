@@ -41,9 +41,11 @@ final class SnapshotTests: XCTestCase {
 
     func testGlyphImagesAreTemplates() {
         for state in GlyphState.allCases {
-            let image = MenuBarGlyph.image(state)
-            XCTAssertTrue(image.isTemplate)
-            XCTAssertEqual(image.size, NSSize(width: 22, height: 18))
+            for agents in [false, true] {
+                let image = MenuBarGlyph.image(state, agents: agents)
+                XCTAssertTrue(image.isTemplate)
+                XCTAssertEqual(image.size, NSSize(width: 22, height: 18))
+            }
         }
     }
 
@@ -192,10 +194,15 @@ final class SnapshotTests: XCTestCase {
     }
 
     func testGlyphs() throws {
-        try snap("MenuBarGlyph", width: 280) {
+        try snap("MenuBarGlyph", width: 440) {
             HStack(spacing: 20) {
                 ForEach(GlyphState.allCases, id: \.self) { state in
                     Image(nsImage: MenuBarGlyph.image(state)).renderingMode(.template).scaleEffect(2)
+                        .frame(width: 44, height: 36)
+                }
+                // Background agents running: the dot at the bottom right (not with the run's bars).
+                ForEach([GlyphState.idle, .approval], id: \.self) { state in
+                    Image(nsImage: MenuBarGlyph.image(state, agents: true)).renderingMode(.template).scaleEffect(2)
                         .frame(width: 44, height: 36)
                 }
             }
