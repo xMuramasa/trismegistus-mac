@@ -291,6 +291,68 @@ public struct RelayREST: Sendable {
 
     private struct JobEnvelope: Decodable { var job: Job }
 
+    /// The device's name and role. A relay that predates roles answers 404 (RelayAPIError).
+    public func me() async throws -> DeviceInfo {
+        try decode(DeviceInfo.self, try await call("GET", "/api/me"))
+    }
+
+    // MARK: GitHub (the relay's `/api/github/*`); failures are GitHubError
+
+    public func githubBoard() async throws -> GitHubBoard {
+        try decode(GitHubBoard.self, try await github("GET", "/api/github/board"))
+    }
+
+    /// `open` or `closed`.
+    public func githubIssues(repo: String, state: String) async throws -> GitHubIssueList {
+        try decode(GitHubIssueList.self, try await github("GET", try repoPath(repo) + "/issues?state=" + (state == "closed" ? "closed" : "open")))
+    }
+
+    public func githubIssue(repo: String, number: Int) async throws -> GitHubIssue {
+        try decode(GitHubIssue.self, try await github("GET", try issuePath(repo, number)))
+    }
+
+    /// Manager only. The body must not be blank.
+    public func githubComment(repo: String, number: Int, body: String) async throws -> GitHubComment {
+        try decode(GitHubComment.self, try await github("POST", try issuePath(repo, number) + "/comments", body: ["body": .string(body)]))
+    }
+
+    /// Manager only: closes or reopens. Answers the state as GitHub has it.
+    @discardableResult
+    public func githubSetOpen(repo: String, number: Int, _ open: Bool) async throws -> String {
+        struct Body: Decodable { var state: String }
+        let body: [String: JSONValue] = ["state": .string(open ? "open" : "closed")]
+        return try decode(Body.self, try await github("PATCH", try issuePath(repo, number), body: body)).state
+    }
+
+    /// Manager only: sets Status and/or Priority by option name (from the board), adding the issue to the board first
+    /// if it isn't on it.
+    public func githubSetBoard(repo: String, number: Int, status: String? = nil, priority: String? = nil) async throws -> (status: String, priority: String) {
+        struct Body: Decodable { var status: String; var priority: String }
+        var body: [String: JSONValue] = [:]
+        if let status { body["status"] = .string(status) }
+        if let priority { body["priority"] = .string(priority) }
+        let answer = try decode(Body.self, try await github("PUT", try issuePath(repo, number) + "/board", body: body))
+        return (answer.status, answer.priority)
+    }
+
+    private func github(_ method: String, _ path: String, body: [String: JSONValue]? = nil) async throws -> Data {
+        try await call(method, path, body: body, failure: { GitHubError(status: $0, body: $1) })
+    }
+
+    /// `owner/name`, each part GitHub's characters (letters, digits, `-_.`), never `.` or `..`.
+    private func repoPath(_ repo: String) throws -> String {
+        let parts = repo.split(separator: "/", omittingEmptySubsequences: false)
+        let allowed = Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.".utf8)
+        guard parts.count == 2, parts.allSatisfy({ (1...100).contains($0.utf8.count) && $0.utf8.allSatisfy(allowed.contains) && $0 != "." && $0 != ".." })
+        else { throw GitHubError(status: 0, code: "not_found", message: "Unknown repository.") }
+        return "/api/github/repos/" + repo
+    }
+
+    private func issuePath(_ repo: String, _ number: Int) throws -> String {
+        guard number > 0 else { throw GitHubError(status: 0, code: "not_found", message: "Unknown issue.") }
+        return try repoPath(repo) + "/issues/\(number)"
+    }
+
     /// Trades a one-time pairing code (`XXXX-XXXX-XXXX`, from `trismegistus-relay pair`) for a device token.
     /// A bad, used or expired code is `unauthorized`.
     public static func pair(baseURL: URL, code: String, http: any HTTPTransport = URLSession.shared) async throws -> Pairing {
@@ -324,7 +386,10 @@ public struct RelayREST: Sendable {
         do { return try Wire.decode(type, from: data) } catch { throw RelayAPIError.unexpected }
     }
 
-    private func call(_ method: String, _ path: String, body: [String: JSONValue]? = nil) async throws -> Data {
+    private func call(
+        _ method: String, _ path: String, body: [String: JSONValue]? = nil,
+        failure: (Int, Data) -> any Error = { RelayAPIError(status: $0, body: $1) }
+    ) async throws -> Data {
         var base = baseURL.absoluteString
         while base.hasSuffix("/") { base.removeLast() }
         guard let url = URL(string: base + path) else { throw RelayAPIError(status: 0, code: .badRequest, message: "Bad relay URL.") }
@@ -337,7 +402,7 @@ public struct RelayREST: Sendable {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
         let (data, response) = try await http.response(for: request)
-        guard (200..<300).contains(response.statusCode) else { throw RelayAPIError(status: response.statusCode, body: data) }
+        guard (200..<300).contains(response.statusCode) else { throw failure(response.statusCode, data) }
         return data
     }
 }

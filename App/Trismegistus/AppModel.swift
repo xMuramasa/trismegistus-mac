@@ -18,6 +18,8 @@ final class AppModel {
     private(set) var news: NewsFeed?
     /// Hermes' cron jobs (#21) and this device's role, refreshed on each (re)connect.
     private(set) var jobs: JobBoard?
+    /// The GitHub row and view (#22): the Work board and this device's role; a new one per connection.
+    private(set) var github: GitHubModel?
     /// The token couldn't be read at launch; shown on the pairing screen.
     private(set) var keychainError: String?
     /// The last session list refresh failed.
@@ -113,6 +115,7 @@ final class AppModel {
         news = NewsFeed(rest: store.rest)
         let jobs = JobBoard(rest: store.rest)
         self.jobs = jobs
+        github = GitHubModel(rest: store.rest)
         store.start()
         // The session list and the jobs are reloaded on every (re)connect.
         watch = Task { [weak self] in
@@ -136,6 +139,7 @@ final class AppModel {
         store = nil
         news = nil
         jobs = nil
+        github = nil
     }
 
     private enum Keys {

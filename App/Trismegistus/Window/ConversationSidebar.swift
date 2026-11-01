@@ -73,6 +73,10 @@ struct ConversationSidebar: View {
                         .listRowInsets(EdgeInsets())
                         .listRowSeparator(.hidden).listRowBackground(Ink.surface.sunken)
                 }
+                GitHubRowView(github: model.github, isSelected: selection == GitHubRowView.id)
+                    .tag(GitHubRowView.id)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden).listRowBackground(Ink.surface.sunken)
                 if !shown.pinned.isEmpty {
                     SectionLabel(title: "Pinned").listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Ink.surface.sunken)
                     ForEach(shown.pinned) { conversation($0) }

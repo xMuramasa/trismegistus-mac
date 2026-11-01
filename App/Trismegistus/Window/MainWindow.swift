@@ -29,6 +29,8 @@ struct MainWindow: View {
                         CommandsView(onOpen: { selection.wrappedValue = $0 })
                     } else if selection.wrappedValue == JobsView.id {
                         JobsView(onOpen: { selection.wrappedValue = $0 })
+                    } else if selection.wrappedValue == GitHubRowView.id {
+                        GitHubView(onOpen: { selection.wrappedValue = $0 })
                     } else if let id = selection.wrappedValue {
                         VStack(spacing: 0) {
                             ConversationHeader(sessionID: id)
@@ -44,7 +46,7 @@ struct MainWindow: View {
                 // the strip there; this draws it back above them. A conversation's header continues it below.
                 .topBarColumn(.window)
             } pane: {
-                TerminalPane(sessionID: [NewsRowView.id, CommandsView.id, JobsView.id].contains(selectedSession) ? nil : selection.wrappedValue)
+                TerminalPane(sessionID: [NewsRowView.id, CommandsView.id, JobsView.id, GitHubRowView.id].contains(selectedSession) ? nil : selection.wrappedValue)
             }
         }
         .endfieldPaper()
