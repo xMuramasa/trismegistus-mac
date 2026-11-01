@@ -150,12 +150,13 @@ final class SnapshotTests: XCTestCase {
             VStack(alignment: .leading, spacing: 12) {
                 TerminalEntryView(
                     title: "12:04:31 terminal", detail: "~/Projects/homelab", command: "ls ~/Projects",
-                    output: "endfield-dotfiles\nhomelab", exitCode: 0, duration: 0.3)
+                    output: "endfield-dotfiles\nhomelab", exitCode: 0, duration: 0.3, startsFolded: false)
                 TerminalEntryView(title: "12:04:40 terminal", command: "pytest -q tests/", exitCode: 1, duration: 4.8)
                 TerminalEntryView(title: "12:04:50 terminal", command: "sleep 30", isRunning: true, startedAt: .now)
                 TerminalEntryView(
                     title: "12:05:02 terminal", command: "seq 40",
-                    output: (1...40).map(String.init).joined(separator: "\n"), exitCode: 0, duration: 1.2)
+                    output: (1...40).map(String.init).joined(separator: "\n"), exitCode: 0, duration: 1.2,
+                    startsFolded: false)
             }
         }
     }

@@ -137,17 +137,27 @@ public struct TerminalEntryView: View {
     let startedAt: Date?
     let duration: Double?
     @State private var expanded = false
-    @State private var folded = false
+    @State private var folded: Bool
+    /// The body's natural height, once laid out: past `maxBodyHeight` it scrolls.
+    @State private var bodyHeight: CGFloat?
+
+    /// A conversation row in the sidebar (`SessionRowView`, measured in `TerminalEntryTests`).
+    static let rowHeight: CGFloat = 52
+    static let headerHeight: CGFloat = 24
+    /// A card is at most eight conversation rows tall (Martin); the body scrolls inside it.
+    static let maxBodyHeight = 8 * rowHeight - headerHeight - 1
 
     /// - Parameters:
     ///   - title: the header's text, e.g. `14:02:11 terminal`.
     ///   - detail: a line above the command (the working directory).
     ///   - startedAt: while running, the header counts up from it.
     ///   - duration: once finished, seconds, shown in the header.
+    ///   - startsFolded: entries start as their header only (Martin); a click opens one.
     public init(
         title: String, detail: String? = nil, command: String, output: String? = nil, exitCode: Int? = nil,
-        isRunning: Bool = false, startedAt: Date? = nil, duration: Double? = nil
+        isRunning: Bool = false, startedAt: Date? = nil, duration: Double? = nil, startsFolded: Bool = true
     ) {
+        _folded = State(initialValue: startsFolded)
         self.title = title
         self.detail = detail
         self.command = command
@@ -164,7 +174,7 @@ public struct TerminalEntryView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            if !folded { content }
+            if !folded { cappedContent }
             Rectangle().fill(Theme.rule).frame(height: 1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -187,8 +197,8 @@ public struct TerminalEntryView: View {
             }
             .typeRole(.monoSmall).fontWeight(.semibold)
             .foregroundStyle(.white)
-            .padding(.horizontal, 10).padding(.vertical, 5)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, minHeight: Self.headerHeight, maxHeight: Self.headerHeight, alignment: .leading)
             .background(Theme.arkOrange)
             .contentShape(Rectangle())
         }
@@ -244,6 +254,22 @@ public struct TerminalEntryView: View {
         }
         .padding(.leading, 10).padding(.trailing, 14).padding(.top, 8).padding(.bottom, 10)
         .frame(maxWidth: .infinity, minHeight: 54, alignment: .topLeading)
+        .textSelection(.enabled)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// The body as it is while short; past `maxBodyHeight`, in a scroll view that height. The natural height doesn't
+    /// depend on the height it is given (only on the width), so measuring it can't loop. Short bodies get no scroll
+    /// view, so the wheel scrolls the pane over them. The accents stay put while the body scrolls.
+    private var cappedContent: some View {
+        let measured = content.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bodyHeight = $0 }
+        return Group {
+            if let bodyHeight, bodyHeight > Self.maxBodyHeight {
+                ScrollView { measured }.frame(height: Self.maxBodyHeight)
+            } else {
+                measured
+            }
+        }
         .overlay(alignment: .topTrailing) {
             VStack(spacing: 0) {
                 ForEach(Self.accents.indices, id: \.self) { Rectangle().fill(Self.accents[$0]).frame(width: 4, height: 11) }
@@ -251,8 +277,6 @@ public struct TerminalEntryView: View {
             .padding(.top, 7)
             .accessibilityHidden(true)
         }
-        .textSelection(.enabled)
-        .accessibilityElement(children: .combine)
     }
 
     /// The first `previewLines` lines and how many are left, or nil when the output is that short.
@@ -276,7 +300,7 @@ public struct TerminalEntryView: View {
         ApprovalBannerView(
             tool: "terminal", command: "rm -rf ~/.cache/trismegistus-build",
             explanation: "Clear the stale build cache before the release build.", onChoice: { _ in })
-        TerminalEntryView(title: "12:04:31 terminal", command: "ls ~/Projects", output: "endfield-dotfiles\nhomelab", exitCode: 0, duration: 0.3)
+        TerminalEntryView(title: "12:04:31 terminal", command: "ls ~/Projects", output: "endfield-dotfiles\nhomelab", exitCode: 0, duration: 0.3, startsFolded: false)
         TerminalEntryView(title: "12:04:40 terminal", command: "pytest -q tests/", exitCode: 1, duration: 4.8)
         TerminalEntryView(title: "12:04:50 terminal", command: "sleep 30", isRunning: true, startedAt: .now)
     }

@@ -9,15 +9,13 @@ struct TerminalPane: View {
 
     @Environment(AppModel.self) private var model
     @Environment(CommandLog.self) private var log: CommandLog?
-    @AppStorage("window.terminalCommandsOnly") private var commandsOnly = true
 
     private var state: SessionState? { sessionID.flatMap { model.store?.sessions[$0] } }
 
     private var entries: [TerminalEntry] {
         guard let sessionID else { return [] }
         let live = state.map { TerminalTranscript.entries(from: $0.events) } ?? []
-        let all = TerminalTranscript.merged(history: log?.entries(of: sessionID) ?? [], live: live)
-        return commandsOnly ? all.filter(\.isCommand) : all
+        return TerminalTranscript.merged(history: log?.entries(of: sessionID) ?? [], live: live)
     }
 
     var body: some View {
@@ -51,24 +49,13 @@ struct TerminalPane: View {
         var log: ObjectIdentifier?
     }
 
-    /// Title on its own line, the filter below as two halves: the pane can be 280 pt wide, too narrow for title and
-    /// both chips on one line (they wrapped letter by letter).
     private func header(_ entries: [TerminalEntry]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Text("Terminal").typeRole(.label).lineLimit(1)
-                if let run = (state?.run?.id ?? entries.last?.runID), !run.isEmpty {
-                    Text("run \(run.prefix(4))").typeRole(.monoSmall).foregroundStyle(Theme.secondary).lineLimit(1)
-                }
-                Spacer(minLength: 0)
+        HStack(spacing: 8) {
+            Text("Terminal").typeRole(.label).lineLimit(1)
+            if let run = (state?.run?.id ?? entries.last?.runID), !run.isEmpty {
+                Text("run \(run.prefix(4))").typeRole(.monoSmall).foregroundStyle(Theme.secondary).lineLimit(1)
             }
-            HStack(spacing: 0) {
-                FilterChip(title: "Commands", symbol: Symbol.terminal, isOn: commandsOnly, fills: true) { commandsOnly = true }
-                Rectangle().fill(Theme.rule).frame(width: 1)
-                FilterChip(title: "All tools", symbol: Symbol.list, isOn: !commandsOnly, fills: true) { commandsOnly = false }
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            .overlay(Rectangle().strokeBorder(Theme.rule, lineWidth: 1))
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, 16).padding(.vertical, 10)
     }
