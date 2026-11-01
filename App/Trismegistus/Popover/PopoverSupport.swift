@@ -77,19 +77,19 @@ struct Notice<Trailing: View>: View {
     @ViewBuilder var trailing: Trailing
 
     var body: some View {
-        HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).typeRole(.label).foregroundStyle(Theme.ink)
-                Text(message).typeRole(.caption).foregroundStyle(isError ? Theme.red : Theme.secondary)
+        HStack(spacing: Space.s) {
+            VStack(alignment: .leading, spacing: Space.xxs) {
+                Text(title).typeRole(.label).foregroundStyle(Ink.text.primary)
+                Text(message).typeRole(.caption).foregroundStyle(isError ? Ink.text.error : Ink.text.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: 8)
+            Spacer(minLength: Space.s)
             trailing
         }
-        .padding(.vertical, 8).padding(.horizontal, 10)
-        .background(Theme.raised)
-        .overlay(alignment: .leading) { Rectangle().fill(isError ? Theme.red : Theme.yellow).frame(width: 3) }
-        .overlay(Rectangle().strokeBorder(Theme.rule, lineWidth: 1))
+        .padding(.vertical, Space.s).padding(.horizontal, Space.m)
+        .background(Ink.surface.raised)
+        .overlay(alignment: .leading) { Rectangle().fill(isError ? Palette.red : Ink.selection).frame(width: Stroke.mark) }
+        .overlay(Rectangle().strokeBorder(Ink.line.rule, lineWidth: Stroke.hairline))
         .accessibilityElement(children: .combine)
     }
 }

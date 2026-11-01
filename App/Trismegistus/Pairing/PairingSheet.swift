@@ -21,55 +21,55 @@ struct PairingSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Space.l) {
                 Text("Pair this Mac").typeRole(.title)
                 step("01", "On optiplex, create a one-time code:") {
                     CodeBlockView(language: "bash", code: Self.command)
                 }
                 step("02", "Paste the code or the QR payload:") {
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: Space.s) {
                         EndfieldTextField("XXXX-XXXX-XXXX", text: $input, isError: error != nil)
                             .onSubmit { Task { await pair() } }
                             .onChange(of: input) { error = nil }
                         if let message = error ?? model.keychainError {
-                            Text(message).typeRole(.caption).foregroundStyle(Theme.red)
+                            Text(message).typeRole(.caption).foregroundStyle(Ink.text.error)
                         } else {
-                            HStack(spacing: 6) {
-                                Text("Relay").typeRole(.label).foregroundStyle(Theme.secondary)
+                            HStack(spacing: Space.s) {
+                                Text("Relay").typeRole(.label).foregroundStyle(Ink.text.secondary)
                                 Text(relay.url.host() ?? "").typeRole(.monoSmall)
                                 Text(relay.fromPayload ? "from the payload" : "default")
-                                    .typeRole(.caption).foregroundStyle(Theme.muted)
+                                    .typeRole(.caption).foregroundStyle(Ink.text.muted)
                             }
                         }
-                        HStack(spacing: 10) {
+                        HStack(spacing: Space.m) {
                             EndfieldButton("Pair", symbol: Symbol.link, kind: .primary) { Task { await pair() } }
                                 .disabled(pairing || input.allSatisfy(\.isWhitespace))
-                            Text("single use · valid 10 min").typeRole(.caption).foregroundStyle(Theme.muted)
+                            Text("single use · valid 10 min").typeRole(.caption).foregroundStyle(Ink.text.muted)
                         }
                     }
                 }
             }
-            .padding(.horizontal, 16).padding(.top, 14)
+            .padding(.horizontal, Space.l).padding(.top, Space.l)
             Spacer(minLength: 0)
             KeyHintStrip([("⌘V", "paste"), ("↩", "pair"), ("esc", "close")])
         }
-        .frame(width: 380, height: 460)
-        .background(Theme.paper)
+        .frame(width: Size.pairing.width, height: Size.pairing.height)
+        .background(Ink.surface.window)
     }
 
     private var header: some View {
-        HStack(alignment: .top, spacing: 10) {
-            TMark().padding(.top, 2)
+        HStack(alignment: .top, spacing: Space.m) {
+            TMark().padding(.top, Space.xxs)
             TitleRule("Trismegistus")
             StatusReadout(.offline, detail: "not paired").fixedSize()
         }
-        .padding(.horizontal, 16).padding(.top, 14)
+        .padding(.horizontal, Space.l).padding(.top, Space.l)
     }
 
     private func step(_ number: String, _ title: String, @ViewBuilder content: () -> some View) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Text(number).typeRole(.monoSmall).foregroundStyle(Theme.secondary).padding(.top, 1)
-            VStack(alignment: .leading, spacing: 8) {
+        HStack(alignment: .top, spacing: Space.m) {
+            Text(number).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary).padding(.top, 1)
+            VStack(alignment: .leading, spacing: Space.s) {
                 Text(title).typeRole(.body)
                 content()
             }

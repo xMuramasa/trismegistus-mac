@@ -10,22 +10,22 @@ struct CommandsRowView: View {
 
     var body: some View {
         // Title and a meta line, like the conversation rows: on one line "all conversations" wrapped at 260 pt.
-        HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Commands").typeRole(.headline).foregroundStyle(Theme.ink).lineLimit(1)
-                HStack(spacing: 6) {
-                    Image(systemName: Symbol.terminal).font(.system(size: 11))
+        HStack(spacing: Space.s) {
+            VStack(alignment: .leading, spacing: Space.xs) {
+                Text("Commands").typeRole(.headline).foregroundStyle(Ink.text.primary).lineLimit(1)
+                HStack(spacing: Space.s) {
+                    Image(systemName: Symbol.terminal).font(.system(size: Icon.m))
                     Text("all conversations").typeRole(.monoSmall).lineLimit(1)
                 }
-                .foregroundStyle(sunken ? Theme.secondary : Theme.muted)
+                .foregroundStyle(sunken ? Ink.text.secondary : Ink.text.muted)
             }
-            Spacer(minLength: 8)
+            Spacer(minLength: Space.s)
             if isSelected {
-                Image(systemName: Symbol.chevronRight).font(.system(size: 10)).foregroundStyle(Theme.ink)
+                Image(systemName: Symbol.chevronRight).font(.system(size: Icon.s)).foregroundStyle(Ink.text.primary)
             }
         }
-        .padding(.horizontal, 12)
-        .frame(height: 52)
+        .padding(.horizontal, Space.m)
+        .frame(height: Size.row)
         .rowGround(isSelected: isSelected)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -69,26 +69,26 @@ struct CommandsView: View {
         let entries = entries
         VStack(spacing: 0) {
             header(count: entries.count)
-            Rectangle().fill(Theme.rule).frame(height: 1)
+            Rectangle().fill(Ink.line.rule).frame(height: 1)
             if entries.isEmpty {
-                Text(emptyText).typeRole(.caption).foregroundStyle(Theme.muted)
+                Text(emptyText).typeRole(.caption).foregroundStyle(Ink.text.muted)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 20) {
+                    LazyVStack(alignment: .leading, spacing: Space.xl) {
                         ForEach(entries) { entry in
-                            VStack(alignment: .leading, spacing: 6) {
+                            VStack(alignment: .leading, spacing: Space.s) {
                                 conversationLink(entry.sessionID)
                                 EntryRow(entry: entry)
                             }
                         }
                     }
-                    .padding(16)
+                    .padding(Space.l)
                 }
                 .settledWidth()
             }
         }
-        .background(Theme.paper)
+        .background(Ink.surface.window)
         .task(id: log.map(ObjectIdentifier.init)) {
             guard let log else { return }
             while !Task.isCancelled {
@@ -112,16 +112,16 @@ struct CommandsView: View {
     }
 
     private func header(count: Int) -> some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 8) {
-                Text("Commands // \(count)").typeRole(.label).foregroundStyle(Theme.secondary)
+        VStack(spacing: Space.m) {
+            HStack(spacing: Space.s) {
+                Text("Commands // \(count)").typeRole(.label).foregroundStyle(Ink.text.secondary)
                 if listFailed && log?.all.isEmpty == false {
-                    Text("can't reach the relay").typeRole(.caption).foregroundStyle(Theme.red)
+                    Text("can't reach the relay").typeRole(.caption).foregroundStyle(Ink.text.error)
                 }
-                Spacer(minLength: 8)
+                Spacer(minLength: Space.s)
                 FilterChip(title: "Failed", symbol: "exclamationmark.triangle", isOn: failedOnly) { failedOnly.toggle() }
             }
-            HStack(spacing: 8) {
+            HStack(spacing: Space.s) {
                 EndfieldTextField("Search commands and output", text: $search)
                 Picker("Conversation", selection: $conversation) {
                     Text("All conversations").tag(String?.none)
@@ -129,20 +129,20 @@ struct CommandsView: View {
                 }
                 .labelsHidden()
                 .pickerStyle(.menu)
-                .frame(maxWidth: 240)
+                .frame(maxWidth: Size.pickerMax)
             }
         }
-        .padding(.horizontal, 16).padding(.vertical, 12)
+        .padding(.horizontal, Space.l).padding(.vertical, Space.m)
     }
 
     @ViewBuilder private func conversationLink(_ sessionID: String?) -> some View {
         if let sessionID {
             Button { onOpen(sessionID) } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: Space.xs) {
                     Text(titles[sessionID] ?? sessionID).lineLimit(1)
-                    Image(systemName: Symbol.chevronRight).font(.system(size: 9))
+                    Image(systemName: Symbol.chevronRight).font(.system(size: Icon.xs))
                 }
-                .typeRole(.monoSmall).foregroundStyle(Theme.blue)
+                .typeRole(.monoSmall).foregroundStyle(Ink.text.link)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

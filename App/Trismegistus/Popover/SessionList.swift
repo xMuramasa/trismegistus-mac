@@ -51,22 +51,22 @@ struct SessionList: View {
     private var list: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Sessions // \(rows.count)").typeRole(.label).foregroundStyle(Theme.secondary)
+                Text("Sessions // \(rows.count)").typeRole(.label).foregroundStyle(Ink.text.secondary)
                 Spacer()
                 EndfieldButton("New session", symbol: Symbol.plus, kind: .quiet, iconOnly: true, shortcut: newShortcut) {
                     onNew()
                 }
             }
-            .padding(.horizontal, 16).padding(.vertical, 6)
+            .padding(.horizontal, Space.l).padding(.vertical, Space.s)
             ScrollViewReader { proxy in
                 ScrollView {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         let listing = self.listing
                         LazyVStack(spacing: 1) {
                             if !listing.pinned.isEmpty {
-                                SectionLabel(title: "Pinned").background(Theme.paper)
+                                SectionLabel(title: "Pinned").background(Ink.surface.window)
                                 ForEach(listing.pinned) { entry($0, now: context.date) }
-                                SectionLabel(title: "Conversations").background(Theme.paper)
+                                SectionLabel(title: "Conversations").background(Ink.surface.window)
                             }
                             ForEach(listing.rest) { row in
                                 switch row {
@@ -76,8 +76,8 @@ struct SessionList: View {
                             }
                         }
                     }
-                    .background(Theme.rule)
-                    .opacity(isStale ? 0.5 : 1)
+                    .background(Ink.line.rule)
+                    .opacity(isStale ? Opacity.track : 1)
                 }
                 .focusable()
                 .focusEffectDisabled()
@@ -153,13 +153,13 @@ struct SessionList: View {
     // MARK: Empty (02b)
 
     private var empty: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: Space.m) {
             Spacer()
-            TMark().scaleEffect(3).frame(width: 42, height: 42).foregroundStyle(Theme.borderInactive)
-            Text("No sessions yet").typeRole(.label).foregroundStyle(Theme.ink)
+            TMark().scaleEffect(3).frame(width: Size.emptyMark, height: Size.emptyMark).foregroundStyle(Palette.borderInactive)
+            Text("No sessions yet").typeRole(.label).foregroundStyle(Ink.text.primary)
             Text("Start one here. Sessions from Telegram, cron or the CLI show up too, read-only.")
-                .typeRole(.callout).foregroundStyle(Theme.secondary).multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
+                .typeRole(.callout).foregroundStyle(Ink.text.secondary).multilineTextAlignment(.center)
+                .padding(.horizontal, Space.huge)
             EndfieldButton("New session", symbol: Symbol.plus, kind: .primary, shortcut: newShortcut) { onNew() }
             Spacer()
         }

@@ -22,24 +22,24 @@ struct NewsRowView: View {
     @Environment(\.sunkenRows) private var sunken
 
     var body: some View {
-        HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(feed.items.first?.edition.title ?? "News").typeRole(.headline).foregroundStyle(Theme.ink).lineLimit(1)
-                HStack(spacing: 6) {
-                    Image(systemName: Self.symbol).font(.system(size: 11)).accessibilityLabel("News")
-                    Image(systemName: Symbol.lock).font(.system(size: 10))
+        HStack(spacing: Space.s) {
+            VStack(alignment: .leading, spacing: Space.xs) {
+                Text(feed.items.first?.edition.title ?? "News").typeRole(.headline).foregroundStyle(Ink.text.primary).lineLimit(1)
+                HStack(spacing: Space.s) {
+                    Image(systemName: Self.symbol).font(.system(size: Icon.m)).accessibilityLabel("News")
+                    Image(systemName: Symbol.lock).font(.system(size: Icon.s))
                     Text(detail).typeRole(.monoSmall).lineLimit(1)
                 }
-                .foregroundStyle(sunken ? Theme.secondary : Theme.muted)
+                .foregroundStyle(sunken ? Ink.text.secondary : Ink.text.muted)
             }
-            Spacer(minLength: 8)
-            Text("News").typeRole(.label).foregroundStyle(Theme.ink)
+            Spacer(minLength: Space.s)
+            Text("News").typeRole(.label).foregroundStyle(Ink.text.primary)
             if isSelected {
-                Image(systemName: Symbol.chevronRight).font(.system(size: 10)).foregroundStyle(Theme.ink)
+                Image(systemName: Symbol.chevronRight).font(.system(size: Icon.s)).foregroundStyle(Ink.text.primary)
             }
         }
-        .padding(.horizontal, 12)
-        .frame(height: 52)
+        .padding(.horizontal, Space.m)
+        .frame(height: Size.row)
         .rowGround(isSelected: isSelected)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -62,45 +62,45 @@ struct NewsView: View {
             if model.news?.readerError != nil { unreachable }
             editions
         }
-        .background(Theme.paper)
+        .background(Ink.surface.window)
         .task { await model.news?.refreshEditions() }
     }
 
     /// One line over the editions already fetched, which stay.
     private var unreachable: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "exclamationmark.triangle").font(.system(size: 11)).accessibilityHidden(true)
+        HStack(spacing: Space.s) {
+            Image(systemName: "exclamationmark.triangle").font(.system(size: Icon.m)).accessibilityHidden(true)
             Text("Can't reach the news reader. Showing what was loaded.").typeRole(.callout).lineLimit(1)
-            Spacer(minLength: 8)
+            Spacer(minLength: Space.s)
             EndfieldButton("Retry", symbol: Symbol.retry, kind: .quiet, iconOnly: true) {
                 Task { await model.news?.refreshEditions() }
             }
         }
-        .foregroundStyle(Theme.secondary)
-        .padding(.horizontal, 16).padding(.vertical, 6)
-        .background(Theme.sunken)
+        .foregroundStyle(Ink.text.secondary)
+        .padding(.horizontal, Space.l).padding(.vertical, Space.s)
+        .background(Ink.surface.sunken)
     }
 
     private var editions: some View {
         Group {
             if days.isEmpty {
-                VStack(spacing: 6) {
-                    Image(systemName: NewsRowView.symbol).font(.system(size: 28)).foregroundStyle(Theme.borderInactive)
-                    Text("No editions yet").typeRole(.label).foregroundStyle(Theme.ink)
-                    Text("The daily news runs show up here when one finishes.").typeRole(.callout).foregroundStyle(Theme.secondary)
+                VStack(spacing: Space.s) {
+                    Image(systemName: NewsRowView.symbol).font(.system(size: Icon.empty)).foregroundStyle(Palette.borderInactive)
+                    Text("No editions yet").typeRole(.label).foregroundStyle(Ink.text.primary)
+                    Text("The daily news runs show up here when one finishes.").typeRole(.callout).foregroundStyle(Ink.text.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 12) {
+                    LazyVStack(alignment: .leading, spacing: Space.m) {
                         ForEach(days, id: \.date) { day in
-                            Text(Self.dayTitle(day.date)).typeRole(.label).foregroundStyle(Theme.secondary)
-                                .padding(.top, 4)
+                            Text(Self.dayTitle(day.date)).typeRole(.label).foregroundStyle(Ink.text.secondary)
+                                .padding(.top, Space.xs)
                                 .accessibilityAddTraits(.isHeader)
                             ForEach(day.items) { EditionView(item: $0) }
                         }
                     }
-                    .padding(16)
+                    .padding(Space.l)
                 }
             }
         }
@@ -122,17 +122,17 @@ struct NewsPage: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .top, spacing: 10) {
+            HStack(alignment: .top, spacing: Space.m) {
                 EndfieldButton("Back", symbol: "chevron.left", kind: .quiet, iconOnly: true, shortcut: .cancelAction, action: onBack)
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Space.xxs) {
                     TitleRule("News").lineLimit(1)
                     let count = model.news?.items.count ?? 0
                     Text("\(model.news?.reader == nil ? "Cron" : "Reader") · \(count) \(count == 1 ? "edition" : "editions") · read-only")
-                        .typeRole(.monoSmall).foregroundStyle(Theme.secondary)
+                        .typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 16).padding(.vertical, 12)
+            .padding(.horizontal, Space.l).padding(.vertical, Space.m)
             NewsView()
             KeyHintStrip([("esc", "back")])
         }
@@ -158,39 +158,39 @@ private struct EditionView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Text(edition.tag).typeRole(.label).foregroundStyle(Theme.paper)
-                    .padding(.horizontal, 6).padding(.vertical, 2).background(Theme.ink)
-                Spacer(minLength: 8)
+        VStack(alignment: .leading, spacing: Space.m) {
+            HStack(spacing: Space.s) {
+                Text(edition.tag).typeRole(.label).foregroundStyle(Ink.surface.window)
+                    .padding(.horizontal, Space.s).padding(.vertical, Space.xxs).background(Palette.ink)
+                Spacer(minLength: Space.s)
                 if let at = item.publishedAt {
-                    Text(at.formatted(date: .omitted, time: .shortened)).typeRole(.monoSmall).foregroundStyle(Theme.muted)
+                    Text(at.formatted(date: .omitted, time: .shortened)).typeRole(.monoSmall).foregroundStyle(Ink.text.muted)
                 }
             }
-            Text(edition.title).typeRole(.title).foregroundStyle(Theme.ink)
+            Text(edition.title).typeRole(.title).foregroundStyle(Ink.text.primary)
             if !edition.lead.isEmpty {
-                Text(edition.lead).typeRole(.body).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(edition.lead).typeRole(.body).foregroundStyle(Ink.text.secondary).fixedSize(horizontal: false, vertical: true)
             }
             if full == nil {
                 let count = item.edition.storyCount
-                Text("\(count) \(count == 1 ? "story" : "stories") · loading").typeRole(.monoSmall).foregroundStyle(Theme.muted)
+                Text("\(count) \(count == 1 ? "story" : "stories") · loading").typeRole(.monoSmall).foregroundStyle(Ink.text.muted)
             }
             if !edition.markets.isEmpty { markets }
             ForEach(sections, id: \.id) { section in
-                Text(edition.sectionTitle(section.id)).typeRole(.label).foregroundStyle(Theme.muted).padding(.top, 4)
+                Text(edition.sectionTitle(section.id)).typeRole(.label).foregroundStyle(Ink.text.muted).padding(.top, Space.xs)
                 VStack(spacing: 1) {
                     ForEach(section.stories.indices, id: \.self) { StoryView(story: section.stories[$0], edition: edition) }
                 }
-                .background(Theme.rule)
+                .background(Ink.line.rule)
             }
             if !edition.gaps.isEmpty {
-                NewsField(label: "Gaps", text: edition.gaps.map { "– \($0)" }.joined(separator: "\n")).padding(.top, 4)
+                NewsField(label: "Gaps", text: edition.gaps.map { "– \($0)" }.joined(separator: "\n")).padding(.top, Space.xs)
             }
         }
         .textSelection(.enabled)
-        .padding(14)
-        .background(Theme.raised)
-        .overlay(Rectangle().strokeBorder(Theme.rule, lineWidth: 1))
+        .padding(Space.l)
+        .background(Ink.surface.raised)
+        .overlay(Rectangle().strokeBorder(Ink.line.rule, lineWidth: Stroke.hairline))
         // Again after a retry clears the error.
         .task(id: model.news?.readerError == nil) { await model.news?.load(item.id) }
     }
@@ -211,50 +211,50 @@ private struct StoryView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button { isExpanded.toggle() } label: {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                HStack(alignment: .firstTextBaseline, spacing: Space.s) {
                     Image(systemName: isExpanded ? Symbol.chevronDown : Symbol.chevronRight)
-                        .font(.system(size: 8, weight: .bold)).frame(width: 8)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(story.headline).typeRole(.headline).foregroundStyle(Theme.ink)
+                        .font(.system(size: Icon.xxs, weight: .bold)).frame(width: Icon.xxs)
+                    VStack(alignment: .leading, spacing: Space.xxs) {
+                        Text(story.headline).typeRole(.headline).foregroundStyle(Ink.text.primary)
                             .fixedSize(horizontal: false, vertical: true)
                         if !story.cves.isEmpty {
-                            Text(story.cves.joined(separator: " · ")).typeRole(.monoSmall).foregroundStyle(Theme.secondary)
+                            Text(story.cves.joined(separator: " · ")).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         if !isExpanded {
-                            Text(story.summary).typeRole(.callout).foregroundStyle(Theme.secondary).lineLimit(1)
+                            Text(story.summary).typeRole(.callout).foregroundStyle(Ink.text.secondary).lineLimit(1)
                         }
                     }
-                    Spacer(minLength: 8)
+                    Spacer(minLength: Space.s)
                     if story.favorite {
-                        Image(systemName: "star.fill").font(.system(size: 10)).foregroundStyle(Theme.ink)
+                        Image(systemName: "star.fill").font(.system(size: Icon.s)).foregroundStyle(Ink.text.primary)
                             .help("Starred in the news reader").accessibilityLabel("Starred")
                     }
                     if story.isUpdate {
-                        Text("update").typeRole(.label).foregroundStyle(Theme.secondary)
+                        Text("update").typeRole(.label).foregroundStyle(Ink.text.secondary)
                     }
                     if let v = story.verification, v != "confirmed" {
-                        Text(v).typeRole(.label).foregroundStyle(Theme.secondary)
+                        Text(v).typeRole(.label).foregroundStyle(Ink.text.secondary)
                     }
                 }
-                .padding(.horizontal, 10).padding(.vertical, 8)
+                .padding(.horizontal, Space.m).padding(.vertical, Space.s)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .foregroundStyle(Theme.ink)
+            .foregroundStyle(Ink.text.primary)
             .accessibilityHint(isExpanded ? "Collapse the story" : "Expand the story")
-            if isExpanded { full.padding(.horizontal, 26).padding(.bottom, 12) }
+            if isExpanded { full.padding(.horizontal, Space.xxxl).padding(.bottom, Space.m) }
         }
-        .background(Theme.raised)
+        .background(Ink.surface.raised)
     }
 
     private var full: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(story.summary).typeRole(.body).foregroundStyle(Theme.ink).fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: Space.m) {
+            Text(story.summary).typeRole(.body).foregroundStyle(Ink.text.primary).fixedSize(horizontal: false, vertical: true)
             if let action = story.action {
                 NewsField(label: "Action", text: action)
-                    .padding(.leading, 8)
-                    .overlay(alignment: .leading) { Rectangle().fill(Theme.yellow).frame(width: 3) }
+                    .padding(.leading, Space.s)
+                    .overlay(alignment: .leading) { Rectangle().fill(Ink.selection).frame(width: Stroke.mark) }
             }
             ForEach(story.details.indices, id: \.self) { NewsField(label: story.details[$0].label, text: story.details[$0].text) }
             if !story.coverage.isEmpty {
@@ -272,25 +272,25 @@ private struct StoryView: View {
     }
 
     private var sources: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Sources").typeRole(.label).foregroundStyle(Theme.muted)
+        VStack(alignment: .leading, spacing: Space.xs) {
+            Text("Sources").typeRole(.label).foregroundStyle(Ink.text.muted)
             ForEach(story.sources.indices, id: \.self) { i in
                 let source = story.sources[i]
                 if let url = source.url {
                     // Only http(s): the Kit drops any other URL from the answer.
                     Button { NSWorkspace.shared.open(url) } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: Space.xs) {
                             Text(source.outlet)
-                            Image(systemName: "arrow.up.right").font(.system(size: 9, weight: .semibold))
+                            Image(systemName: "arrow.up.right").font(.system(size: Icon.xs, weight: .semibold))
                         }
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .typeRole(.callout).foregroundStyle(Theme.blue)
+                    .typeRole(.callout).foregroundStyle(Ink.text.link)
                     .help(url.absoluteString)
                     .accessibilityHint("Opens in the browser")
                 } else {
-                    Text(source.outlet).typeRole(.callout).foregroundStyle(Theme.secondary)
+                    Text(source.outlet).typeRole(.callout).foregroundStyle(Ink.text.secondary)
                 }
             }
         }
@@ -304,9 +304,9 @@ private struct NewsField: View {
     var mono = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label).typeRole(.label).foregroundStyle(Theme.muted)
-            Text(text).typeRole(mono ? .monoSmall : .callout).foregroundStyle(Theme.ink)
+        VStack(alignment: .leading, spacing: Space.xxs) {
+            Text(label).typeRole(.label).foregroundStyle(Ink.text.muted)
+            Text(text).typeRole(mono ? .monoSmall : .callout).foregroundStyle(Ink.text.primary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)

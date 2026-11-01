@@ -24,23 +24,23 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: Space.xxs) {
                 TitleRule("Settings")
-                Text("trismegistus-mac \(version)").typeRole(.monoSmall).foregroundStyle(Theme.secondary)
+                Text("trismegistus-mac \(version)").typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
             }
-            .padding(.horizontal, 16).padding(.vertical, 14)
+            .padding(.horizontal, Space.l).padding(.vertical, Space.l)
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: Space.l) {
                     connection
                     general
                     notifications
                 }
-                .padding(.horizontal, 16).padding(.bottom, 16)
+                .padding(.horizontal, Space.l).padding(.bottom, Space.l)
             }
             KeyHintStrip([("esc", "close"), ("⌘Q", "quit")])
         }
-        .frame(width: 380, height: 520)
-        .background(Theme.paper)
+        .frame(width: Size.settings.width, height: Size.settings.height)
+        .background(Ink.surface.window)
         .onAppear { login.refresh() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             login.refresh()  // the user may have approved or removed the login item in System Settings
@@ -59,20 +59,20 @@ struct SettingsView: View {
     }
 
     private var connection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Space.m) {
             section("Connection")
             StatusReadout(linkState.0, detail: linkState.1)
             field("Relay", model.relayURL.absoluteString, mono: true)
             field("Device name", model.deviceName ?? "—", mono: false)
-            HStack(spacing: 10) {
+            HStack(spacing: Space.m) {
                 EndfieldButton("Unpair", symbol: Symbol.unpair, kind: .danger) { confirmingUnpair = true }
                     .disabled(model.store == nil)
-                Text("removes the token from this Mac").typeRole(.caption).foregroundStyle(Theme.muted)
+                Text("removes the token from this Mac").typeRole(.caption).foregroundStyle(Ink.text.muted)
             }
-            if let unpairError { Text(unpairError).typeRole(.caption).foregroundStyle(Theme.red) }
+            if let unpairError { Text(unpairError).typeRole(.caption).foregroundStyle(Ink.text.error) }
             if let revokeCommand {
                 Text("The relay still lists this device. To revoke it, run on the server:")
-                    .typeRole(.caption).foregroundStyle(Theme.secondary)
+                    .typeRole(.caption).foregroundStyle(Ink.text.secondary)
                 CodeBlockView(language: "bash", code: revokeCommand)
             }
         }
@@ -101,26 +101,26 @@ struct SettingsView: View {
     // MARK: General
 
     private var general: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Space.m) {
             section("General")
             Toggle("Launch at login", isOn: Binding(get: { login.isOn }, set: { login.set($0) }))
                 .endfieldSwitch().typeRole(.body)
             switch login.status {
             case .requiresApproval:
-                HStack(spacing: 10) {
-                    Text("Waiting for your approval in System Settings.").typeRole(.caption).foregroundStyle(Theme.secondary)
+                HStack(spacing: Space.m) {
+                    Text("Waiting for your approval in System Settings.").typeRole(.caption).foregroundStyle(Ink.text.secondary)
                     EndfieldButton("Login Items", symbol: "gearshape") { login.openLoginItems() }
                 }
             case .notFound:
-                Text("macOS can't find this app as a login item.").typeRole(.caption).foregroundStyle(Theme.secondary)
+                Text("macOS can't find this app as a login item.").typeRole(.caption).foregroundStyle(Ink.text.secondary)
             default:
                 EmptyView()
             }
-            if let error = login.error { Text(error).typeRole(.caption).foregroundStyle(Theme.red) }
-            VStack(alignment: .leading, spacing: 4) {
-                Text("News reader").typeRole(.callout).foregroundStyle(Theme.secondary)
+            if let error = login.error { Text(error).typeRole(.caption).foregroundStyle(Ink.text.error) }
+            VStack(alignment: .leading, spacing: Space.xs) {
+                Text("News reader").typeRole(.callout).foregroundStyle(Ink.text.secondary)
                 EndfieldTextField(NewsSettings.defaultReaderURL, text: $newsReaderURL)
-                Text("empty: News reads the feed runs instead").typeRole(.caption).foregroundStyle(Theme.muted)
+                Text("empty: News reads the feed runs instead").typeRole(.caption).foregroundStyle(Ink.text.muted)
             }
             // The only way to quit while no window is open (a menu bar app has no Dock icon or app menu then).
             EndfieldButton("Quit Trismegistus", symbol: "power", shortcut: KeyboardShortcut("q")) { NSApp.terminate(nil) }
@@ -130,7 +130,7 @@ struct SettingsView: View {
     // MARK: Notifications
 
     private var notifications: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Space.m) {
             section("Notifications")
             Toggle("Approval requests", isOn: $approvals)
             Toggle("Run finished while closed", isOn: $runFinished)
@@ -142,24 +142,24 @@ struct SettingsView: View {
     // MARK: Pieces
 
     private func section(_ title: String) -> some View {
-        HStack(spacing: 8) {
-            Text(title).typeRole(.label).foregroundStyle(Theme.secondary)
-            Rectangle().fill(Theme.rule).frame(height: 1)
+        HStack(spacing: Space.s) {
+            Text(title).typeRole(.label).foregroundStyle(Ink.text.secondary)
+            Rectangle().fill(Ink.line.rule).frame(height: 1)
         }
-        .padding(.top, 4)
+        .padding(.top, Space.xs)
         .accessibilityAddTraits(.isHeader)
     }
 
     private func field(_ label: String, _ value: String, mono: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label).typeRole(.callout).foregroundStyle(Theme.secondary)
+        VStack(alignment: .leading, spacing: Space.xs) {
+            Text(label).typeRole(.callout).foregroundStyle(Ink.text.secondary)
             Text(value)
                 .typeRole(mono ? .mono : .body)
-                .foregroundStyle(mono ? Theme.muted : Theme.ink)
+                .foregroundStyle(mono ? Ink.text.muted : Ink.text.primary)
                 .lineLimit(1).truncationMode(.middle)
-                .padding(.horizontal, 10)
-                .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
-                .background(Theme.sunken)
+                .padding(.horizontal, Space.m)
+                .frame(maxWidth: .infinity, minHeight: Size.control, alignment: .leading)
+                .background(Ink.surface.sunken)
                 .textSelection(.enabled)
         }
     }

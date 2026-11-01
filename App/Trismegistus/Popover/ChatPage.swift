@@ -26,19 +26,19 @@ struct ChatPage: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .top, spacing: 10) {
+            HStack(alignment: .top, spacing: Space.m) {
                 EndfieldButton("Back", symbol: "chevron.left", kind: .quiet, iconOnly: true, shortcut: .cancelAction, action: onBack)
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Space.xxs) {
                     TitleRule(info.map(PopoverFormat.title) ?? "Session").lineLimit(1)
-                    HStack(spacing: 10) {
-                        Text(PopoverFormat.subtitle(id, info: info, store: model.store)).typeRole(.monoSmall).foregroundStyle(Theme.secondary).lineLimit(1)
+                    HStack(spacing: Space.m) {
+                        Text(PopoverFormat.subtitle(id, info: info, store: model.store)).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary).lineLimit(1)
                         if let info { ContextMeter(info: info) { handingOff = info } }
                     }
                 }
                 Spacer(minLength: 0)
                 if let info { ModelMenu(info: info) }
             }
-            .padding(.horizontal, 16).padding(.vertical, 12)
+            .padding(.horizontal, Space.l).padding(.vertical, Space.m)
             ChatView(sessionID: sessionID)
             KeyHintStrip(hints)
         }

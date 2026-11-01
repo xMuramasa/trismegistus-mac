@@ -29,8 +29,8 @@ struct PopoverRoot: View {
             case .settings: settings
             }
         }
-        .frame(width: 380, height: 560)
-        .background(Theme.paper)
+        .frame(width: Size.popover.width, height: Size.popover.height)
+        .background(Ink.surface.window)
         .refreshesNews(model)
         .onChange(of: model.connection, initial: true) { _, state in reconnect.observe(state) }
         .task { await refresh() }
@@ -45,12 +45,12 @@ struct PopoverRoot: View {
     private var home: some View {
         VStack(spacing: 0) {
             header
-            if !isConnected { reconnectNotice.padding(.horizontal, 16).padding(.bottom, 8) }
+            if !isConnected { reconnectNotice.padding(.horizontal, Space.l).padding(.bottom, Space.s) }
             if let message = error ?? model.sessionsError, isConnected {
                 Notice(title: "Sessions", message: message, isError: true) {
                     EndfieldButton("Dismiss", symbol: Symbol.close, kind: .quiet, iconOnly: true) { error = nil }
                 }
-                .padding(.horizontal, 16).padding(.bottom, 8)
+                .padding(.horizontal, Space.l).padding(.bottom, Space.s)
             }
             SessionList(isStale: !isConnected, error: $error, onOpen: { page = $0 == NewsRowView.id ? .news : .chat($0) }, onNew: newSession)
             KeyHintStrip(homeHints)
@@ -64,10 +64,10 @@ struct PopoverRoot: View {
     }
 
     private var header: some View {
-        HStack(spacing: 10) {
-            TMark().scaleEffect(1.3).frame(width: 18, height: 18).foregroundStyle(Theme.ink)
+        HStack(spacing: Space.m) {
+            TMark().scaleEffect(1.3).frame(width: Size.headerMark, height: Size.headerMark).foregroundStyle(Ink.text.primary)
             TitleRule("Trismegistus").fixedSize()
-            Spacer(minLength: 8)
+            Spacer(minLength: Space.s)
             StatusReadout(isConnected ? .linked : .reconnecting, detail: isConnected ? model.deviceName ?? "" : "")
             EndfieldButton("Open window", symbol: Symbol.window, kind: .quiet, iconOnly: true) {
                 openWindow(id: "main")
@@ -77,7 +77,7 @@ struct PopoverRoot: View {
                 page = .settings
             }
         }
-        .padding(.horizontal, 16).padding(.vertical, 12)
+        .padding(.horizontal, Space.l).padding(.vertical, Space.m)
     }
 
     private var reconnectNotice: some View {
@@ -111,7 +111,7 @@ struct PopoverRoot: View {
                 EndfieldButton("Back", symbol: "chevron.left", kind: .quiet, iconOnly: true, shortcut: .cancelAction) { page = .list }
                 Spacer()
             }
-            .padding(.horizontal, 16).frame(height: 40)
+            .padding(.horizontal, Space.l).frame(height: Size.rowCompact)
             SettingsView()
         }
     }
