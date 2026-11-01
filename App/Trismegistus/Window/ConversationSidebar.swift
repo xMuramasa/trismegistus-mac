@@ -2,7 +2,7 @@ import SwiftUI
 import TrismegistusKit
 import TrismegistusUI
 
-/// Window sidebar: `CONVERSATIONS // n`, icon-only new, filter field, the Commands row, one row per session, the
+/// Window sidebar: `CONVERSATIONS // n`, icon-only new, filter field, the Commands and Jobs rows, one row per session, the
 /// paired device below. On `SidebarSplit`'s sunken ground: no row separators, rows without their own fill.
 struct ConversationSidebar: View {
     @Binding var selection: String?
@@ -67,6 +67,12 @@ struct ConversationSidebar: View {
                     .tag(CommandsView.id)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden).listRowBackground(Ink.surface.sunken)
+                if let jobs = model.jobs {
+                    JobsRowView(board: jobs, isSelected: selection == JobsView.id)
+                        .tag(JobsView.id)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden).listRowBackground(Ink.surface.sunken)
+                }
                 if !shown.pinned.isEmpty {
                     SectionLabel(title: "Pinned").listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Ink.surface.sunken)
                     ForEach(shown.pinned) { conversation($0) }

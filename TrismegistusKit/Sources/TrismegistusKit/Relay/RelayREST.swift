@@ -239,6 +239,58 @@ public struct RelayREST: Sendable {
         return (page.items, page.count)
     }
 
+    /// This device's role (`GET /api/me`); a relay that predates roles (404) treats every device as a viewer.
+    public func role() async throws -> DeviceRole {
+        struct Body: Decodable { var role: String }
+        do {
+            return DeviceRole(rawValue: try decode(Body.self, try await call("GET", "/api/me")).role) ?? .viewer
+        } catch let error as RelayAPIError where error.status == 404 {
+            return .viewer
+        }
+    }
+
+    /// Hermes' cron jobs, paused ones included. Every device.
+    public func jobs() async throws -> [Job] {
+        struct Body: Decodable { var jobs: Lossy<Job> }
+        return try decode(Body.self, try await call("GET", "/api/jobs")).jobs.items
+    }
+
+    /// The job's run sessions, newest first, at most 50. Every device.
+    public func jobRuns(_ id: String) async throws -> [JobRun] {
+        struct Body: Decodable { var runs: Lossy<JobRun> }
+        return try decode(Body.self, try await call("GET", try jobPath(id) + "/runs")).runs.items
+    }
+
+    /// Manager only (`forbidden` otherwise), as are the other writes. Hermes' refusals come back as `bad_request` or
+    /// `hermes_error` with its message.
+    public func createJob(_ body: [String: JSONValue]) async throws -> Job {
+        try decode(JobEnvelope.self, try await call("POST", "/api/jobs", body: body)).job
+    }
+
+    public func updateJob(_ id: String, _ body: [String: JSONValue]) async throws -> Job {
+        try decode(JobEnvelope.self, try await call("PATCH", try jobPath(id), body: body)).job
+    }
+
+    public func deleteJob(_ id: String) async throws {
+        _ = try await call("DELETE", try jobPath(id))
+    }
+
+    public enum JobAction: String, Sendable { case pause, resume, run }
+
+    public func jobAction(_ id: String, _ action: JobAction) async throws -> Job {
+        try decode(JobEnvelope.self, try await call("POST", try jobPath(id) + "/" + action.rawValue, body: [:])).job
+    }
+
+    /// Hermes' job ids: 12 lowercase hex characters (the relay answers not_found to anything else).
+    private func jobPath(_ id: String) throws -> String {
+        guard id.utf8.count == 12, id.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }) else {
+            throw RelayAPIError(status: 0, code: .notFound, message: "Unknown job.")
+        }
+        return "/api/jobs/" + id
+    }
+
+    private struct JobEnvelope: Decodable { var job: Job }
+
     /// Trades a one-time pairing code (`XXXX-XXXX-XXXX`, from `trismegistus-relay pair`) for a device token.
     /// A bad, used or expired code is `unauthorized`.
     public static func pair(baseURL: URL, code: String, http: any HTTPTransport = URLSession.shared) async throws -> Pairing {

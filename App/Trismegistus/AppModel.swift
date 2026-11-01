@@ -16,6 +16,8 @@ final class AppModel {
     private(set) var store: SessionStore?
     /// The News conversation (#19): the daily feed runs folded into one; a new one per connection.
     private(set) var news: NewsFeed?
+    /// Hermes' cron jobs (#21) and this device's role, refreshed on each (re)connect.
+    private(set) var jobs: JobBoard?
     /// The token couldn't be read at launch; shown on the pairing screen.
     private(set) var keychainError: String?
     /// The last session list refresh failed.
@@ -109,11 +111,14 @@ final class AppModel {
         )
         self.store = store
         news = NewsFeed(rest: store.rest)
+        let jobs = JobBoard(rest: store.rest)
+        self.jobs = jobs
         store.start()
-        // The session list is reloaded on every (re)connect.
+        // The session list and the jobs are reloaded on every (re)connect.
         watch = Task { [weak self] in
             for await state in Observations({ store.connection }) {
                 guard case .connected = state else { continue }
+                Task { await jobs.refresh() }
                 do {
                     try await store.refreshSessions()
                     self?.sessionsError = nil
@@ -130,6 +135,7 @@ final class AppModel {
         await store?.stop()
         store = nil
         news = nil
+        jobs = nil
     }
 
     private enum Keys {
