@@ -39,6 +39,7 @@ struct MainWindow: View {
             }
         }
         .endfieldPaper()
+        .topBar()
         .providesCommandLog(model)
         .selectsChatFromNotifications(model.notifications, selection: selection)
         .refreshesNews(model)
@@ -54,16 +55,21 @@ struct MainWindow: View {
                 Image(nsImage: MenuBarGlyph.image(glyph)).renderingMode(.template).accessibilityHidden(true)
                 Text("Trismegistus").typeRole(.heading)
             }
-            .foregroundStyle(Theme.ink)
+            .foregroundStyle(Theme.onSteel)
         }
         .sharedBackgroundVisibility(.hidden)
-        ToolbarItem(placement: .primaryAction) { StatusReadout(link.state, detail: link.detail) }
+        ToolbarItem(placement: .primaryAction) { TopBarStatus(state: link.state, detail: link.detail) }
             .sharedBackgroundVisibility(.hidden)
         ToolbarItem(placement: .primaryAction) { TerminalToggle(isOn: $terminalShown) }
             .sharedBackgroundVisibility(.hidden)
         ToolbarItem(placement: .primaryAction) {
-            SettingsLink { Text("Settings") }
-                .buttonStyle(EndfieldButtonStyle(.quiet, title: "Settings", symbol: "slider.horizontal.3", iconOnly: true))
+            SettingsLink {
+                Image(systemName: "slider.horizontal.3").typeRole(.button).foregroundStyle(Theme.onSteel)
+                    .padding(6).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Settings")
+            .accessibilityLabel("Settings")
         }
         .sharedBackgroundVisibility(.hidden)
     }
@@ -88,7 +94,29 @@ struct MainWindow: View {
     }
 }
 
-/// Icon-only terminal button; inverted (ink with yellow) while the pane is shown, like EndfieldButton pressed.
+/// `StatusReadout` in light on the steel strip.
+private struct TopBarStatus: View {
+    let state: LinkState
+    let detail: String
+
+    var body: some View {
+        let (dot, label): (Color, String) = switch state {
+        case .linked: (Theme.green, "Linked")
+        case .reconnecting: (Theme.yellow, "Reconnecting")
+        case .offline: (.clear, "Offline")
+        }
+        HStack(spacing: 6) {
+            Circle().fill(dot).frame(width: 7, height: 7).overlay(Circle().strokeBorder(Theme.onSteel, lineWidth: 1))
+            Text(label).typeRole(.label)
+            Text(detail).typeRole(.monoSmall).opacity(0.7)
+        }
+        .foregroundStyle(Theme.onSteel)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Icon-only terminal button on the steel strip; inverted (ink with yellow) while the pane is shown, like
+/// EndfieldButton pressed.
 private struct TerminalToggle: View {
     @Binding var isOn: Bool
 
@@ -96,10 +124,10 @@ private struct TerminalToggle: View {
         Button { isOn.toggle() } label: {
             Image(systemName: Symbol.terminal)
                 .typeRole(.button)
-                .foregroundStyle(isOn ? Theme.yellow : Theme.ink)
+                .foregroundStyle(isOn ? Theme.yellow : Theme.onSteel)
                 .padding(.vertical, 6).padding(.horizontal, 6)
-                .background(isOn ? Theme.ink : Theme.raised)
-                .overlay(Rectangle().strokeBorder(Theme.ink, lineWidth: 1))
+                .background(isOn ? Theme.ink : .clear)
+                .overlay(Rectangle().strokeBorder(isOn ? Theme.ink : Theme.onSteel, lineWidth: 1))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

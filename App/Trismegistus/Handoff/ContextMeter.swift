@@ -11,6 +11,7 @@ struct ContextMeter: View {
     let onHandOff: @MainActor () -> Void
 
     @Environment(AppModel.self) private var model
+    @Environment(\.onSteel) private var onSteel
     @State private var estimate = ContextEstimate()
     @State private var estimateID: String?
     @State private var loaded = false
@@ -67,8 +68,16 @@ struct ContextMeter: View {
         return "Context about \(estimate.label) of \(ContextEstimate.format(window)) tokens, \(percent) percent"
     }
 
+    /// On the steel strip the text stays light and the bar carries the band (red text doesn't read on steel).
     private func color(_ band: ContextEstimate.Band, text: Bool) -> Color {
-        switch band {
+        if onSteel {
+            return switch band {
+            case .normal: text ? Theme.onSteel.opacity(0.7) : Theme.onSteel
+            case .warn: text ? Theme.onSteel : Theme.yellow
+            case .bad, .critical: text ? Theme.onSteel : Theme.red
+            }
+        }
+        return switch band {
         case .normal: text ? Theme.secondary : Theme.ink
         case .warn: text ? Theme.ink : Theme.yellow
         case .bad, .critical: Theme.red
@@ -103,21 +112,24 @@ struct ContextMeter: View {
     }
 }
 
-/// Ten segments, the filled ones in `color`, with a tick between the fifth and sixth where Hermes compresses.
+/// Ten segments, the filled ones in `color`, with a tick between the fifth and sixth where Hermes compresses. On the
+/// steel strip the empty ones are outlines and the tick is light.
 private struct SegmentBar: View {
     let percent: Int
     let color: Color
+
+    @Environment(\.onSteel) private var onSteel
 
     var body: some View {
         let filled = ContextEstimate.filled(percent: percent)
         HStack(spacing: 1) {
             ForEach(0..<10, id: \.self) { i in
-                Rectangle().fill(i < filled ? color : Theme.sunken)
-                    .overlay(Rectangle().strokeBorder(i < filled ? Theme.ink : Theme.rule, lineWidth: 1))
+                Rectangle().fill(i < filled ? color : onSteel ? .clear : Theme.sunken)
+                    .overlay(Rectangle().strokeBorder(i < filled ? Theme.ink : onSteel ? Theme.onSteel.opacity(0.5) : Theme.rule, lineWidth: 1))
                     .frame(width: 5, height: 10)
             }
         }
-        .overlay { Rectangle().fill(Theme.ink).frame(width: 1, height: 16) }
+        .overlay { Rectangle().fill(onSteel ? Theme.onSteel : Theme.ink).frame(width: 1, height: 16) }
         .accessibilityHidden(true)
     }
 }

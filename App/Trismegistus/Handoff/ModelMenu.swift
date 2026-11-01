@@ -8,15 +8,17 @@ struct ModelMenu: View {
     let info: SessionInfo
 
     @Environment(AppModel.self) private var model
+    @Environment(\.onSteel) private var onSteel
     @State private var error: String?
 
     var body: some View {
         if let store = model.store, let catalog = store.models {
             HStack(spacing: 6) {
-                if let error { Text(error).typeRole(.caption).foregroundStyle(Theme.red).lineLimit(1) }
+                if let error { Text(error).typeRole(.caption).foregroundStyle(onSteel ? Theme.yellow : Theme.red).lineLimit(1) }
                 if info.isReadOnly {
                     if let id = info.model {
-                        Text(ModelChoice.label(id)).typeRole(.monoSmall).foregroundStyle(Theme.secondary).lineLimit(1)
+                        Text(ModelChoice.label(id)).typeRole(.monoSmall).lineLimit(1)
+                            .foregroundStyle(onSteel ? Theme.onSteel.opacity(0.7) : Theme.secondary)
                             .help("Model (set in \(PopoverFormat.sourceName(info.source)))")
                     }
                 } else if let current = store.model(for: info.id) {
@@ -45,14 +47,16 @@ struct ModelMenu: View {
 struct ModelLabel: View {
     let choice: ModelChoice?
 
+    @Environment(\.onSteel) private var onSteel
+
     var body: some View {
         HStack(spacing: 4) {
             Text(choice?.label ?? "Model").typeRole(.monoSmall).lineLimit(1)
             Image(systemName: Symbol.chevronDown).font(.system(size: 9, weight: .semibold))
         }
-        .foregroundStyle(Theme.ink)
+        .foregroundStyle(onSteel ? Theme.onSteel : Theme.ink)
         .padding(.horizontal, 6).padding(.vertical, 3)
-        .overlay(Rectangle().strokeBorder(Theme.rule, lineWidth: 1))
+        .overlay(Rectangle().strokeBorder(onSteel ? Theme.onSteel.opacity(0.5) : Theme.rule, lineWidth: 1))
         .contentShape(Rectangle())
     }
 }

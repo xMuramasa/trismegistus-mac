@@ -66,3 +66,13 @@ public enum Symbol {
     public static let chevronRight = "chevron.right"
     public static let chevronDown = "chevron.down"
 }
+
+/// The window's top bar (Martin, 2026-10-31, after Arknights' in-game bars; it overrides Endfield's "no gradients").
+extension Theme {
+    public static let steel = Color(hex: 0x686F80)
+    public static let steelDeep = Color(hex: 0x5B6171)
+    /// Text and icons on the steel strip.
+    public static let onSteel = Color(hex: 0xE9E9E9)
+    /// The 1 pt rule under the strip.
+    public static let steelRule = Color(hex: 0x474C59)
+}
