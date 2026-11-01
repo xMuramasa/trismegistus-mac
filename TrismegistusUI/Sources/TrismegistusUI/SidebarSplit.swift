@@ -5,6 +5,11 @@ import SwiftUI
 /// then the detail. The toolbar's steel strip runs above both from the window's left edge. Showing and hiding follows
 /// the caller's animation (the column slides out to the left; the detail's width animates, so its content wants
 /// `settledWidth`). Dragging the rule sets `width`, kept within 220-340 pt.
+/// How the sidebar shows and hides (Martin: ease in and out). Generic types can't hold stored statics, so it lives here.
+public enum SidebarMotion {
+    public static let animation = Animation.easeInOut(duration: 0.3)
+}
+
 public struct SidebarSplit<Sidebar: View, Detail: View>: View {
     @Binding var isShown: Bool
     @Binding var width: Double

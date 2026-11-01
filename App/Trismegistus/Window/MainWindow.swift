@@ -54,13 +54,13 @@ struct MainWindow: View {
     }
 
     private func toggleSidebar() {
-        withAnimation { sidebarShown.toggle() }
+        withAnimation(SidebarMotion.animation) { sidebarShown.toggle() }
     }
 
     /// ⌘K: the sidebar's Filter field, showing the sidebar first if it is hidden.
     private func findConversation() {
         guard !sidebarShown else { filterFocused = true; return }
-        withAnimation { sidebarShown = true }
+        withAnimation(SidebarMotion.animation) { sidebarShown = true }
         // The field is only in the hierarchy once the sidebar is back.
         Task {
             try? await Task.sleep(for: .milliseconds(50))
