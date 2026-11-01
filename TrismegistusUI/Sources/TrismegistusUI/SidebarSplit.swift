@@ -5,9 +5,9 @@ import SwiftUI
 /// then the detail. The toolbar's steel strip runs above both from the window's left edge. Showing and hiding follows
 /// the caller's animation (the column slides out to the left; the detail's width animates, so its content wants
 /// `settledWidth`). Dragging the rule sets `width`, kept within 220-340 pt.
-/// How the sidebar shows and hides (Martin: ease in and out). Generic types can't hold stored statics, so it lives here.
+/// How the sidebar shows and hides (Martin: ease in and out): `Motion.panel`, under its old name for App/.
 public enum SidebarMotion {
-    public static let animation = Animation.easeInOut(duration: 0.3)
+    public static let animation = Motion.panel
 }
 
 public struct SidebarSplit<Sidebar: View, Detail: View>: View {
@@ -17,7 +17,7 @@ public struct SidebarSplit<Sidebar: View, Detail: View>: View {
     let detail: Detail
     @State private var dragStart: Double?
 
-    static var widths: ClosedRange<Double> { 220...340 }
+    static var widths: ClosedRange<Double> { Size.sidebar.min...Size.sidebar.max }
 
     public init(
         isShown: Binding<Bool>, width: Binding<Double>, @ViewBuilder sidebar: () -> Sidebar,
@@ -37,7 +37,7 @@ public struct SidebarSplit<Sidebar: View, Detail: View>: View {
                         .environment(\.sunkenRows, true)
                         .frame(width: min(max(width, Self.widths.lowerBound), Self.widths.upperBound))
                         // Not into the top safe area: the toolbar's strip stays steel above the column.
-                        .background(Theme.sunken, ignoresSafeAreaEdges: [])
+                        .background(Ink.surface.sunken, ignoresSafeAreaEdges: [])
                     divider
                 }
                 .transition(.move(edge: .leading))
@@ -49,9 +49,9 @@ public struct SidebarSplit<Sidebar: View, Detail: View>: View {
     }
 
     private var divider: some View {
-        Rectangle().fill(Theme.rule).frame(width: 1)
+        Rectangle().fill(Ink.line.rule).frame(width: 1)
             .overlay {
-                Color.clear.frame(width: 7).contentShape(Rectangle())
+                Color.clear.frame(width: Size.grip).contentShape(Rectangle())
                     .pointerStyle(.columnResize)
                     .gesture(
                         // Global: the divider moves under the pointer, so a local translation would feed back.
@@ -79,7 +79,7 @@ public struct TrailingSplit<Content: View, Pane: View>: View {
     let pane: Pane
     @State private var dragStart: Double?
 
-    static var widths: ClosedRange<Double> { 280...560 }
+    static var widths: ClosedRange<Double> { Size.terminal.min...Size.terminal.max }
 
     public init(
         isShown: Binding<Bool>, width: Binding<Double>, @ViewBuilder content: () -> Content,
@@ -106,9 +106,9 @@ public struct TrailingSplit<Content: View, Pane: View>: View {
     }
 
     private var divider: some View {
-        Rectangle().fill(Theme.rule).frame(width: 1)
+        Rectangle().fill(Ink.line.rule).frame(width: 1)
             .overlay {
-                Color.clear.frame(width: 7).contentShape(Rectangle())
+                Color.clear.frame(width: Size.grip).contentShape(Rectangle())
                     .pointerStyle(.columnResize)
                     .gesture(
                         // Dragging left widens the pane. Global: the divider moves under the pointer.

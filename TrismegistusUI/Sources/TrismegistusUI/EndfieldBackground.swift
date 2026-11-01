@@ -8,6 +8,10 @@ import SwiftUI
 public struct EndfieldBackground: View {
     /// Distance between crosses, across and down.
     static let crossSpacing = CGSize(width: 96, height: 64)
+    /// Half a cross's arm span.
+    static let crossArm: CGFloat = 4
+    /// The contours' opacity: every fifth line stronger.
+    static let contourStrong = 0.9, contourWeak = 0.55
 
     public init() {}
 
@@ -15,7 +19,7 @@ public struct EndfieldBackground: View {
         Canvas { context, size in
             Self.draw(&context, size)
         }
-        .background(Theme.paper)
+        .background(Ink.surface.window)
     }
 
     private static func draw(_ context: inout GraphicsContext, _ size: CGSize) {
@@ -26,13 +30,15 @@ public struct EndfieldBackground: View {
         var marks = Path()
         for x in stride(from: crossSpacing.width / 2, to: w, by: crossSpacing.width) {
             for y in stride(from: crossSpacing.height / 2, to: h, by: crossSpacing.height) {
-                marks.move(to: CGPoint(x: x - 4, y: y)); marks.addLine(to: CGPoint(x: x + 4, y: y))
-                marks.move(to: CGPoint(x: x, y: y - 4)); marks.addLine(to: CGPoint(x: x, y: y + 4))
+                marks.move(to: CGPoint(x: x - crossArm, y: y)); marks.addLine(to: CGPoint(x: x + crossArm, y: y))
+                marks.move(to: CGPoint(x: x, y: y - crossArm)); marks.addLine(to: CGPoint(x: x, y: y + crossArm))
             }
         }
-        context.stroke(marks, with: .color(Theme.ink.opacity(0.55)), style: StrokeStyle(lineWidth: 0.5, lineCap: .butt))
+        context.stroke(
+            marks, with: .color(Palette.ink.opacity(Opacity.paperCrosses)),
+            style: StrokeStyle(lineWidth: Stroke.hairlineFine, lineCap: .butt))
 
-        drawContours(&context, size, color: Theme.rule)
+        drawContours(&context, size, color: Ink.line.rule)
     }
 
     /// The topographic lines: 18 closed curves around (78%, 72%) of `size`, every fifth one stronger. `opacity` scales
@@ -49,7 +55,9 @@ public struct EndfieldBackground: View {
                 let p = CGPoint(x: cx + r * cos(t) * 1.35, y: cy + r * sin(t))
                 if i == 0 { contour.move(to: p) } else { contour.addLine(to: p) }
             }
-            context.stroke(contour, with: .color(color.opacity((k % 5 == 0 ? 0.9 : 0.55) * opacity)), lineWidth: 1)
+            context.stroke(
+                contour, with: .color(color.opacity((k % 5 == 0 ? contourStrong : contourWeak) * opacity)),
+                lineWidth: Stroke.hairline)
         }
     }
 }
@@ -125,7 +133,7 @@ struct EndfieldPaperProvider: ViewModifier {
             }
             .task(id: offered) {
                 guard let offered, offered != paper?.size else { return }
-                try? await Task.sleep(for: .milliseconds(150))
+                try? await Task.sleep(for: Motion.settle)
                 if !Task.isCancelled { paper = EndfieldPaper.render(offered) }
             }
     }
@@ -141,7 +149,7 @@ public struct EndfieldBackdrop: View {
     public var body: some View {
         GeometryReader { proxy in
             let origin = proxy.frame(in: .global).origin
-            Theme.paper.overlay(alignment: .topLeading) {
+            Ink.surface.window.overlay(alignment: .topLeading) {
                 if let paper {
                     Image(decorative: paper.image, scale: paper.scale)
                         .frame(width: paper.size.width, height: paper.size.height)

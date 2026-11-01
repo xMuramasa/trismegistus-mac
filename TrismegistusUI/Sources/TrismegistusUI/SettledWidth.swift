@@ -34,7 +34,7 @@ struct SettledWidth: ViewModifier {
         }
         .task(id: offered) {
             guard let offered, offered != settled else { return }
-            try? await Task.sleep(for: .milliseconds(150))
+            try? await Task.sleep(for: Motion.settle)
             if !Task.isCancelled { settle(offered) }
         }
     }

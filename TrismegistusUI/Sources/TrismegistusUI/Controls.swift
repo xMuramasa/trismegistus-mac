@@ -29,19 +29,19 @@ public struct EndfieldButtonStyle: ButtonStyle {
         @Environment(\.isEnabled) private var isEnabled
 
         private var palette: (fill: Color, edge: Color, text: Color) {
-            if !isEnabled { return (Theme.sunken, Theme.rule, Theme.muted) }
-            if configuration.isPressed { return (Theme.ink, Theme.ink, Theme.yellow) }
+            if !isEnabled { return (Ink.surface.sunken, Ink.line.rule, Ink.text.muted) }
+            if configuration.isPressed { return (Palette.ink, Ink.line.strong, Ink.selection) }
             switch style.kind {
-            case .primary: return (Theme.yellow, Theme.ink, Theme.ink)
-            case .secondary: return (Theme.raised, Theme.ink, Theme.ink)
-            case .danger: return (Theme.raised, Theme.red, Theme.red)
-            case .quiet: return (.clear, .clear, Theme.ink)
+            case .primary: return (Ink.selection, Ink.line.strong, Ink.text.primary)
+            case .secondary: return (Ink.surface.raised, Ink.line.strong, Ink.text.primary)
+            case .danger: return (Ink.surface.raised, Ink.text.error, Ink.text.error)
+            case .quiet: return (.clear, .clear, Ink.text.primary)
             }
         }
 
         var body: some View {
             let p = palette
-            HStack(spacing: 6) {
+            HStack(spacing: Space.s) {
                 if !style.iconOnly { configuration.label.textCase(.uppercase).lineLimit(1) }
                 if let symbol = style.symbol { Image(systemName: symbol) }
             }
@@ -49,8 +49,8 @@ public struct EndfieldButtonStyle: ButtonStyle {
             .fixedSize()
             .typeRole(.button)
             .foregroundStyle(p.text)
-            .padding(.vertical, 6)
-            .padding(.horizontal, style.iconOnly ? 6 : 12)
+            .padding(.vertical, Space.s)
+            .padding(.horizontal, style.iconOnly ? Space.s : Space.m)
             .background(p.fill)
             .edge(p.edge)
             .contentShape(Rectangle())
@@ -102,7 +102,7 @@ public struct EndfieldTextField: View {
     @Environment(\.isEnabled) private var isEnabled
 
     public init(
-        _ placeholder: String, text: Binding<String>, isError: Bool = false, ground: Color = Theme.sunken,
+        _ placeholder: String, text: Binding<String>, isError: Bool = false, ground: Color = Ink.surface.sunken,
         focus: FocusState<Bool>.Binding? = nil
     ) {
         self.placeholder = placeholder
@@ -114,22 +114,22 @@ public struct EndfieldTextField: View {
 
     public var body: some View {
         let isFocused = (focus?.wrappedValue ?? focused) || forceFocused
-        TextField(placeholder, text: $text, prompt: Text(placeholder).foregroundStyle(Theme.secondary))
+        TextField(placeholder, text: $text, prompt: Text(placeholder).foregroundStyle(Ink.text.secondary))
             .textFieldStyle(.plain)
             .typeRole(.body)
-            .foregroundStyle(isEnabled ? Theme.ink : Theme.muted)
+            .foregroundStyle(isEnabled ? Ink.text.primary : Ink.text.muted)
             .focused(focus ?? $focused)
-            .padding(.horizontal, 10)
-            .frame(height: 30)
-            .background(isFocused ? Theme.raised : ground)
-            .edge(isError ? Theme.red : isFocused ? Theme.ink : Theme.rule)
+            .padding(.horizontal, Space.m)
+            .frame(height: Size.control)
+            .background(isFocused ? Ink.surface.raised : ground)
+            .edge(isError ? Ink.text.error : isFocused ? Ink.line.strong : Ink.line.rule)
     }
 }
 
 extension View {
     /// `.switch` toggle tinted ink (yellow fails contrast as a track on paper).
     public func endfieldSwitch() -> some View {
-        toggleStyle(.switch).tint(Theme.ink)
+        toggleStyle(.switch).tint(Palette.ink)
     }
 }
 
@@ -141,7 +141,7 @@ extension View {
         EndfieldButton("Copy", symbol: Symbol.copy, kind: .quiet, iconOnly: true) {}
         EndfieldButton("Pair", symbol: Symbol.link) {}.disabled(true)
     }
-    .padding().background(Theme.paper)
+    .padding().background(Ink.surface.window)
 }
 
 #Preview("Fields") {
@@ -152,5 +152,5 @@ extension View {
         EndfieldTextField("Code", text: .constant("K7QF-2M9X-A1"), isError: true)
         Toggle("Launch at login", isOn: .constant(true)).endfieldSwitch()
     }
-    .padding().frame(width: 320).background(Theme.paper)
+    .padding().frame(width: 320).background(Ink.surface.window)
 }

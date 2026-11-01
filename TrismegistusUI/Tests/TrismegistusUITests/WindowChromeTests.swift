@@ -29,11 +29,11 @@ final class WindowChromeTests: XCTestCase {
                 Text("Conversations").frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             } detail: {
                 // Like the Commands log: a ground that reaches up under the toolbar.
-                Text("Commands // 426").frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.paper)
+                Text("Commands // 426").frame(maxWidth: .infinity, maxHeight: .infinity).background(Palette.paper)
                     .topBarColumn(.window)
             }
             .topBar()
-            .toolbar { ToolbarItem(placement: .navigation) { Text("Trismegistus").foregroundStyle(Theme.onSteel) } }
+            .toolbar { ToolbarItem(placement: .navigation) { Text("Trismegistus").foregroundStyle(Palette.onSteel) } }
         }
     }
 
@@ -65,12 +65,12 @@ final class WindowChromeTests: XCTestCase {
                 List(selection: $selection) {
                     ForEach(0..<3, id: \.self) { i in
                         SessionRowView(name: "Row \(i)", source: .trismegistus, activity: "now", isSelected: selection == i)
-                            .tag(i).listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Theme.sunken)
+                            .tag(i).listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Palette.sunken)
                     }
                 }
                 .listStyle(.plain).scrollContentBackground(.hidden)
                 .environment(\.sunkenRows, true)
-                .background(Theme.sunken)
+                .background(Palette.sunken)
                 .frame(width: 260, height: 170)
             }
         }

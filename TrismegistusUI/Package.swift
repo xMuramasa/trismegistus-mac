@@ -8,7 +8,8 @@ let package = Package(
         .library(name: "TrismegistusUI", targets: ["TrismegistusUI"])
     ],
     targets: [
-        .target(name: "TrismegistusUI"),
+        // Inter and JetBrains Mono (SIL OFL 1.1), registered on first use of a type role (Fonts.swift).
+        .target(name: "TrismegistusUI", resources: [.copy("Resources/Fonts")]),
         .testTarget(name: "TrismegistusUITests", dependencies: ["TrismegistusUI"]),
     ]
 )

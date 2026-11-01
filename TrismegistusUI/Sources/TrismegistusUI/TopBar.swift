@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 public extension EnvironmentValues {
-    /// True on the window's top bar: content there draws light on steel (`Theme.onSteel`).
+    /// True on the window's top bar: content there draws light on steel (`Ink.text.onDark`).
     @Entry var onSteel = false
 }
 
@@ -28,7 +28,7 @@ struct TopBar: ViewModifier {
                 GeometryReader { proxy in
                     TopBarBackdrop()
                         .frame(height: proxy.safeAreaInsets.top)
-                        .overlay(alignment: .bottom) { Rectangle().fill(Theme.steelRule).frame(height: 1) }
+                        .overlay(alignment: .bottom) { Rectangle().fill(Ink.bar.rule).frame(height: 1) }
                         .frame(maxHeight: .infinity, alignment: .top)
                         .ignoresSafeArea()
                         .onChange(of: proxy.size.width, initial: true) { _, w in width = w }
@@ -64,9 +64,9 @@ public extension View {
             GeometryReader { proxy in
                 TopBarBackdrop(anchor)
                     .frame(height: proxy.safeAreaInsets.top)
-                    .overlay(alignment: .bottom) { Rectangle().fill(Theme.steelRule).frame(height: 1) }
+                    .overlay(alignment: .bottom) { Rectangle().fill(Ink.bar.rule).frame(height: 1) }
                     .overlay(alignment: .leading) {
-                        label.foregroundStyle(Theme.onSteel).environment(\.onSteel, true).padding(.horizontal, 16)
+                        label.foregroundStyle(Ink.text.onDark).environment(\.onSteel, true).padding(.horizontal, Space.l)
                     }
                     .frame(maxHeight: .infinity, alignment: .top)
                     .ignoresSafeArea()
@@ -97,7 +97,7 @@ public struct TopBarBackdrop: View {
     public var body: some View {
         GeometryReader { proxy in
             let full = max(width, proxy.size.width)
-            LinearGradient(colors: [Theme.steel, Theme.steelDeep, Theme.steelEnd], startPoint: .leading, endPoint: .trailing)
+            LinearGradient(colors: [Ink.bar.start, Ink.bar.middle, Ink.bar.end], startPoint: .leading, endPoint: .trailing)
                 .frame(width: full, height: proxy.size.height)
                 .offset(x: offset(proxy, full))
         }

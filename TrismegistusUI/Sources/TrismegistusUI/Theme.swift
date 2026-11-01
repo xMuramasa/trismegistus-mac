@@ -1,45 +1,52 @@
+import CoreText
 import SwiftUI
 
-/// The type roles of the draft (system font; SF Mono for the mono roles).
-public enum TypeRole: Sendable {
-    case heading, title, headline, body, callout, caption, label, button, mono, monoSmall
+/// A type role's face, size and setting; `TypeRole.spec` (generated in Tokens.swift) has one per role.
+public struct TypeSpec: Sendable {
+    public let family: FontFamily
+    public let size: CGFloat
+    public let weight: Int
+    public let tracking: CGFloat
+    public let uppercase: Bool
 
-    var font: Font {
-        switch self {
-        case .heading: .system(size: 15, weight: .bold).width(.expanded)
-        case .title: .system(size: 15, weight: .semibold)
-        case .headline: .system(size: 13, weight: .semibold)
-        case .body: .system(size: 13)
-        case .callout: .system(size: 12)
-        case .caption: .system(size: 11)
-        case .label: .system(size: 10, weight: .semibold)
-        case .button: .system(size: 12, weight: .semibold)
-        case .mono: .system(size: 12, design: .monospaced)
-        case .monoSmall: .system(size: 11, design: .monospaced)
-        }
+    static let weights: [Font.Weight: Int] = [.regular: 400, .medium: 500, .semibold: 600, .bold: 700]
+
+    /// The bundled face, or its `weight` sibling (one of regular, medium, semibold, bold).
+    public func font(weight: Font.Weight? = nil) -> Font {
+        Fonts.register()
+        let face = weight.flatMap { Self.weights[$0] }.flatMap { family.faces[$0] } ?? family.faces[self.weight]!
+        return .custom(face, fixedSize: size)
     }
+}
 
-    var tracking: CGFloat {
-        switch self {
-        case .heading: 0.6
-        case .label: 0.8
-        case .button: 0.3
-        default: 0
+/// The bundled Inter and JetBrains Mono faces (Resources/Fonts, SIL OFL 1.1).
+public enum Fonts {
+    private static let registered: Void = {
+        for url in Bundle.module.urls(forResourcesWithExtension: "ttf", subdirectory: "Fonts") ?? [] {
+            // Fails harmlessly when the face is already registered.
+            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
         }
-    }
+    }()
 
-    var uppercase: Bool { self == .heading || self == .label }
+    /// Registers the faces for this process, once. Every type role calls it, so views needn't.
+    public static func register() { _ = registered }
 }
 
 extension View {
-    /// Font, tracking and case of a type role.
-    public func typeRole(_ role: TypeRole) -> some View {
-        font(role.font).tracking(role.tracking).textCase(role.uppercase ? .uppercase : nil)
+    /// Font, tracking and case of a type role; `weight` picks a sibling face (a tool name in semibold mono).
+    public func typeRole(_ role: TypeRole, weight: Font.Weight? = nil) -> some View {
+        let spec = role.spec
+        return font(spec.font(weight: weight)).tracking(spec.tracking).textCase(spec.uppercase ? .uppercase : nil)
     }
 
     /// The 1 px square edge every Endfield surface uses.
     func edge(_ color: Color) -> some View {
-        overlay(Rectangle().strokeBorder(color, lineWidth: 1))
+        overlay(Rectangle().strokeBorder(color, lineWidth: Stroke.hairline))
+    }
+
+    /// A shadow token's colour, blur and offset.
+    public func shadow(_ token: ShadowToken) -> some View {
+        shadow(color: token.color, radius: token.radius, x: token.x, y: token.y)
     }
 }
 
@@ -66,16 +73,4 @@ public enum Symbol {
     public static let chevronRight = "chevron.right"
     public static let chevronDown = "chevron.down"
     public static let chevronUp = "chevron.up"
-}
-
-/// The window's top bar (Martin, 2026-10-31, after Arknights' in-game bars; it overrides Endfield's "no gradients"):
-/// left to right Endfield `secondary` → `dark-panel` → `ink` (the Penpot library's colours).
-extension Theme {
-    public static let steel = Theme.secondary
-    public static let steelDeep = Theme.darkPanel
-    public static let steelEnd = Theme.ink
-    /// Text and icons on the steel strip.
-    public static let onSteel = Color(hex: 0xE9E9E9)
-    /// The 1 pt rule under the strip: darker than its darkest point.
-    public static let steelRule = Theme.ink
 }

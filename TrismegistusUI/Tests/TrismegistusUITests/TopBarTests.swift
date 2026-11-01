@@ -25,9 +25,9 @@ final class TopBarTests: XCTestCase {
             SidebarSplit(isShown: $panes.sidebar, width: $panes.width) {
                 VStack(spacing: 0) {
                     VStack(spacing: 10) {
-                        Text("Conversations // 6").typeRole(.label).foregroundStyle(Theme.secondary)
+                        Text("Conversations // 6").typeRole(.label).foregroundStyle(Palette.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                        EndfieldTextField("Filter", text: $filter, ground: Theme.paper)
+                        EndfieldTextField("Filter", text: $filter, ground: Palette.paper)
                     }
                     .padding(.horizontal, 16).padding(.vertical, 12)
                     // As ConversationSidebar lays its rows out: no insets, no separators.
@@ -42,10 +42,10 @@ final class TopBarTests: XCTestCase {
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
-                    Text("macbook · paired").typeRole(.monoSmall).foregroundStyle(Theme.secondary)
+                    Text("macbook · paired").typeRole(.monoSmall).foregroundStyle(Palette.secondary)
                         .padding(.horizontal, 16).padding(.vertical, 8)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .overlay(alignment: .top) { Rectangle().fill(Theme.rule).frame(height: 1) }
+                        .overlay(alignment: .top) { Rectangle().fill(Palette.rule).frame(height: 1) }
                 }
             } detail: {
                 // As in the app: the terminal as our own trailing column, inside the detail.
@@ -53,26 +53,26 @@ final class TopBarTests: XCTestCase {
                     detail
                 } pane: {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text("TERMINAL").typeRole(.label).foregroundStyle(Theme.onSteel).padding(.horizontal, 16).padding(.vertical, 10)
-                        Rectangle().fill(Theme.onSteel.opacity(0.12)).frame(height: 1)
+                        Text("TERMINAL").typeRole(.label).foregroundStyle(Palette.onSteel).padding(.horizontal, 16).padding(.vertical, 10)
+                        Rectangle().fill(Palette.onSteel.opacity(0.12)).frame(height: 1)
                         Spacer(minLength: 0)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Theme.ink, ignoresSafeAreaEdges: [])
+                    .background(Palette.ink, ignoresSafeAreaEdges: [])
                 }
             }
             .endfieldPaper()
             .topBar()
             .toolbar {
                 ToolbarItem(placement: .navigation) {
-                    Image(systemName: "sidebar.left").foregroundStyle(Theme.onSteel)
+                    Image(systemName: "sidebar.left").foregroundStyle(Palette.onSteel)
                 }
                 .sharedBackgroundVisibility(.hidden)
-                ToolbarItem(placement: .navigation) { Text("Trismegistus").typeRole(.heading).foregroundStyle(Theme.onSteel) }
+                ToolbarItem(placement: .navigation) { Text("Trismegistus").typeRole(.heading).foregroundStyle(Palette.onSteel) }
                     .sharedBackgroundVisibility(.hidden)
                 ToolbarSpacer(.flexible)
                 ToolbarItem(placement: .primaryAction) {
-                    Image(systemName: Symbol.terminal).foregroundStyle(Theme.onSteel)
+                    Image(systemName: Symbol.terminal).foregroundStyle(Palette.onSteel)
                 }
                 .sharedBackgroundVisibility(.hidden)
             }
@@ -90,13 +90,13 @@ final class TopBarTests: XCTestCase {
                     Spacer(minLength: 0)
                     Text("≈ 92K / 1M · 9%").typeRole(.monoSmall).opacity(0.7)
                 }
-                .foregroundStyle(Theme.onSteel)
+                .foregroundStyle(Palette.onSteel)
                 .padding(.horizontal, 16).padding(.vertical, 8)
                 .background { TopBarBackdrop().padding(.top, -1) }
-                .overlay(alignment: .bottom) { Rectangle().fill(Theme.steelRule).frame(height: 1) }
+                .overlay(alignment: .bottom) { Rectangle().fill(Ink.bar.rule).frame(height: 1) }
                 SegmentRule((48, 120, 24), height: 4, stretches: true)
-                Text("chat").frame(maxWidth: 700, maxHeight: .infinity).background(Theme.paper)
-                KeyHintStrip([("⌘↩", "send"), ("⌘⌥T", "terminal"), ("⌘K", "conversations")]).background(Theme.paper)
+                Text("chat").frame(maxWidth: 700, maxHeight: .infinity).background(Palette.paper)
+                KeyHintStrip([("⌘↩", "send"), ("⌘⌥T", "terminal"), ("⌘K", "conversations")]).background(Palette.paper)
             }
             .background(EndfieldBackdrop())
         }

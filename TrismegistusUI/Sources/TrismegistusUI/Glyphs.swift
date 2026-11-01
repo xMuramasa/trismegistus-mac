@@ -60,6 +60,11 @@ enum GlyphData {
     static let mark = outer + " " + t
     static let bars = ["M18 10H19.5V16H18Z", "M20.5 5H22V16H20.5Z"]
     static let sourceMark = "M1.5 1.5H9.5L12.5 4.5V12.5H1.5Z M4 4H9.75V5.75H7.75V10.5H6V5.75H4Z"
+    /// The box `sourceMark` is drawn in.
+    static let sourceBox = CGSize(width: 14, height: 14)
+    /// The menu bar glyph's outline stroke (disconnected) and approval dot.
+    static let outlineWidth: CGFloat = 1.5
+    static let approvalDot = CGRect(x: 16.5, y: 1, width: 5, height: 5)
 }
 
 /// The T mark of the Trismegistus source (14×14, template-friendly: draws in the foreground color).
@@ -67,9 +72,9 @@ public struct TMark: View {
     public init() {}
 
     public var body: some View {
-        SVGShape(d: GlyphData.sourceMark, box: CGSize(width: 14, height: 14))
+        SVGShape(d: GlyphData.sourceMark, box: GlyphData.sourceBox)
             .fill(style: FillStyle(eoFill: true))
-            .frame(width: 14, height: 14)
+            .frame(width: Icon.l, height: Icon.l)
     }
 }
 
@@ -92,8 +97,8 @@ public struct SourceIcon: View {
             case .cli: Image(systemName: Symbol.cli)
             }
         }
-        .font(.system(size: 11))
-        .frame(width: 14, height: 14)
+        .font(.system(size: Icon.m))
+        .frame(width: Icon.l, height: Icon.l)
         .accessibilityLabel(label)
     }
 
@@ -123,7 +128,7 @@ public enum MenuBarGlyph {
             ctx.setStrokeColor(NSColor.black.cgColor)
             if state == .disconnected {
                 ctx.addPath(Path.svg(GlyphData.outer).cgPath)
-                ctx.setLineWidth(1.5)
+                ctx.setLineWidth(GlyphData.outlineWidth)
                 ctx.strokePath()
                 ctx.addPath(Path.svg(GlyphData.t).cgPath)
                 ctx.fillPath()
@@ -138,7 +143,7 @@ public enum MenuBarGlyph {
                 }
             }
             if state == .approval {
-                ctx.fillEllipse(in: CGRect(x: 16.5, y: 1, width: 5, height: 5))
+                ctx.fillEllipse(in: GlyphData.approvalDot)
             }
             return true
         }
@@ -157,6 +162,6 @@ public enum MenuBarGlyph {
         SourceIcon(.cron)
         SourceIcon(.cli)
     }
-    .foregroundStyle(Theme.ink)
-    .padding().background(Theme.paper)
+    .foregroundStyle(Ink.text.primary)
+    .padding().background(Ink.surface.window)
 }

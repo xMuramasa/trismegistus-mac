@@ -20,7 +20,7 @@ commands, session list. Martin's laptop is the target; nothing is distributed.
   never quits it quietly while no window is open; Settings has Quit (⌘Q).
 - **Design:** the UI draft in Penpot (#5, exports in `design/ui-draft/`), approved by Martin on 2026-10-31 for the
   beta. Endfield design language (paper and ink, yellow for the one primary action, square edges, hairlines, key-hint
-  strip), **light mode only** (forced at launch with `NSApp.appearance = .aqua`, so a Mac in dark mode doesn't turn system-colored text white on paper), **system font** (SF Pro, SF Mono, SF Pro Expanded bold for headings). Native controls
+  strip), **light mode only** (forced at launch with `NSApp.appearance = .aqua`, so a Mac in dark mode doesn't turn system-colored text white on paper), **Inter and JetBrains Mono**, bundled (SIL OFL; #33). Every colour, spacing, type role, size, radius, stroke, opacity, shadow and motion value comes from `design/tokens.json` through `scripts/gen-tokens.py` into TrismegistusUI's generated `Tokens.swift` (`Ink.*` roles, `Palette.*`, `Space.*`, `.typeRole(_:)`, `Size.*`, …); `scripts/check-tokens.sh` fails on a stale `Tokens.swift` or a raw literal in a view. Spacing is a strict scale (2, 4, 8, 12, 16, 20, 24, 32, 40). Native controls
   with an Endfield surface; custom views only for content and identity (see the Controls page). Colors come from the
   Endfield palette (`endfield-dotfiles/theme/palette.json`), copied into an asset catalog. Buttons carry a trailing SF
   Symbol; obvious actions (copy, new, send, stop, retry, open window, terminal) are icon-only with the word as tooltip
@@ -112,7 +112,7 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   toggles (approval requests, run finished while closed, sound for approvals: on by default).
 - **Pairing sheet:** first launch; paste the code; shows the relay URL from the QR payload.
 
-Not in v1: live terminal output (needs a relay change), dark mode, bundled Endfield fonts, multiple relays, streaming deltas (the relay has streaming off), Sparkle updates, Linux
+Not in v1: live terminal output (needs a relay change), dark mode, multiple relays, streaming deltas (the relay has streaming off), Sparkle updates, Linux
 (a Quickshell module in endfield-dotfiles is the Linux plan, not this repo), Windows.
 
 ## Security

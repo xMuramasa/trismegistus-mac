@@ -16,7 +16,7 @@ final class SnapshotTests: XCTestCase {
             .padding(16)
             .frame(width: width + 32, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
-            .background(Theme.paper)
+            .background(Palette.paper)
             .environment(\.colorScheme, .light)
         let renderer = ImageRenderer(content: view)
         renderer.scale = 2
@@ -28,7 +28,7 @@ final class SnapshotTests: XCTestCase {
     }
 
     func testPaletteMatchesDraft() {
-        let ns = NSColor(Theme.yellow).usingColorSpace(.sRGB)!
+        let ns = NSColor(Palette.yellow).usingColorSpace(.sRGB)!
         XCTAssertEqual(ns.redComponent, 1, accuracy: 0.001)
         XCTAssertEqual(ns.greenComponent, 250.0 / 255, accuracy: 0.001)
         XCTAssertEqual(ns.blueComponent, 0, accuracy: 0.001)
@@ -63,8 +63,8 @@ final class SnapshotTests: XCTestCase {
                     }
                 }
                 // Pressed look: ink fill, yellow text.
-                Text("SESSION").typeRole(.button).foregroundStyle(Theme.yellow)
-                    .padding(.vertical, 6).padding(.horizontal, 12).background(Theme.ink)
+                Text("SESSION").typeRole(.button).foregroundStyle(Palette.yellow)
+                    .padding(.vertical, Space.s).padding(.horizontal, Space.m).background(Palette.ink)
             }
         }
     }
@@ -112,7 +112,7 @@ final class SnapshotTests: XCTestCase {
                 SessionRowView(name: "Clean build cache", source: .cli, activity: "3 min", needsApproval: true)
                 SessionRowView(name: "Morning news digest", source: .cron, activity: "9 h", isReadOnly: true)
             }
-            .background(Theme.rule)
+            .background(Palette.rule)
         }
     }
 
@@ -174,7 +174,7 @@ final class SnapshotTests: XCTestCase {
             }
             .padding(16)
             .frame(height: 620)
-            .background { EndfieldContours(color: Theme.sunken, opacity: 0.3).background(Theme.ink) }
+            .background { EndfieldContours(color: Palette.sunken, opacity: 0.3).background(Palette.ink) }
             .padding(-16)
         }
     }
@@ -199,7 +199,7 @@ final class SnapshotTests: XCTestCase {
                         .frame(width: 44, height: 36)
                 }
             }
-            .foregroundStyle(Theme.ink)
+            .foregroundStyle(Palette.ink)
         }
         try snap("SourceIcons", width: 200) {
             HStack(spacing: 16) {
@@ -208,7 +208,7 @@ final class SnapshotTests: XCTestCase {
                 SourceIcon(.cron)
                 SourceIcon(.cli)
             }
-            .foregroundStyle(Theme.ink)
+            .foregroundStyle(Palette.ink)
         }
     }
 }

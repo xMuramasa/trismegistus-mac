@@ -12,9 +12,9 @@ public struct CodeBlockView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Space.s) {
             HStack {
-                Text(language ?? "").typeRole(.label).foregroundStyle(Theme.secondary)
+                Text(language ?? "").typeRole(.label).foregroundStyle(Ink.text.secondary)
                 Spacer()
                 EndfieldButton("Copy", symbol: Symbol.copy, kind: .quiet, iconOnly: true) {
                     NSPasteboard.general.clearContents()
@@ -22,12 +22,12 @@ public struct CodeBlockView: View {
                 }
             }
             ScrollView(.horizontal) {
-                Text(code).typeRole(.mono).foregroundStyle(Theme.ink).fixedSize().textSelection(.enabled)
+                Text(code).typeRole(.mono).foregroundStyle(Ink.text.primary).fixedSize().textSelection(.enabled)
             }
         }
-        .padding(10)
+        .padding(Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.sunken)
+        .background(Ink.surface.sunken)
     }
 }
 
@@ -36,31 +36,36 @@ public struct WorkingIndicator: View {
     let detail: String
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// The sweep: a third of the track wide, across it every 1.4 s, parked at 35 % under Reduce Motion.
+    private static let sweepPeriod = 1.4, sweepWidth = 0.3, restingPhase = 0.35
+
     public init(detail: String) { self.detail = detail }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: Space.s) {
+            HStack(spacing: Space.s) {
                 Text("Working").typeRole(.label)
-                Text(detail).typeRole(.monoSmall).foregroundStyle(Theme.secondary)
+                Text(detail).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
                 Spacer()
-                Text("⌘. stop").typeRole(.caption).foregroundStyle(Theme.muted)
+                Text("⌘. stop").typeRole(.caption).foregroundStyle(Ink.text.muted)
             }
             TimelineView(.animation(paused: reduceMotion)) { context in
-                let phase = reduceMotion ? 0.35 : (context.date.timeIntervalSinceReferenceDate / 1.4).truncatingRemainder(dividingBy: 1)
-                Rectangle().fill(Theme.rule).frame(height: 2)
+                let phase = reduceMotion
+                    ? Self.restingPhase
+                    : (context.date.timeIntervalSinceReferenceDate / Self.sweepPeriod).truncatingRemainder(dividingBy: 1)
+                Rectangle().fill(Ink.line.rule).frame(height: Stroke.accent)
                     .overlay(alignment: .leading) {
                         GeometryReader { geo in
-                            Rectangle().fill(Theme.yellow)
-                                .frame(width: geo.size.width * 0.3)
-                                .offset(x: geo.size.width * 0.7 * phase)
+                            Rectangle().fill(Ink.selection)
+                                .frame(width: geo.size.width * Self.sweepWidth)
+                                .offset(x: geo.size.width * (1 - Self.sweepWidth) * phase)
                         }
                     }
                     .clipped()
             }
-            .frame(height: 2)
+            .frame(height: Stroke.accent)
         }
-        .foregroundStyle(Theme.ink)
+        .foregroundStyle(Ink.text.primary)
         .accessibilityElement(children: .combine)
     }
 }
@@ -85,18 +90,18 @@ public struct ApprovalBannerView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Rectangle().fill(Theme.yellow).frame(height: 3)
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 8) {
-                    Rectangle().fill(Theme.magenta).frame(width: 8, height: 8)
+            Rectangle().fill(Ink.selection).frame(height: Stroke.mark)
+            VStack(alignment: .leading, spacing: Space.m) {
+                HStack(spacing: Space.s) {
+                    Rectangle().fill(Palette.magenta).frame(width: Size.marker, height: Size.marker)
                     Text("Approval // Required").typeRole(.label)
                     Spacer()
-                    Text(tool).typeRole(.monoSmall).foregroundStyle(Theme.muted)
+                    Text(tool).typeRole(.monoSmall).foregroundStyle(Ink.text.muted)
                 }
                 Text(command).typeRole(.mono).textSelection(.enabled)
-                    .padding(8).frame(maxWidth: .infinity, alignment: .leading).background(Theme.sunken)
-                Text(explanation).typeRole(.callout).foregroundStyle(Theme.secondary)
-                HStack(spacing: 8) {
+                    .padding(Space.s).frame(maxWidth: .infinity, alignment: .leading).background(Ink.surface.sunken)
+                Text(explanation).typeRole(.callout).foregroundStyle(Ink.text.secondary)
+                HStack(spacing: Space.s) {
                     // No keyboard shortcuts on approval buttons: macOS fires key equivalents before the focused text field, so
                     // Return (or ⌘⌫) typed in the steer field would answer the approval. Approvals are click-only.
                     EndfieldButton("Once", symbol: Symbol.check, kind: .primary) { onChoice(.once) }
@@ -106,13 +111,13 @@ public struct ApprovalBannerView: View {
                         onChoice(.deny)
                     }
                 }
-                Text("click to answer · “always” is never offered").typeRole(.caption).foregroundStyle(Theme.muted)
+                Text("click to answer · “always” is never offered").typeRole(.caption).foregroundStyle(Ink.text.muted)
             }
-            .padding(12)
+            .padding(Space.m)
         }
-        .foregroundStyle(Theme.ink)
-        .background(Theme.raised)
-        .shadow(color: Theme.ink.opacity(0.12), radius: 12, y: 4)
+        .foregroundStyle(Ink.text.primary)
+        .background(Ink.surface.raised)
+        .shadow(Shadow.panel)
     }
 }
 
@@ -125,8 +130,8 @@ public struct ApprovalBannerView: View {
 /// and a faded shadow for an outline.
 public struct TerminalEntryView: View {
     public static let previewLines = 12
-    /// The accent column, top to bottom (sampled from the reference card), then a grey track.
-    static let accents = [Color(hex: 0x1FE5E0), Color(hex: 0xDA16DC), Theme.yellow, Theme.muted.opacity(0.5)]
+    /// The accent column, top to bottom (sampled from the reference card), the last one a faded track.
+    static let accents: [Color] = Ink.card.accents.dropLast() + [Ink.card.accents.last!.opacity(Opacity.track)]
 
     let title: String
     let detail: String?
@@ -142,10 +147,10 @@ public struct TerminalEntryView: View {
     @State private var bodyHeight: CGFloat?
 
     /// A conversation row in the sidebar (`SessionRowView`, measured in `TerminalEntryTests`).
-    static let rowHeight: CGFloat = 52
-    static let headerHeight: CGFloat = 24
+    static let rowHeight = Size.row
+    static let headerHeight = Size.cardHeader
     /// A card is at most eight conversation rows tall (Martin); the body scrolls inside it.
-    static let maxBodyHeight = 8 * rowHeight - headerHeight - 1
+    static let maxBodyHeight = Size.cardMaxRows * rowHeight - headerHeight - 1
 
     /// - Parameters:
     ///   - title: the header's text, e.g. `14:02:11 terminal`.
@@ -169,37 +174,37 @@ public struct TerminalEntryView: View {
     }
 
     /// Square but for the top-right corner (Martin's pick, against Endfield's zero rounding).
-    private static let shape = UnevenRoundedRectangle(topTrailingRadius: 8, style: .continuous)
+    private static let shape = UnevenRoundedRectangle(topTrailingRadius: Radius.card, style: .continuous)
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
             if !folded { cappedContent }
-            Rectangle().fill(Theme.rule).frame(height: 1)
+            Rectangle().fill(Ink.line.rule).frame(height: 1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.raised)
+        .background(Ink.surface.raised)
         .clipShape(Self.shape)
         // A faded shadow instead of an outline. It is the shadow of a plain shape, cheap to draw (#28).
-        .background { Self.shape.fill(Theme.raised).shadow(color: Theme.ink.opacity(0.16), radius: 5, y: 1) }
+        .background { Self.shape.fill(Ink.surface.raised).shadow(Shadow.card) }
     }
 
     private var header: some View {
         Button { folded.toggle() } label: {
-            HStack(spacing: 8) {
-                Rectangle().frame(width: 8, height: 1.5)
+            HStack(spacing: Space.s) {
+                Rectangle().frame(width: Size.cardDash.width, height: Size.cardDash.height)
                 Text(title).lineLimit(1).truncationMode(.middle)
-                Spacer(minLength: 8)
+                Spacer(minLength: Space.s)
                 headerTrailing
                 // A dropdown's convention: down opens, up closes.
                 Image(systemName: folded ? Symbol.chevronDown : Symbol.chevronUp)
-                    .font(.system(size: 9, weight: .bold)).frame(width: 10)
+                    .font(.system(size: Icon.xs, weight: .bold)).frame(width: Icon.s)
             }
-            .typeRole(.monoSmall).fontWeight(.semibold)
-            .foregroundStyle(.white)
-            .padding(.horizontal, 10)
+            .typeRole(.monoSmall, weight: .semibold)
+            .foregroundStyle(Palette.raised)
+            .padding(.horizontal, Space.m)
             .frame(maxWidth: .infinity, minHeight: Self.headerHeight, maxHeight: Self.headerHeight, alignment: .leading)
-            .background(Theme.arkOrange)
+            .background(Ink.card.header)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -215,30 +220,30 @@ public struct TerminalEntryView: View {
                 Text(String(format: "%02d:%02d", s / 60, s % 60))
             }
         } else if let duration {
-            Text(String(format: "%.1f s", duration)).opacity(0.85)
+            Text(String(format: "%.1f s", duration)).opacity(Opacity.cardDetail)
         }
     }
 
     private var content: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: Space.xs) {
             if let detail {
-                Text(detail).typeRole(.monoSmall).foregroundStyle(Theme.muted).lineLimit(1).truncationMode(.head)
+                Text(detail).typeRole(.monoSmall).foregroundStyle(Ink.text.muted).lineLimit(1).truncationMode(.head)
             }
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("$").foregroundStyle(Theme.blue)
-                Text(command).foregroundStyle(Theme.ink)
+            HStack(alignment: .firstTextBaseline, spacing: Space.s) {
+                Text("$").foregroundStyle(Ink.text.link)
+                Text(command).foregroundStyle(Ink.text.primary)
             }
             .typeRole(.mono)
             if let output {
                 let preview = expanded ? nil : Self.preview(output)
-                Text(preview?.text ?? output).typeRole(.monoSmall).foregroundStyle(Theme.ink)
+                Text(preview?.text ?? output).typeRole(.monoSmall).foregroundStyle(Ink.text.primary)
                 if let preview {
                     Button { expanded = true } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: Space.xs) {
                             Text("\(preview.hidden) more \(preview.hidden == 1 ? "line" : "lines")")
-                            Image(systemName: Symbol.chevronDown).font(.system(size: 9))
+                            Image(systemName: Symbol.chevronDown).font(.system(size: Icon.xs))
                         }
-                        .typeRole(.monoSmall).foregroundStyle(Theme.blue)
+                        .typeRole(.monoSmall).foregroundStyle(Ink.text.link)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -246,14 +251,15 @@ public struct TerminalEntryView: View {
                 }
             }
             if isRunning {
-                Rectangle().fill(Theme.ink).frame(width: 7, height: 13).accessibilityLabel("Running")
+                Rectangle().fill(Ink.text.primary).frame(width: Size.cursor.width, height: Size.cursor.height)
+                    .accessibilityLabel("Running")
             } else if let exitCode {
                 Text("exit \(exitCode)").typeRole(.monoSmall)
-                    .foregroundStyle(exitCode == 0 ? Theme.terminalGreen : Theme.terminalRed)
+                    .foregroundStyle(exitCode == 0 ? Ink.status.ok : Ink.status.error)
             }
         }
-        .padding(.leading, 10).padding(.trailing, 14).padding(.top, 8).padding(.bottom, 10)
-        .frame(maxWidth: .infinity, minHeight: 54, alignment: .topLeading)
+        .padding(.leading, Space.m).padding(.trailing, Space.l).padding(.top, Space.s).padding(.bottom, Space.m)
+        .frame(maxWidth: .infinity, minHeight: Size.cardBodyMin, alignment: .topLeading)
         .textSelection(.enabled)
         .accessibilityElement(children: .combine)
     }
@@ -272,9 +278,11 @@ public struct TerminalEntryView: View {
         }
         .overlay(alignment: .topTrailing) {
             VStack(spacing: 0) {
-                ForEach(Self.accents.indices, id: \.self) { Rectangle().fill(Self.accents[$0]).frame(width: 4, height: 11) }
+                ForEach(Self.accents.indices, id: \.self) {
+                    Rectangle().fill(Self.accents[$0]).frame(width: Stroke.cardAccent, height: Size.cardAccent)
+                }
             }
-            .padding(.top, 7)
+            .padding(.top, Space.s)
             .accessibilityHidden(true)
         }
     }
@@ -304,5 +312,5 @@ public struct TerminalEntryView: View {
         TerminalEntryView(title: "12:04:40 terminal", command: "pytest -q tests/", exitCode: 1, duration: 4.8)
         TerminalEntryView(title: "12:04:50 terminal", command: "sleep 30", isRunning: true, startedAt: .now)
     }
-    .padding().frame(width: 360).background(Theme.paper)
+    .padding().frame(width: 360).background(Ink.surface.window)
 }
