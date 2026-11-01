@@ -8,9 +8,9 @@ struct MainWindow: View {
     @Environment(AppModel.self) private var model
     @AppStorage("window.selectedSession") private var selectedSession = ""
     @AppStorage("window.terminalShown") private var terminalShown = true
-    @AppStorage("window.terminalWidth") private var terminalWidth = 360.0
+    @AppStorage("window.terminalWidth") private var terminalWidth = Double(Size.terminal.default)
     @AppStorage("window.sidebarShown") private var sidebarShown = true
-    @AppStorage("window.sidebarWidth") private var sidebarWidth = 260.0
+    @AppStorage("window.sidebarWidth") private var sidebarWidth = Double(Size.sidebar.default)
     @FocusState private var filterFocused: Bool
 
     private var selection: Binding<String?> {
@@ -30,11 +30,11 @@ struct MainWindow: View {
                     } else if let id = selection.wrappedValue {
                         VStack(spacing: 0) {
                             ConversationHeader(sessionID: id)
-                            ChatView(sessionID: id, compact: false, onShowTerminal: { withAnimation(SidebarMotion.animation) { terminalShown = true } })
+                            ChatView(sessionID: id, compact: false, onShowTerminal: { withAnimation(Motion.panel) { terminalShown = true } })
                         }
                     } else {
-                        Text("No conversation selected").typeRole(.caption).foregroundStyle(Theme.muted)
-                            .padding(8).background(Theme.paper)
+                        Text("No conversation selected").typeRole(.caption).foregroundStyle(Ink.text.muted)
+                            .padding(Space.s).background(Ink.surface.window)
                             .frame(maxWidth: .infinity, maxHeight: .infinity).background(EndfieldBackdrop())
                     }
                 }
@@ -53,18 +53,18 @@ struct MainWindow: View {
         .toolbar { toolbar }
         .toolbar(removing: .title)
         .focusedSceneValue(\.sidebar, SidebarActions(isShown: sidebarShown, toggle: toggleSidebar, find: findConversation))
-        .frame(minWidth: 1100, minHeight: 640)
+        .frame(minWidth: Size.windowMin.width, minHeight: Size.windowMin.height)
         .background(WindowFrameMemory(name: "TrismegistusMainWindow"))
     }
 
     private func toggleSidebar() {
-        withAnimation(SidebarMotion.animation) { sidebarShown.toggle() }
+        withAnimation(Motion.panel) { sidebarShown.toggle() }
     }
 
     /// ⌘K: the sidebar's Filter field, showing the sidebar first if it is hidden.
     private func findConversation() {
         guard !sidebarShown else { filterFocused = true; return }
-        withAnimation(SidebarMotion.animation) { sidebarShown = true }
+        withAnimation(Motion.panel) { sidebarShown = true }
         // The field is only in the hierarchy once the sidebar is back.
         Task {
             try? await Task.sleep(for: .milliseconds(50))
@@ -75,8 +75,8 @@ struct MainWindow: View {
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .navigation) {
             Button(action: toggleSidebar) {
-                Image(systemName: "sidebar.left").typeRole(.button).foregroundStyle(Theme.onSteel)
-                    .padding(6).contentShape(Rectangle())
+                Image(systemName: "sidebar.left").typeRole(.button).foregroundStyle(Ink.text.onDark)
+                    .padding(Space.s).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .help(sidebarShown ? "Hide sidebar (⌃⌘S)" : "Show sidebar (⌃⌘S)")
@@ -84,11 +84,11 @@ struct MainWindow: View {
         }
         .sharedBackgroundVisibility(.hidden)
         ToolbarItem(placement: .navigation) {
-            HStack(spacing: 8) {
+            HStack(spacing: Space.s) {
                 Image(nsImage: MenuBarGlyph.image(glyph)).renderingMode(.template).accessibilityHidden(true)
                 Text("Trismegistus").typeRole(.heading)
             }
-            .foregroundStyle(Theme.onSteel)
+            .foregroundStyle(Ink.text.onDark)
         }
         .sharedBackgroundVisibility(.hidden)
         // macOS 26 packs the trailing items right after the title without it (Martin's screenshot); with it they sit
@@ -100,8 +100,8 @@ struct MainWindow: View {
             .sharedBackgroundVisibility(.hidden)
         ToolbarItem(placement: .primaryAction) {
             SettingsLink {
-                Image(systemName: "slider.horizontal.3").typeRole(.button).foregroundStyle(Theme.onSteel)
-                    .padding(6).contentShape(Rectangle())
+                Image(systemName: "slider.horizontal.3").typeRole(.button).foregroundStyle(Ink.text.onDark)
+                    .padding(Space.s).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .help("Settings")
@@ -137,16 +137,16 @@ private struct TopBarStatus: View {
 
     var body: some View {
         let (dot, label): (Color, String) = switch state {
-        case .linked: (Theme.green, "Linked")
-        case .reconnecting: (Theme.yellow, "Reconnecting")
+        case .linked: (Ink.status.online, "Linked")
+        case .reconnecting: (Ink.selection, "Reconnecting")
         case .offline: (.clear, "Offline")
         }
-        HStack(spacing: 6) {
-            Circle().fill(dot).frame(width: 7, height: 7).overlay(Circle().strokeBorder(Theme.onSteel, lineWidth: 1))
+        HStack(spacing: Space.s) {
+            Circle().fill(dot).frame(width: Size.dot, height: Size.dot).overlay(Circle().strokeBorder(Ink.text.onDark, lineWidth: Stroke.hairline))
             Text(label).typeRole(.label)
-            Text(detail).typeRole(.monoSmall).opacity(0.7)
+            Text(detail).typeRole(.monoSmall).opacity(Opacity.secondaryOnDark)
         }
-        .foregroundStyle(Theme.onSteel)
+        .foregroundStyle(Ink.text.onDark)
         .accessibilityElement(children: .combine)
     }
 }
@@ -157,13 +157,13 @@ private struct TerminalToggle: View {
     @Binding var isOn: Bool
 
     var body: some View {
-        Button { withAnimation(SidebarMotion.animation) { isOn.toggle() } } label: {
+        Button { withAnimation(Motion.panel) { isOn.toggle() } } label: {
             Image(systemName: Symbol.terminal)
                 .typeRole(.button)
-                .foregroundStyle(isOn ? Theme.yellow : Theme.onSteel)
-                .padding(.vertical, 6).padding(.horizontal, 6)
-                .background(isOn ? Theme.ink : .clear)
-                .overlay(Rectangle().strokeBorder(isOn ? Theme.ink : Theme.onSteel, lineWidth: 1))
+                .foregroundStyle(isOn ? Ink.selection : Ink.text.onDark)
+                .padding(.vertical, Space.s).padding(.horizontal, Space.s)
+                .background(isOn ? Palette.ink : .clear)
+                .overlay(Rectangle().strokeBorder(isOn ? Ink.line.strong : Ink.text.onDark, lineWidth: Stroke.hairline))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

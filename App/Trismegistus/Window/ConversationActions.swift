@@ -103,8 +103,8 @@ struct ConversationMenuButton: View {
             ConversationMenuItems(info: info, actions: actions, store: store)
         } label: {
             Image(systemName: "ellipsis")
-                .typeRole(.button).foregroundStyle(Theme.ink)
-                .frame(width: 22, height: 22)
+                .typeRole(.button).foregroundStyle(Ink.text.primary)
+                .frame(width: Size.menuButton, height: Size.menuButton)
                 .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)
@@ -155,17 +155,17 @@ private struct ConversationChrome: ViewModifier {
     func body(content: Content) -> some View {
         content
             .overlay(alignment: .topTrailing) {
-                HStack(spacing: 2) {
+                HStack(spacing: Space.xxs) {
                     if info.isPinned {
-                        Image(systemName: "pin.fill").font(.system(size: 10)).foregroundStyle(Theme.secondary)
+                        Image(systemName: "pin.fill").font(.system(size: Icon.s)).foregroundStyle(Ink.text.secondary)
                             .accessibilityLabel("Pinned")
                     }
                     ConversationMenuButton(info: info, actions: actions, store: store)
                 }
-                .padding(.top, 3).padding(.trailing, 6)
+                .padding(.top, Space.xs).padding(.trailing, Space.s)
             }
             .overlay(alignment: .bottomTrailing) {
-                TagChips(tags: tags).padding(.bottom, 5).padding(.trailing, 12)
+                TagChips(tags: tags).padding(.bottom, Space.s).padding(.trailing, Space.m)
             }
             .overlay {
                 if actions.renaming == info.id { RenameField(info: info, actions: actions, store: store) }
@@ -188,18 +188,18 @@ struct RenameField: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Space.s) {
             TextField("Title", text: $actions.renameText)
-                .textFieldStyle(.plain).typeRole(.headline).foregroundStyle(Theme.ink)
+                .textFieldStyle(.plain).typeRole(.headline).foregroundStyle(Ink.text.primary)
                 .focused($focused)
                 .onSubmit { actions.commitRename(info, store: store) }
                 .onExitCommand { actions.renaming = nil }
-            Text("↩ save · esc cancel").typeRole(.monoSmall).foregroundStyle(Theme.muted).fixedSize()
+            Text("↩ save · esc cancel").typeRole(.monoSmall).foregroundStyle(Ink.text.muted).fixedSize()
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, Space.m)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.raised)
-        .overlay(Rectangle().strokeBorder(Theme.ink, lineWidth: 1))
+        .background(Ink.surface.raised)
+        .overlay(Rectangle().strokeBorder(Ink.line.strong, lineWidth: Stroke.hairline))
         .onAppear { focused = true }
         .onChange(of: focused) { _, now in
             if !now, actions.renaming == info.id { actions.renaming = nil }
@@ -215,10 +215,10 @@ struct TagChip: View {
 
     var body: some View {
         Text(tag).typeRole(.monoSmall).lineLimit(1)
-            .foregroundStyle(isOn ? Theme.yellow : Theme.secondary)
-            .padding(.horizontal, 5).padding(.vertical, 1)
-            .background(isOn ? Theme.ink : Theme.sunken)
-            .overlay(Rectangle().strokeBorder(isOn ? Theme.ink : Theme.rule, lineWidth: 1))
+            .foregroundStyle(isOn ? Ink.selection : Ink.text.secondary)
+            .padding(.horizontal, Space.s).padding(.vertical, 1)
+            .background(isOn ? Palette.ink : Ink.surface.sunken)
+            .overlay(Rectangle().strokeBorder(isOn ? Ink.line.strong : Ink.line.rule, lineWidth: Stroke.hairline))
     }
 }
 
@@ -229,13 +229,13 @@ struct TagChips: View {
 
     var body: some View {
         if !tags.isEmpty {
-            HStack(spacing: 4) {
+            HStack(spacing: Space.xs) {
                 ForEach(tags.prefix(limit), id: \.self) { TagChip(tag: $0) }
                 if tags.count > limit {
-                    Text("+\(tags.count - limit)").typeRole(.monoSmall).foregroundStyle(Theme.secondary)
+                    Text("+\(tags.count - limit)").typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
                 }
             }
-            .frame(maxWidth: 220, alignment: .trailing)
+            .frame(maxWidth: Size.tagsMax, alignment: .trailing)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Tags: \(tags.joined(separator: ", "))")
         }
@@ -258,14 +258,14 @@ struct TagEditor: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Space.s) {
             HStack {
-                Text("Tags // \(tags.count)/\(TagRules.maxTags)").typeRole(.label).foregroundStyle(Theme.secondary)
+                Text("Tags // \(tags.count)/\(TagRules.maxTags)").typeRole(.label).foregroundStyle(Ink.text.secondary)
                 Spacer()
                 EndfieldButton("Done", symbol: Symbol.check, kind: .quiet, iconOnly: true, action: onDone)
             }
             if !options.isEmpty {
-                FlowLayout(spacing: 4) {
+                FlowLayout(spacing: Space.xs) {
                     ForEach(options, id: \.self) { tag in
                         let on = SessionListing.hasTag(tag, in: tags)
                         Button { toggle(tag, on: on) } label: { TagChip(tag: tag, isOn: on) }
@@ -274,16 +274,16 @@ struct TagEditor: View {
                     }
                 }
             }
-            HStack(spacing: 6) {
+            HStack(spacing: Space.s) {
                 EndfieldTextField("New tag", text: $newTag, isError: problem != nil).onSubmit(add)
                 EndfieldButton("Add tag", symbol: Symbol.plus, kind: .quiet, iconOnly: true, action: add)
             }
-            if let problem { Text(problem).typeRole(.caption).foregroundStyle(Theme.red) }
+            if let problem { Text(problem).typeRole(.caption).foregroundStyle(Ink.text.error) }
         }
-        .padding(12)
+        .padding(Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.raised)
-        .overlay(Rectangle().strokeBorder(Theme.ink, lineWidth: 1))
+        .background(Ink.surface.raised)
+        .overlay(Rectangle().strokeBorder(Ink.line.strong, lineWidth: Stroke.hairline))
         .onExitCommand(perform: onDone)
     }
 
@@ -311,7 +311,7 @@ struct TagEditor: View {
 
 /// Left to right, wrapping.
 struct FlowLayout: Layout {
-    var spacing: CGFloat = 4
+    var spacing: CGFloat = Space.xs
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         arrange(subviews, width: proposal.width ?? .infinity).size
@@ -345,7 +345,7 @@ struct ActionError: View {
 
     var body: some View {
         if let message {
-            Text(message).typeRole(.caption).foregroundStyle(Theme.red).frame(maxWidth: .infinity, alignment: .leading)
+            Text(message).typeRole(.caption).foregroundStyle(Ink.text.error).frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
@@ -355,8 +355,8 @@ struct SectionLabel: View {
     let title: String
 
     var body: some View {
-        Text(title).typeRole(.label).foregroundStyle(Theme.secondary)
-            .padding(.horizontal, 16).padding(.vertical, 6)
+        Text(title).typeRole(.label).foregroundStyle(Ink.text.secondary)
+            .padding(.horizontal, Space.l).padding(.vertical, Space.s)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityAddTraits(.isHeader)
     }

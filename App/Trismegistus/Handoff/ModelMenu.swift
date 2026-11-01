@@ -13,12 +13,12 @@ struct ModelMenu: View {
 
     var body: some View {
         if let store = model.store, let catalog = store.models {
-            HStack(spacing: 6) {
-                if let error { Text(error).typeRole(.caption).foregroundStyle(onSteel ? Theme.yellow : Theme.red).lineLimit(1) }
+            HStack(spacing: Space.s) {
+                if let error { Text(error).typeRole(.caption).foregroundStyle(onSteel ? Palette.yellow : Ink.text.error).lineLimit(1) }
                 if info.isReadOnly {
                     if let id = info.model {
                         Text(ModelChoice.label(id)).typeRole(.monoSmall).lineLimit(1)
-                            .foregroundStyle(onSteel ? Theme.onSteel.opacity(0.7) : Theme.secondary)
+                            .foregroundStyle(onSteel ? Ink.text.onDark.opacity(Opacity.secondaryOnDark) : Ink.text.secondary)
                             .help("Model (set in \(PopoverFormat.sourceName(info.source)))")
                     }
                 } else if let current = store.model(for: info.id) {
@@ -51,13 +51,13 @@ struct ModelLabel: View {
     @Environment(\.onSteel) private var onSteel
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: Space.xs) {
             Text(choice?.label ?? "Model").typeRole(.monoSmall).lineLimit(1)
-            Image(systemName: Symbol.chevronDown).font(.system(size: 9, weight: .semibold))
+            Image(systemName: Symbol.chevronDown).font(.system(size: Icon.xs, weight: .semibold))
         }
-        .foregroundStyle(onSteel ? Theme.onSteel : Theme.ink)
-        .padding(.horizontal, 6).padding(.vertical, 3)
-        .overlay(Rectangle().strokeBorder(onSteel ? Theme.onSteel.opacity(0.5) : Theme.rule, lineWidth: 1))
+        .foregroundStyle(onSteel ? Ink.text.onDark : Ink.text.primary)
+        .padding(.horizontal, Space.s).padding(.vertical, Space.xs)
+        .overlay(Rectangle().strokeBorder(onSteel ? Ink.text.onDark.opacity(Opacity.outlineOnDark) : Ink.line.rule, lineWidth: Stroke.hairline))
         .contentShape(Rectangle())
     }
 }

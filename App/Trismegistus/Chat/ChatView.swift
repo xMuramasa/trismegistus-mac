@@ -32,28 +32,28 @@ struct ChatView: View {
         VStack(spacing: 0) {
             if let approval { banner(approval) }
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: compact ? 10 : 20) {
+                LazyVStack(alignment: .leading, spacing: compact ? Space.m : Space.xl) {
                     OlderParts(tipID: id, compact: compact)
                     historyStatus
                     ChatTranscript(items: items, onShowTerminal: showTerminal, retry: retry(_:))
                     if let run { working(run) } else if let info, SessionCapabilities(info).canHandOff, Self.stalled(items) { stallRow(info) }
                 }
-                // The window: 12 pt under the header's title rule, wider side margins (the draft, #32).
-                .padding(.horizontal, compact ? 16 : 20).padding(.vertical, compact ? 16 : 12)
+                // The window: Space.m under the header's title rule, wider side margins (the draft, #32).
+                .padding(.horizontal, compact ? Space.l : Space.xl).padding(.vertical, compact ? Space.l : Space.m)
                 // A readable column: on a wide window, opening a pane or the sidebar doesn't re-wrap the messages.
-                .frame(maxWidth: 700)
+                .frame(maxWidth: Size.chatColumn)
                 .frame(maxWidth: .infinity)
             }
             .defaultScrollAnchor(.bottom)
             .defaultScrollAnchor(.bottom, for: .sizeChanges)
             .settledWidth()
             .environment(\.plainAnswers, !compact)
-            .background { if !compact && !empty { Theme.paper.frame(maxWidth: 700) } }
+            .background { if !compact && !empty { Ink.surface.window.frame(maxWidth: Size.chatColumn) } }
             if let run { runStrip(run) }
             input
-            if !compact { KeyHintStrip(hints).background(Theme.paper) }
+            if !compact { KeyHintStrip(hints).background(Ink.surface.window) }
         }
-        .background { if compact { Theme.paper } else { EndfieldBackdrop() } }
+        .background { if compact { Ink.surface.window } else { EndfieldBackdrop() } }
         .task(id: id) { await model.store?.open(id) }
         .onChange(of: run?.id, initial: true) { runSeen = Date() }
         .handoffSheet($handingOff)
@@ -71,15 +71,15 @@ struct ChatView: View {
     }
 
     private func stallRow(_ info: SessionInfo) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Space.s) {
             Text("The model stopped answering. Continue in a new conversation from a digest of this one.")
-                .typeRole(.caption).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
+                .typeRole(.caption).foregroundStyle(Ink.text.secondary).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
             EndfieldButton("Hand off", symbol: Symbol.handoff, kind: .primary) { handingOff = info }
         }
-        .padding(10)
-        .background(Theme.sunken)
-        .overlay(Rectangle().strokeBorder(Theme.rule, lineWidth: 1))
+        .padding(Space.m)
+        .background(Ink.surface.sunken)
+        .overlay(Rectangle().strokeBorder(Ink.line.rule, lineWidth: Stroke.hairline))
     }
 
     private var items: [ChatItem] {
@@ -107,15 +107,15 @@ struct ChatView: View {
             }
             act { try await model.approve(approval, choice: choice) }
         }
-        .padding([.horizontal, .top], 16)
-        .background(Theme.paper)
+        .padding([.horizontal, .top], Space.l)
+        .background(Ink.surface.window)
         .zIndex(1)
     }
 
     @ViewBuilder private var historyStatus: some View {
         if let error = state?.historyError {
-            HStack(spacing: 8) {
-                Text(error).typeRole(.caption).foregroundStyle(Theme.red)
+            HStack(spacing: Space.s) {
+                Text(error).typeRole(.caption).foregroundStyle(Ink.text.error)
                 EndfieldButton("Retry", symbol: Symbol.retry, kind: .quiet, iconOnly: true) {
                     Task { await model.store?.loadHistory(id) }
                 }
@@ -138,23 +138,23 @@ struct ChatView: View {
     }
 
     private func runStrip(_ run: ActiveRun) -> some View {
-        HStack(spacing: 8) {
-            Text("Run active").typeRole(.label).foregroundStyle(Theme.ink)
-            if !isReadOnly { Text("⌘↩ steers this run").typeRole(.caption).foregroundStyle(Theme.secondary) }
+        HStack(spacing: Space.s) {
+            Text("Run active").typeRole(.label).foregroundStyle(Ink.text.primary)
+            if !isReadOnly { Text("⌘↩ steers this run").typeRole(.caption).foregroundStyle(Ink.text.secondary) }
             Spacer()
             EndfieldButton("Stop", symbol: Symbol.stop, kind: .danger, iconOnly: true, shortcut: KeyboardShortcut(".", modifiers: .command)) {
                 act { try await model.stop(runID: run.id) }
             }
         }
-        .padding(.horizontal, 16).padding(.vertical, 8)
-        .background(Theme.sunken)
+        .padding(.horizontal, Space.l).padding(.vertical, Space.s)
+        .background(Ink.surface.sunken)
     }
 
     private var input: some View {
         let steering = run != nil
         let empty = draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
+        return VStack(alignment: .leading, spacing: Space.s) {
+            HStack(spacing: Space.s) {
                 EndfieldTextField(
                     approval != nil ? "Steer or wait" : steering ? "Steer this run" : "Message Hermes", text: $draft)
                 if steering {
@@ -173,15 +173,15 @@ struct ChatView: View {
             .disabled(isReadOnly)
             if isReadOnly {
                 Text("Read-only: this conversation comes from \(info?.source ?? "another app"); reply there.")
-                    .typeRole(.caption).foregroundStyle(Theme.secondary).lineLimit(1)
+                    .typeRole(.caption).foregroundStyle(Ink.text.secondary).lineLimit(1)
             }
             if let actionError {
-                Text(actionError).typeRole(.caption).foregroundStyle(Theme.red).lineLimit(1)
+                Text(actionError).typeRole(.caption).foregroundStyle(Ink.text.error).lineLimit(1)
             }
         }
-        .padding(16)
-        .background(Theme.paper)
-        .overlay(alignment: .top) { Rectangle().fill(Theme.rule).frame(height: 1) }
+        .padding(Space.l)
+        .background(Ink.surface.window)
+        .overlay(alignment: .top) { Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline) }
     }
 
     private var isReadOnly: Bool { info?.isReadOnly ?? false }
@@ -249,11 +249,11 @@ struct ChatTranscript: View {
             case .user(_, let text, let time):
                 UserMessage(text: text, label: "You" + stamp(time))
             case .prompt(let p, let time):
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Space.xs) {
                     UserMessage(text: p.text, label: "You" + (time != nil ? stamp(time) : p.status == .pending ? " // sending" : ""))
                     if case .failed(let code, let message) = p.status {
-                        HStack(spacing: 8) {
-                            Text(message).typeRole(.caption).foregroundStyle(Theme.red).lineLimit(2)
+                        HStack(spacing: Space.s) {
+                            Text(message).typeRole(.caption).foregroundStyle(Ink.text.error).lineLimit(2)
                             Spacer()
                             if code == .busy {
                                 EndfieldButton("Steer", symbol: Symbol.steer) { retry(p) }
@@ -278,7 +278,7 @@ struct ChatTranscript: View {
                     commands: summary.commandCount, duration: String(format: "%.1f s", summary.totalDuration),
                     failed: summary.failedCount, action: onShowTerminal)
             case .note(_, let text, let isError):
-                Text(text).typeRole(.caption).foregroundStyle(isError ? Theme.red : Theme.secondary)
+                Text(text).typeRole(.caption).foregroundStyle(isError ? Ink.text.error : Ink.text.secondary)
             }
         }
     }
@@ -293,13 +293,13 @@ private struct UserMessage: View {
     let label: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label).typeRole(.label).foregroundStyle(Theme.secondary)
-            Text(text).typeRole(.body).foregroundStyle(Theme.ink).textSelection(.enabled)
-                .padding(10)
+        VStack(alignment: .leading, spacing: Space.xs) {
+            Text(label).typeRole(.label).foregroundStyle(Ink.text.secondary)
+            Text(text).typeRole(.body).foregroundStyle(Ink.text.primary).textSelection(.enabled)
+                .padding(Space.m)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.raised)
-                .overlay(Rectangle().strokeBorder(Theme.rule, lineWidth: 1))
+                .background(Ink.surface.raised)
+                .overlay(Rectangle().strokeBorder(Ink.line.rule, lineWidth: Stroke.hairline))
         }
     }
 }
@@ -310,7 +310,7 @@ private struct UserMessage: View {
 private struct AnswerMessage: View {
     let text: String
     let label: String
-    /// Plain (the window): the text inset 10 pt, level with a user message's text. Else a yellow bar beside it.
+    /// Plain (the window): the text inset Space.m, level with a user message's text. Else a yellow bar beside it.
     @Environment(\.plainAnswers) private var plain
 
     private enum Block {
@@ -343,16 +343,16 @@ private struct AnswerMessage: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label).typeRole(.label).foregroundStyle(Theme.secondary)
-            HStack(alignment: .top, spacing: 10) {
-                if !plain { Rectangle().fill(Theme.yellow).frame(width: 3) }
-                VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Space.xs) {
+            Text(label).typeRole(.label).foregroundStyle(Ink.text.secondary)
+            HStack(alignment: .top, spacing: Space.m) {
+                if !plain { Rectangle().fill(Ink.selection).frame(width: Stroke.mark) }
+                VStack(alignment: .leading, spacing: Space.s) {
                     ForEach(Array(Self.blocks(text).enumerated()), id: \.offset) { _, block in
                         switch block {
                         case .prose(let s):
                             Text(s)
-                                .typeRole(.body).foregroundStyle(Theme.ink).textSelection(.enabled)
+                                .typeRole(.body).foregroundStyle(Ink.text.primary).textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         case .code(let language, let code):
                             CodeBlockView(language: language, code: code)
@@ -360,7 +360,7 @@ private struct AnswerMessage: View {
                     }
                 }
             }
-            .padding(.horizontal, plain ? 10 : 0)
+            .padding(.horizontal, plain ? Space.m : 0)
             .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -382,5 +382,5 @@ private struct AnswerMessage: View {
         ScrollView { LazyVStack(alignment: .leading, spacing: 10) { ChatTranscript(items: ChatTimeline.items(state, compact: true)) } }
         ScrollView { LazyVStack(alignment: .leading, spacing: 10) { ChatTranscript(items: ChatTimeline.items(state, compact: false)) } }
     }
-    .padding().frame(width: 360, height: 720).background(Theme.paper)
+    .padding().frame(width: 360, height: 720).background(Ink.surface.window)
 }

@@ -1,3 +1,0 @@
-App/Trismegistus/Chat
-App/Trismegistus/Handoff
-App/Trismegistus/Window

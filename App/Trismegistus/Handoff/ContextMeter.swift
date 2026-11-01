@@ -29,7 +29,7 @@ struct ContextMeter: View {
         let band = percent.map(ContextEstimate.band) ?? .normal
         let compressing = estimate.isCompressing(window: window)
         let canHandOff = compressing && SessionCapabilities(info).canHandOff
-        let label = HStack(spacing: 6) {
+        let label = HStack(spacing: Space.s) {
             Text(summary(window: window, percent: percent))
                 .typeRole(.monoSmall).foregroundStyle(color(band, text: true)).lineLimit(1).fixedSize()
             if let percent { SegmentBar(percent: percent, color: color(band, text: false)) }
@@ -74,15 +74,15 @@ struct ContextMeter: View {
     private func color(_ band: ContextEstimate.Band, text: Bool) -> Color {
         if onSteel {
             return switch band {
-            case .normal: text ? Theme.onSteel.opacity(0.7) : Theme.onSteel
-            case .warn: text ? Theme.onSteel : Theme.yellow
-            case .bad, .critical: text ? Theme.onSteel : Theme.red
+            case .normal: text ? Ink.text.onDark.opacity(Opacity.secondaryOnDark) : Ink.text.onDark
+            case .warn: text ? Ink.text.onDark : Palette.yellow
+            case .bad, .critical: text ? Ink.text.onDark : Palette.red
             }
         }
         return switch band {
-        case .normal: text ? Theme.secondary : Theme.ink
-        case .warn: text ? Theme.ink : Theme.yellow
-        case .bad, .critical: Theme.red
+        case .normal: text ? Ink.text.secondary : Ink.line.strong
+        case .warn: text ? Ink.text.primary : Palette.yellow
+        case .bad, .critical: Ink.text.error
         }
     }
 
@@ -126,9 +126,9 @@ private struct SegmentBar: View {
         let filled = ContextEstimate.filled(percent: percent)
         HStack(spacing: 1) {
             ForEach(0..<10, id: \.self) { i in
-                Rectangle().fill(i < filled ? color : onSteel ? .clear : Theme.sunken)
-                    .overlay(Rectangle().strokeBorder(i < filled ? Theme.ink : onSteel ? Theme.onSteel.opacity(0.5) : Theme.rule, lineWidth: 1))
-                    .frame(width: 5, height: 10)
+                Rectangle().fill(i < filled ? color : onSteel ? .clear : Ink.surface.sunken)
+                    .overlay(Rectangle().strokeBorder(i < filled ? Ink.line.strong : onSteel ? Ink.text.onDark.opacity(Opacity.outlineOnDark) : Ink.line.rule, lineWidth: Stroke.hairline))
+                    .frame(width: Size.meterCell.width, height: Size.meterCell.height)
             }
         }
         .accessibilityHidden(true)

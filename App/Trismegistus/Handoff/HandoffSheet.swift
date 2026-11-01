@@ -19,24 +19,24 @@ struct HandoffSheet: View {
     @State private var finished = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: Space.l) {
             TitleRule("Hand off")
             Text("Continue “\(PopoverFormat.title(old))” in a new conversation that starts from a digest of this one: your messages, the replies and one line per tool call. Both show as one thread.")
-                .typeRole(.callout).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 8) {
-                Text("Digest").typeRole(.label).foregroundStyle(Theme.secondary)
+                .typeRole(.callout).foregroundStyle(Ink.text.secondary).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: Space.s) {
+                Text("Digest").typeRole(.label).foregroundStyle(Ink.text.secondary)
                 if let digest {
-                    Text(size(digest)).typeRole(.monoSmall).foregroundStyle(Theme.ink)
+                    Text(size(digest)).typeRole(.monoSmall).foregroundStyle(Ink.text.primary)
                 } else if let loadError {
-                    Text(loadError).typeRole(.caption).foregroundStyle(Theme.red).lineLimit(2)
+                    Text(loadError).typeRole(.caption).foregroundStyle(Ink.text.error).lineLimit(2)
                     EndfieldButton("Retry", symbol: Symbol.retry, kind: .quiet, iconOnly: true) { Task { await load() } }
                 } else {
                     ProgressView().controlSize(.small)
                 }
             }
             if let catalog = model.store?.models {
-                HStack(spacing: 8) {
-                    Text("Model").typeRole(.label).foregroundStyle(Theme.secondary)
+                HStack(spacing: Space.s) {
+                    Text("Model").typeRole(.label).foregroundStyle(Ink.text.secondary)
                     Menu {
                         ModelMenuItems(catalog: catalog, selected: choice) { choice = $0 }
                     } label: {
@@ -46,8 +46,8 @@ struct HandoffSheet: View {
                     .help(choice.map { catalog.providerName($0.provider) } ?? "Model")
                 }
             }
-            ForEach(problems, id: \.self) { Text($0).typeRole(.caption).foregroundStyle(Theme.red) }
-            HStack(spacing: 8) {
+            ForEach(problems, id: \.self) { Text($0).typeRole(.caption).foregroundStyle(Ink.text.error) }
+            HStack(spacing: Space.s) {
                 Spacer()
                 if finished {
                     EndfieldButton("Done", symbol: Symbol.check, kind: .primary, action: onClose)
@@ -58,9 +58,9 @@ struct HandoffSheet: View {
                 }
             }
         }
-        .padding(20)
-        .frame(width: 440)
-        .background(Theme.paper)
+        .padding(Space.xl)
+        .frame(width: Size.handoffSheet.width)
+        .background(Ink.surface.window)
         .task { await load() }
     }
 

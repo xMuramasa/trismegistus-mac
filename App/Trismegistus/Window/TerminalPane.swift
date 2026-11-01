@@ -22,19 +22,19 @@ struct TerminalPane: View {
         let entries = entries
         VStack(spacing: 0) {
             title(entries)
-            Rectangle().fill(Theme.onSteel.opacity(0.12)).frame(height: 1)
+            Rectangle().fill(Ink.text.onDark.opacity(Opacity.ruleOnDark)).frame(height: Stroke.hairline)
             transcript(entries)
             Text("Live output arrives when a command finishes, cut at 4,000 characters; the history has it in full.")
-                .typeRole(.caption).foregroundStyle(Theme.muted)
-                .padding(.horizontal, 16).padding(.vertical, 8)
+                .typeRole(.caption).foregroundStyle(Ink.text.muted)
+                .padding(.horizontal, Space.l).padding(.vertical, Space.s)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .overlay(alignment: .top) { Rectangle().fill(Theme.onSteel.opacity(0.12)).frame(height: 1) }
+                .overlay(alignment: .top) { Rectangle().fill(Ink.text.onDark.opacity(Opacity.ruleOnDark)).frame(height: Stroke.hairline) }
         }
         // Ink with Endfield's contour lines in `sunken` (Martin); inside the settled width, so drawn once per width.
-        .background { EndfieldContours(color: Theme.sunken, opacity: Self.contourOpacity).background(Theme.ink, ignoresSafeAreaEdges: []) }
-        .settledWidth(minimum: 280)
+        .background { EndfieldContours(color: Ink.surface.sunken, opacity: Opacity.terminalContours).background(Ink.surface.terminal, ignoresSafeAreaEdges: []) }
+        .settledWidth(minimum: Size.terminal.min)
         // Not into the top safe area: the toolbar's strip runs above the pane, ending in ink.
-        .background(Theme.ink, ignoresSafeAreaEdges: [])
+        .background(Ink.surface.terminal, ignoresSafeAreaEdges: [])
         // Runs started elsewhere (Telegram, cron, the CLI) send no live events: ask the history while the pane shows.
         .task(id: TaskKey(sessionID: sessionID, log: log.map(ObjectIdentifier.init))) {
             guard let sessionID, let log else { return }
@@ -52,34 +52,31 @@ struct TerminalPane: View {
         var log: ObjectIdentifier?
     }
 
-    /// How strong the contours are on ink (1 = the paper's own strength).
-    static let contourOpacity = 0.3
-
     /// The pane's own title row under the bar (Martin moved it back from the bar so the toolbar's items can sit at the
     /// window's right edge), light on ink.
     private func title(_ entries: [TerminalEntry]) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Space.s) {
             Text("Terminal").typeRole(.label).lineLimit(1)
             if let run = (state?.run?.id ?? entries.last?.runID), !run.isEmpty {
-                Text("run \(run.prefix(4))").typeRole(.monoSmall).opacity(0.7).lineLimit(1)
+                Text("run \(run.prefix(4))").typeRole(.monoSmall).opacity(Opacity.secondaryOnDark).lineLimit(1)
             }
             Spacer(minLength: 0)
         }
-        .foregroundStyle(Theme.onSteel)
-        .padding(.horizontal, 16).padding(.vertical, 10)
+        .foregroundStyle(Ink.text.onDark)
+        .padding(.horizontal, Space.l).padding(.vertical, Space.m)
     }
 
     @ViewBuilder private func transcript(_ entries: [TerminalEntry]) -> some View {
         if entries.isEmpty {
             Text(sessionID == nil ? "Select a conversation." : "No commands yet.")
-                .typeRole(.caption).foregroundStyle(Theme.muted)
+                .typeRole(.caption).foregroundStyle(Ink.text.muted)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 24) {
+                LazyVStack(alignment: .leading, spacing: Space.xxl) {
                     ForEach(entries) { EntryRow(entry: $0) }
                 }
-                .padding(16)
+                .padding(Space.l)
             }
             .defaultScrollAnchor(.bottom)
             .defaultScrollAnchor(.bottom, for: .sizeChanges)
@@ -97,16 +94,16 @@ struct FilterChip: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6) {
+            HStack(spacing: Space.s) {
                 // Never wrap: a narrow pane squeezed the labels into one letter column ("COM/MAN/DS").
                 Text(title).textCase(.uppercase).lineLimit(1).fixedSize()
                 Image(systemName: symbol)
             }
             .typeRole(.button)
-            .padding(.horizontal, 10).padding(.vertical, 5)
+            .padding(.horizontal, Space.m).padding(.vertical, Space.s)
             .frame(maxWidth: fills ? .infinity : nil)
-            .foregroundStyle(isOn ? Theme.yellow : Theme.ink)
-            .background(isOn ? Theme.ink : .clear)
+            .foregroundStyle(isOn ? Ink.selection : Ink.text.primary)
+            .background(isOn ? Palette.ink : .clear)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

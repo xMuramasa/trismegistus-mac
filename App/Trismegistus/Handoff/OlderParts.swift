@@ -17,7 +17,7 @@ struct OlderParts: View {
         if let store = model.store {
             let parts = Array(store.olderParts(of: tipID).reversed())
             ForEach(Array(parts.enumerated()), id: \.element) { i, part in
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: Space.m) {
                     if open.contains(part) { history(part) }
                     divider(part, newer: i + 1 < parts.count ? parts[i + 1] : tipID, store: store)
                 }
@@ -29,8 +29,8 @@ struct OlderParts: View {
         if let messages = histories[part] {
             ChatTranscript(items: ChatTimeline.items(state(part, messages), compact: compact))
         } else if let error = errors[part] {
-            HStack(spacing: 8) {
-                Text(error).typeRole(.caption).foregroundStyle(Theme.red)
+            HStack(spacing: Space.s) {
+                Text(error).typeRole(.caption).foregroundStyle(Ink.text.error)
                 EndfieldButton("Retry", symbol: Symbol.retry, kind: .quiet, iconOnly: true) { load(part) }
             }
         } else {
@@ -43,14 +43,14 @@ struct OlderParts: View {
         return Button {
             if isOpen { open.remove(part) } else { open.insert(part); if histories[part] == nil { load(part) } }
         } label: {
-            HStack(spacing: 8) {
-                Rectangle().fill(Theme.rule).frame(height: 1)
-                Text(label(part, newer: newer, store: store)).typeRole(.label).foregroundStyle(Theme.secondary).fixedSize()
-                Image(systemName: isOpen ? Symbol.chevronDown : Symbol.chevronRight).font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(Theme.secondary)
-                Rectangle().fill(Theme.rule).frame(height: 1)
+            HStack(spacing: Space.s) {
+                Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline)
+                Text(label(part, newer: newer, store: store)).typeRole(.label).foregroundStyle(Ink.text.secondary).fixedSize()
+                Image(systemName: isOpen ? Symbol.chevronDown : Symbol.chevronRight).font(.system(size: Icon.xs, weight: .semibold))
+                    .foregroundStyle(Ink.text.secondary)
+                Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline)
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, Space.xs)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -66,12 +66,12 @@ struct ConversationSidebar: View {
                 CommandsRowView(isSelected: selection == CommandsView.id)
                     .tag(CommandsView.id)
                     .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden).listRowBackground(Theme.sunken)
+                    .listRowSeparator(.hidden).listRowBackground(Ink.surface.sunken)
                 if !shown.pinned.isEmpty {
-                    SectionLabel(title: "Pinned").listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Theme.sunken)
+                    SectionLabel(title: "Pinned").listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Ink.surface.sunken)
                     ForEach(shown.pinned) { conversation($0) }
                     if !shown.rest.isEmpty {
-                        SectionLabel(title: "Conversations").listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Theme.sunken)
+                        SectionLabel(title: "Conversations").listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Ink.surface.sunken)
                     }
                 }
                 ForEach(shown.rest) { row in
@@ -81,7 +81,7 @@ struct ConversationSidebar: View {
                         newsRow
                             .tag(row.id)
                             .listRowInsets(EdgeInsets())
-                            .listRowSeparator(.hidden).listRowBackground(Theme.sunken)
+                            .listRowSeparator(.hidden).listRowBackground(Ink.surface.sunken)
                     }
                 }
             }
@@ -112,35 +112,35 @@ struct ConversationSidebar: View {
                 TagEditor(
                     tags: tags[overview.id] ?? [], known: tagCounts.map(\.tag),
                     onChange: { actions.setTags(overview.id, $0, store: store) }, onDone: { actions.tagging = nil })
-                    .padding(8)
+                    .padding(Space.s)
             }
         }
         .tag(overview.id)
         .listRowInsets(EdgeInsets())
-        .listRowSeparator(.hidden).listRowBackground(Theme.sunken)
+        .listRowSeparator(.hidden).listRowBackground(Ink.surface.sunken)
     }
 
     private func header(count: Int) -> some View {
-        VStack(spacing: 10) {
+        VStack(spacing: Space.m) {
             HStack {
-                Text("Conversations // \(count)").typeRole(.label).foregroundStyle(Theme.secondary)
+                Text("Conversations // \(count)").typeRole(.label).foregroundStyle(Ink.text.secondary)
                 Spacer()
                 EndfieldButton("New conversation", symbol: Symbol.plus, kind: .quiet, iconOnly: true) { create() }
             }
-            EndfieldTextField("Filter", text: $filter, ground: Theme.paper, focus: filterFocus)
+            EndfieldTextField("Filter", text: $filter, ground: Ink.surface.window, focus: filterFocus)
             if !tagCounts.isEmpty { tagFilterBar }
             if createFailed {
-                Text("Could not create a conversation. Try again.").typeRole(.caption).foregroundStyle(Theme.red)
+                Text("Could not create a conversation. Try again.").typeRole(.caption).foregroundStyle(Ink.text.error)
             }
             ActionError(message: actions.error)
         }
-        .padding(.horizontal, 16).padding(.vertical, 12)
+        .padding(.horizontal, Space.l).padding(.vertical, Space.m)
     }
 
     /// One chip per tag with its count; a second click clears it.
     private var tagFilterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 4) {
+            HStack(spacing: Space.xs) {
                 ForEach(tagCounts, id: \.tag) { entry in
                     let on = tagFilter == TagRules.key(entry.tag)
                     Button { tagFilter = on ? nil : TagRules.key(entry.tag) } label: {
@@ -164,10 +164,10 @@ struct ConversationSidebar: View {
 
     private var footer: some View {
         Text(model.deviceName.map { "\($0) · paired" } ?? "not paired")
-            .typeRole(.monoSmall).foregroundStyle(Theme.secondary)
-            .padding(.horizontal, 16).padding(.vertical, 8)
+            .typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
+            .padding(.horizontal, Space.l).padding(.vertical, Space.s)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .overlay(alignment: .top) { Rectangle().fill(Theme.rule).frame(height: 1) }
+            .overlay(alignment: .top) { Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline) }
     }
 
     private func create() {
