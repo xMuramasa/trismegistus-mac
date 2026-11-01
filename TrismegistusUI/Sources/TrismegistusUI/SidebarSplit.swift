@@ -66,3 +66,60 @@ public struct SidebarSplit<Sidebar: View, Detail: View>: View {
             .accessibilityHidden(true)
     }
 }
+
+/// The terminal as our own trailing column (Martin, 2026-11-01): with the system `.inspector` macOS ends the
+/// toolbar's trailing items before the inspector, mid-window; with our own column they sit at the window's right edge.
+/// `content`, a 1 pt rule with a drag grip, then `pane` at `width` (kept within 280-560 pt). Showing and hiding
+/// follows the caller's animation (`SidebarMotion.animation`): the pane slides in from the right. Unlike the system
+/// inspector it renders offscreen, so window tests see it.
+public struct TrailingSplit<Content: View, Pane: View>: View {
+    @Binding var isShown: Bool
+    @Binding var width: Double
+    let content: Content
+    let pane: Pane
+    @State private var dragStart: Double?
+
+    static var widths: ClosedRange<Double> { 280...560 }
+
+    public init(
+        isShown: Binding<Bool>, width: Binding<Double>, @ViewBuilder content: () -> Content,
+        @ViewBuilder pane: () -> Pane
+    ) {
+        self._isShown = isShown
+        self._width = width
+        self.content = content()
+        self.pane = pane()
+    }
+
+    public var body: some View {
+        HStack(spacing: 0) {
+            content.frame(maxWidth: .infinity, maxHeight: .infinity)
+            if isShown {
+                HStack(spacing: 0) {
+                    divider
+                    pane.frame(width: min(max(width, Self.widths.lowerBound), Self.widths.upperBound))
+                }
+                .transition(.move(edge: .trailing))
+                .zIndex(1)
+            }
+        }
+    }
+
+    private var divider: some View {
+        Rectangle().fill(Theme.rule).frame(width: 1)
+            .overlay {
+                Color.clear.frame(width: 7).contentShape(Rectangle())
+                    .pointerStyle(.columnResize)
+                    .gesture(
+                        // Dragging left widens the pane. Global: the divider moves under the pointer.
+                        DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                            .onChanged { drag in
+                                let start = dragStart ?? width
+                                dragStart = start
+                                width = min(max(start - drag.translation.width, Self.widths.lowerBound), Self.widths.upperBound)
+                            }
+                            .onEnded { _ in dragStart = nil })
+            }
+            .accessibilityHidden(true)
+    }
+}

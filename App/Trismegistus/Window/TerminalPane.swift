@@ -21,6 +21,8 @@ struct TerminalPane: View {
     var body: some View {
         let entries = entries
         VStack(spacing: 0) {
+            title(entries)
+            Rectangle().fill(Theme.onSteel.opacity(0.12)).frame(height: 1)
             transcript(entries)
             Text("Live output arrives when a command finishes, cut at 4,000 characters; the history has it in full.")
                 .typeRole(.caption).foregroundStyle(Theme.muted)
@@ -29,11 +31,10 @@ struct TerminalPane: View {
                 .overlay(alignment: .top) { Rectangle().fill(Theme.onSteel.opacity(0.12)).frame(height: 1) }
         }
         // Ink with Endfield's contour lines in `sunken` (Martin); inside the settled width, so drawn once per width.
-        .background { EndfieldContours(color: Theme.sunken, opacity: Self.contourOpacity).background(Theme.ink) }
+        .background { EndfieldContours(color: Theme.sunken, opacity: Self.contourOpacity).background(Theme.ink, ignoresSafeAreaEdges: []) }
         .settledWidth(minimum: 280)
-        .background(Theme.ink)
-        // The title sits on the top bar's dark end, above the pane; no header row of its own.
-        .topBarColumn(.trailingEdge) { title(entries) }
+        // Not into the top safe area: the toolbar's strip runs above the pane, ending in ink.
+        .background(Theme.ink, ignoresSafeAreaEdges: [])
         // Runs started elsewhere (Telegram, cron, the CLI) send no live events: ask the history while the pane shows.
         .task(id: TaskKey(sessionID: sessionID, log: log.map(ObjectIdentifier.init))) {
             guard let sessionID, let log else { return }
@@ -54,13 +55,18 @@ struct TerminalPane: View {
     /// How strong the contours are on ink (1 = the paper's own strength).
     static let contourOpacity = 0.3
 
+    /// The pane's own title row under the bar (Martin moved it back from the bar so the toolbar's items can sit at the
+    /// window's right edge), light on ink.
     private func title(_ entries: [TerminalEntry]) -> some View {
         HStack(spacing: 8) {
             Text("Terminal").typeRole(.label).lineLimit(1)
             if let run = (state?.run?.id ?? entries.last?.runID), !run.isEmpty {
                 Text("run \(run.prefix(4))").typeRole(.monoSmall).opacity(0.7).lineLimit(1)
             }
+            Spacer(minLength: 0)
         }
+        .foregroundStyle(Theme.onSteel)
+        .padding(.horizontal, 16).padding(.vertical, 10)
     }
 
     @ViewBuilder private func transcript(_ entries: [TerminalEntry]) -> some View {

@@ -6,17 +6,15 @@ import XCTest
 
 /// The window as laid out since #32: the toolbar's steel strip across the whole window, our own `sunken` sidebar column
 /// (`SidebarSplit`) with a rule, the conversation header continuing the strip with the title rule under it, the chat
-/// and its key hints, the terminal as an inspector. Rendered from the window's frame view (toolbar included) to
+/// and its key hints, the terminal as our own trailing column (`TrailingSplit`). Rendered from the window's frame view (toolbar included) to
 /// `.build/snapshots/Window32*.png`, sidebar open and closed.
 @MainActor
 final class TopBarTests: XCTestCase {
     private final class Panes: ObservableObject {
         @Published var sidebar = true
         @Published var width = 260.0
-        @Published var inspector = true
-        /// The inspector's top safe area: the toolbar's height when the pane runs up under the toolbar (its title sits
-        /// on the strip there).
-        var inspectorTop: CGFloat = 0
+        @Published var terminal = true
+        @Published var terminalWidth = 360.0
     }
 
     private struct Window: View {
@@ -50,16 +48,17 @@ final class TopBarTests: XCTestCase {
                         .overlay(alignment: .top) { Rectangle().fill(Theme.rule).frame(height: 1) }
                 }
             } detail: {
-                // As in the app: the inspector on the detail, inside our split.
-                detail.inspector(isPresented: $panes.inspector) {
-                    Text("Terminal").frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.ink)
-                        .background {
-                            GeometryReader { proxy in
-                                Color.clear.onChange(of: proxy.safeAreaInsets.top, initial: true) { _, top in panes.inspectorTop = top }
-                            }
-                        }
-                        .topBarColumn(.trailingEdge)
-                        .inspectorColumnWidth(min: 280, ideal: 360, max: 560)
+                // As in the app: the terminal as our own trailing column, inside the detail.
+                TrailingSplit(isShown: $panes.terminal, width: $panes.terminalWidth) {
+                    detail
+                } pane: {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("TERMINAL").typeRole(.label).foregroundStyle(Theme.onSteel).padding(.horizontal, 16).padding(.vertical, 10)
+                        Rectangle().fill(Theme.onSteel.opacity(0.12)).frame(height: 1)
+                        Spacer(minLength: 0)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Theme.ink, ignoresSafeAreaEdges: [])
                 }
             }
             .endfieldPaper()
@@ -71,6 +70,7 @@ final class TopBarTests: XCTestCase {
                 .sharedBackgroundVisibility(.hidden)
                 ToolbarItem(placement: .navigation) { Text("Trismegistus").typeRole(.heading).foregroundStyle(Theme.onSteel) }
                     .sharedBackgroundVisibility(.hidden)
+                ToolbarSpacer(.flexible)
                 ToolbarItem(placement: .primaryAction) {
                     Image(systemName: Symbol.terminal).foregroundStyle(Theme.onSteel)
                 }
@@ -158,7 +158,6 @@ final class TopBarTests: XCTestCase {
             // The toolbar's height: where the content area starts, from the window's top edge.
             let top = window.contentView!.bounds.height - window.contentLayoutRect.maxY
             XCTAssertGreaterThan(top, 30, "no toolbar")
-            XCTAssertGreaterThan(panes.inspectorTop, 30, "the inspector no longer runs up under the toolbar")
 
             // The strip runs from the window's left edge, above the sidebar too.
             assertSteel(rgb(rep, CGPoint(x: 150, y: top / 2), scale: scale), "\(name): toolbar above the sidebar")
@@ -180,7 +179,7 @@ final class TopBarTests: XCTestCase {
                 assertSteel(rgb(rep, CGPoint(x: 150, y: top + 4), scale: scale), "\(name): header at the window's left")
             }
 
-            // Away from the toolbar items, in the detail column (the inspector doesn't render offscreen).
+            // Away from the toolbar items, in the detail column.
             for x in [450.0, 600] {
                 let toolbar = rgb(rep, CGPoint(x: x, y: top / 2), scale: scale)
                 let rule = rgb(rep, CGPoint(x: x, y: top - 0.5), scale: scale)
@@ -193,6 +192,14 @@ final class TopBarTests: XCTestCase {
                     XCTAssertEqual(rule[i], header[i], accuracy: 0.02, "a seam between the toolbar and the header at x = \(x)")
                 }
             }
+            // The terminal column (ours since the toolbar's items moved to the window's right edge): the strip runs on
+            // above it into ink, and its own ground starts under the toolbar.
+            let width = window.contentView!.bounds.width
+            let aboveTerminal = rgb(rep, CGPoint(x: width - 180, y: top / 2), scale: scale)
+            let terminalGround = rgb(rep, CGPoint(x: width - 180, y: low), scale: scale)
+            print("window32 \(name): strip above the terminal \(aboveTerminal), terminal ground \(terminalGround)")
+            XCTAssertLessThan(aboveTerminal[0], 0.2, "the strip doesn't reach ink above the terminal")
+            XCTAssertLessThan(terminalGround[0], 0.15, "the terminal column isn't ink")
         }
         XCTAssertEqual(headers.count, 2)
         for i in 0..<3 where headers.count == 2 { XCTAssertEqual(headers[0][i], headers[1][i], accuracy: 0.01, "the gradient moved with the sidebar") }

@@ -8,6 +8,7 @@ struct MainWindow: View {
     @Environment(AppModel.self) private var model
     @AppStorage("window.selectedSession") private var selectedSession = ""
     @AppStorage("window.terminalShown") private var terminalShown = true
+    @AppStorage("window.terminalWidth") private var terminalWidth = 360.0
     @AppStorage("window.sidebarShown") private var sidebarShown = true
     @AppStorage("window.sidebarWidth") private var sidebarWidth = 260.0
     @FocusState private var filterFocused: Bool
@@ -20,28 +21,28 @@ struct MainWindow: View {
         SidebarSplit(isShown: $sidebarShown, width: $sidebarWidth) {
             ConversationSidebar(selection: selection, filterFocus: $filterFocused)
         } detail: {
-            Group {
-                if selection.wrappedValue == NewsRowView.id {
-                    NewsView()
-                } else if selection.wrappedValue == CommandsView.id {
-                    CommandsView(onOpen: { selection.wrappedValue = $0 })
-                } else if let id = selection.wrappedValue {
-                    VStack(spacing: 0) {
-                        ConversationHeader(sessionID: id)
-                        ChatView(sessionID: id, compact: false, onShowTerminal: { terminalShown = true })
+            TrailingSplit(isShown: $terminalShown, width: $terminalWidth) {
+                Group {
+                    if selection.wrappedValue == NewsRowView.id {
+                        NewsView()
+                    } else if selection.wrappedValue == CommandsView.id {
+                        CommandsView(onOpen: { selection.wrappedValue = $0 })
+                    } else if let id = selection.wrappedValue {
+                        VStack(spacing: 0) {
+                            ConversationHeader(sessionID: id)
+                            ChatView(sessionID: id, compact: false, onShowTerminal: { withAnimation(SidebarMotion.animation) { terminalShown = true } })
+                        }
+                    } else {
+                        Text("No conversation selected").typeRole(.caption).foregroundStyle(Theme.muted)
+                            .padding(8).background(Theme.paper)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity).background(EndfieldBackdrop())
                     }
-                } else {
-                    Text("No conversation selected").typeRole(.caption).foregroundStyle(Theme.muted)
-                        .padding(8).background(Theme.paper)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity).background(EndfieldBackdrop())
                 }
-            }
-            // The detail's own grounds (Commands, News, the empty state) reach up under the toolbar and covered the
-            // strip there; this draws it back above them. A conversation's header continues it below.
-            .topBarColumn(.window)
-            .inspector(isPresented: $terminalShown) {
+                // The detail's own grounds (Commands, News, the empty state) reach up under the toolbar and covered the
+                // strip there; this draws it back above them. A conversation's header continues it below.
+                .topBarColumn(.window)
+            } pane: {
                 TerminalPane(sessionID: [NewsRowView.id, CommandsView.id].contains(selectedSession) ? nil : selection.wrappedValue)
-                    .inspectorColumnWidth(min: 280, ideal: 360, max: 560)
             }
         }
         .endfieldPaper()
@@ -90,6 +91,9 @@ struct MainWindow: View {
             .foregroundStyle(Theme.onSteel)
         }
         .sharedBackgroundVisibility(.hidden)
+        // macOS 26 packs the trailing items right after the title without it (Martin's screenshot); with it they sit
+        // at the window's right edge.
+        ToolbarSpacer(.flexible)
         ToolbarItem(placement: .primaryAction) { TopBarStatus(state: link.state, detail: link.detail) }
             .sharedBackgroundVisibility(.hidden)
         ToolbarItem(placement: .primaryAction) { TerminalToggle(isOn: $terminalShown) }
@@ -153,7 +157,7 @@ private struct TerminalToggle: View {
     @Binding var isOn: Bool
 
     var body: some View {
-        Button { isOn.toggle() } label: {
+        Button { withAnimation(SidebarMotion.animation) { isOn.toggle() } } label: {
             Image(systemName: Symbol.terminal)
                 .typeRole(.button)
                 .foregroundStyle(isOn ? Theme.yellow : Theme.onSteel)
