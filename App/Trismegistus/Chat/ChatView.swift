@@ -17,6 +17,11 @@ struct ChatView: View {
     /// When this view first saw the current run, for a run with no events yet.
     @State private var runSeen = Date()
     @State private var handingOff: SessionInfo?
+    /// The composer's dragged height (0: auto-grow): kept in the window, per view in the popover.
+    @AppStorage("composer.height") private var windowComposerHeight = 0.0
+    @State private var popoverComposerHeight = 0.0
+    /// The column's height: the composer is dragged up to half of it.
+    @State private var columnHeight: CGFloat = 0
     /// Images waiting for the next message, per conversation.
     @State private var tray = ImageTray()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -57,6 +62,7 @@ struct ChatView: View {
             if !compact { KeyHintStrip(hints).background(Ink.surface.window) }
         }
         .background { if compact { Ink.surface.window } else { EndfieldBackdrop() } }
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { columnHeight = $0 }
         .imageDrop(
             room: ImageUpload.maxPerMessage - tray.items[id, default: []].count, limit: ImageUpload.maxPerMessage,
             refusal: model.device?.canManage != true ? .viewer : isReadOnly ? .readOnly : nil, later: run != nil
@@ -163,10 +169,10 @@ struct ChatView: View {
 
     private var input: some View {
         let steering = run != nil
-        let empty = draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let empty = Composer.message(draft).isEmpty
         let images = tray.items[id, default: []]
         // Text, or images when not steering (steers are text only); never while an image is still being prepared.
-        let sendable = (!empty || (!steering && !tray.uploads(id).isEmpty)) && !tray.isPreparing(id)
+        let sendable = (!empty || (!steering && !tray.uploads(id).isEmpty)) && !tray.isPreparing(id) && !Composer.isOverLimit(draft)
         return VStack(alignment: .leading, spacing: Space.s) {
             if !images.isEmpty {
                 AttachmentTray(
@@ -178,12 +184,14 @@ struct ChatView: View {
             if let notice = tray.notice {
                 Text(notice).typeRole(.caption).foregroundStyle(Ink.text.error).lineLimit(1)
             }
-            HStack(spacing: Space.s) {
+            HStack(alignment: .bottom, spacing: Space.s) {
                 if canAttach {
                     EndfieldButton("Attach images", symbol: Symbol.attach, kind: .quiet, iconOnly: true) { tray.choose(for: id) }
                 }
-                EndfieldTextField(
-                    approval != nil ? "Steer or wait" : steering ? "Steer this run" : "Message Hermes", text: $draft)
+                Composer(
+                    approval != nil ? "Steer or wait" : steering ? "Steer this run" : "Message Hermes", text: $draft,
+                    maxLines: compact ? Size.composer.popoverLines : Size.composer.windowLines,
+                    chosenHeight: compact ? $popoverComposerHeight : $windowComposerHeight, maxHeight: columnHeight / 2)
                 if steering {
                     // While an approval is open, Once is the primary action.
                     EndfieldButton("Steer", symbol: Symbol.steer, kind: approval == nil ? .primary : .secondary, shortcut: KeyboardShortcut(.return, modifiers: .command)) {
@@ -228,7 +236,7 @@ struct ChatView: View {
     /// `⌘↩`: a prompt with the tray's images, or a steer while a run is active (the relay answers a prompt during a run
     /// with `busy`); a steer leaves the images for the next prompt.
     private func submit() {
-        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = Composer.message(draft)
         if let run {
             guard !text.isEmpty else { return }
             draft = ""

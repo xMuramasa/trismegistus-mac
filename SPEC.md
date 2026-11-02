@@ -88,8 +88,17 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   (badge). Click opens the popover.
 - **Popover:** session list (name, source icon, read-only lock, last activity, RUN / APPROVAL marks) → chat view:
   messages, foldable tool rows with duration and error flag, subagent rows, the answer rendered as Markdown, a working
-  indicator, an input field; `⌘↩` sends. One run per session: a prompt during a run offers "send as steer". Header:
+  indicator, a composer; `⌘↩` sends. One run per session: a prompt during a run offers "send as steer". Header:
   connection status, open window, settings. Empty and reconnecting states as drawn.
+- **Composer** (#47, popover and window): a multi-line plain-text editor (`NSTextView`). Return and ⇧↩ insert a
+  newline, `⌘↩` sends or steers (the button's shortcut; with Send disabled it does nothing), Esc stays the popover's
+  Back. Spell check on; smart quotes and dashes, text replacement and auto-correct off (prompts carry commands and
+  code); rich text pastes as plain, ⌘V with an image still goes to the tray, dropped text lands in it. It grows from
+  one line to 10 lines in the window and 6 in the popover, then scrolls inside, and shrinks back as text goes. A
+  grabber on its top edge drags it taller, up to half the chat column; that height is its minimum (kept in the window,
+  `composer.height`) until a double-click on the grabber. Sending trims only leading and trailing whitespace. The
+  protocol caps text at 32,768 characters (Unicode scalars): from 30,000 a counter `30,512 / 32,768` shows under it,
+  red over the cap, where Send is disabled.
 - **Main window:** our own sidebar column (`SidebarSplit`, #32; not `NavigationSplitView`), the detail, and our own
   trailing terminal pane (`⌘⌥T`). **Six sections** (#41, design 09f): Chat, GitHub, News, Agents, Jobs, Commands, picked
   from the icon bar at the sidebar's bottom (under the paired-device footer; it hides with the sidebar) or with

@@ -271,6 +271,13 @@ public enum Size {
     public static let chatImage = ChatImage()
     /// an arm of the drop frame's corner brackets
     public static let dropBracket: CGFloat = 20
+    /// the chat's message field: lines it grows to before it scrolls (window, popover), the width of the resize grabber on its top edge
+    public struct Composer: Sendable {
+        public let windowLines: CGFloat = 10
+        public let popoverLines: CGFloat = 6
+        public let grabber: CGFloat = 32
+    }
+    public static let composer = Composer()
 }
 
 /// `radius`: corner radii (Endfield is square; cards round one corner).
