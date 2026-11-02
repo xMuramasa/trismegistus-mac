@@ -115,8 +115,14 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   a shell.
 - **Markdown:** prose with `AttributedString(markdown:)`; fenced code blocks are split out and drawn as views with a
   language label and a copy button.
-- **Images** (#43, #44; relay trismegistus#25, #26): a message takes up to 4 images by drop onto the chat column, the
-  📎 button (open panel) or ⌘V; a tray above the input shows them. They are resized (longest edge 2048 px) and
+- **Images** (#43, #44, #45; relay trismegistus#25, #26): a message takes up to 4 images by drop onto the chat column, the
+  📎 button (open panel) or ⌘V; a tray above the input shows them. The drop target is an AppKit view over the whole
+  column (SwiftUI's `onDrop` sits behind the scroll view, the selectable text and the field, so AppKit never offered
+  it a drag), registered for files and image data but not text, and letting clicks through. While a drag is over it
+  the column dims under a paper veil, a yellow frame opens from the centre and a card says what a drop does (`3
+  IMAGES`, `2 OF 3 FIT // UP TO 4`, other files skipped, `GOES WITH YOUR NEXT MESSAGE` during a run); it turns red
+  with the reason when nothing can be attached (`IMAGES ONLY`, `UP TO 4 PER MESSAGE`, `THIS DEVICE CAN ONLY VIEW`,
+  `READ-ONLY CONVERSATION`). Reduce Motion: fades only. They are resized (longest edge 2048 px) and
   re-encoded before upload (EXIF and GPS dropped), uploaded to `POST /api/attachments`, then sent with the `prompt`
   (`attachments`); steers stay text only, so images wait in the tray during a run. Messages show their images (one
   within 320×240 pt, 2–4 in a grid; Quick Look on click); history images come from the relay's `attachments` on user

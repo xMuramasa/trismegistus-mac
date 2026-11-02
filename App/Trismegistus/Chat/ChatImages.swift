@@ -65,40 +65,23 @@ final class ImageTray {
         }
     }
 
-    /// Files from Finder, images from browsers and screenshots.
-    func add(_ providers: [NSItemProvider], to session: String) -> Bool {
-        for provider in providers {
-            if let type = provider.registeredTypeIdentifiers.first(where: { UTType($0)?.conforms(to: .image) == true }) {
-                provider.loadDataRepresentation(forTypeIdentifier: type) { data, _ in
-                    Task { @MainActor in self.add(data, to: session) }
-                }
-            } else if provider.canLoadObject(ofClass: URL.self) {
-                _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                    let data = url.flatMap { try? Data(contentsOf: $0) }
-                    Task { @MainActor in self.add(data, to: session) }
-                }
-            } else {
-                add(nil, to: session)
-            }
-        }
-        return !providers.isEmpty
+    /// Image files (from Finder, the 📎 panel) and image data (a browser's image, a screenshot), in that order.
+    func add(_ files: [URL], _ data: [Data] = [], to session: String) {
+        for url in files { add(try? Data(contentsOf: url), to: session) }
+        for data in data { add(data, to: session) }
     }
 
     /// ⌘V: image files copied in Finder, or image data with no text beside it (a screenshot, a browser's Copy Image).
     /// False leaves the paste to the text field.
     func paste(to session: String) -> Bool {
         let board = NSPasteboard.general
-        let urls = board.readObjects(forClasses: [NSURL.self], options: [
-            .urlReadingFileURLsOnly: true, .urlReadingContentsConformToTypes: [UTType.image.identifier],
-        ]) as? [URL] ?? []
-        if !urls.isEmpty {
-            for url in urls { add(try? Data(contentsOf: url), to: session) }
+        let images = PasteboardImages(board)
+        if !images.files.isEmpty {
+            add(images.files, to: session)
             return true
         }
-        guard board.string(forType: .string) == nil,
-            let type = board.types?.first(where: { UTType($0.rawValue)?.conforms(to: .image) == true })
-        else { return false }
-        add(board.data(forType: type), to: session)
+        guard images.count > 0, board.string(forType: .string) == nil else { return false }
+        add([], images.data(), to: session)
         return true
     }
 
@@ -111,7 +94,7 @@ final class ImageTray {
         panel.message = "Up to \(ImageUpload.maxPerMessage) images"
         NSApp.activate()
         guard panel.runModal() == .OK else { return }
-        for url in panel.urls { add(try? Data(contentsOf: url), to: session) }
+        add(panel.urls, to: session)
     }
 
     private func update(_ id: UUID, in session: String, _ change: (inout Item) -> Void) {

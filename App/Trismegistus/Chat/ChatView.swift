@@ -1,7 +1,6 @@
 import SwiftUI
 import TrismegistusKit
 import TrismegistusUI
-import UniformTypeIdentifiers
 
 /// One conversation: approval banner, messages, working indicator, input. `compact` is the popover layout (tool and
 /// subagent rows inline); the window passes `compact: false` and gets one marker per run that calls `onShowTerminal`.
@@ -20,7 +19,7 @@ struct ChatView: View {
     @State private var handingOff: SessionInfo?
     /// Images waiting for the next message, per conversation.
     @State private var tray = ImageTray()
-    @State private var dropTargeted = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// The newest part of the conversation's thread: older parts show folded above, the composer sends here.
     private var id: String { model.store?.threadTip(of: sessionID) ?? sessionID }
@@ -58,8 +57,10 @@ struct ChatView: View {
             if !compact { KeyHintStrip(hints).background(Ink.surface.window) }
         }
         .background { if compact { Ink.surface.window } else { EndfieldBackdrop() } }
-        .overlay { if dropTargeted && canAttach { Rectangle().strokeBorder(Ink.selection, lineWidth: Stroke.mark).allowsHitTesting(false) } }
-        .onDrop(of: [.fileURL, .image], isTargeted: $dropTargeted) { canAttach && tray.add($0, to: id) }
+        .imageDrop(
+            room: ImageUpload.maxPerMessage - tray.items[id, default: []].count, limit: ImageUpload.maxPerMessage,
+            refusal: model.device?.canManage != true ? .viewer : isReadOnly ? .readOnly : nil, later: run != nil
+        ) { tray.add($0, $1, to: id) }
         .background(PasteCatcher { canAttach && tray.paste(to: id) })
         .task(id: id) {
             await model.store?.images?.forgetFailures() // a reopened conversation asks again for images that failed
@@ -172,6 +173,7 @@ struct ChatView: View {
                     items: images.map { AttachmentTray.Item(id: $0.id, image: $0.thumbnail, error: $0.error) },
                     note: steering ? "Steers are text only: the images go with the next new message." : nil
                 ) { tray.remove($0, from: id) }
+                .transition(AttachmentTray.insertion(reduceMotion))
             }
             if let notice = tray.notice {
                 Text(notice).typeRole(.caption).foregroundStyle(Ink.text.error).lineLimit(1)
@@ -204,6 +206,7 @@ struct ChatView: View {
                 Text(actionError).typeRole(.caption).foregroundStyle(Ink.text.error).lineLimit(1)
             }
         }
+        .animation(Motion.dropIn, value: images.map(\.id))
         .padding(Space.l)
         .background(Ink.surface.window)
         .overlay(alignment: .top) { Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline) }

@@ -268,4 +268,23 @@ final class SnapshotTests: XCTestCase {
         XCTAssertEqual(ChatImageGrid.fitted(CGSize(width: 100, height: 50)), CGSize(width: 100, height: 50))
         XCTAssertEqual(ChatImageGrid.fitted(nil), CGSize(width: 320, height: 240))
     }
+
+    func testImageDrop() throws {
+        let column = VStack(alignment: .leading, spacing: 12) {
+            Text("You").typeRole(.label).foregroundStyle(Ink.text.secondary)
+            Text("Here is the screenshot of the failing build.").typeRole(.body).padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading).background(Ink.surface.raised)
+            Spacer()
+            Text("Message Hermes").typeRole(.body).foregroundStyle(Ink.text.muted).padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading).overlay(Rectangle().strokeBorder(Ink.line.rule))
+        }
+        .padding(16)
+        .frame(height: 320)
+        for (name, feedback) in [
+            ("ImageDropAccepting", ImageDropFeedback.judge(images: 3, others: 1, room: 2, limit: 4, refusal: nil, later: true)),
+            ("ImageDropRejecting", ImageDropFeedback.judge(images: 0, others: 1, room: 4, limit: 4, refusal: nil, later: false)),
+        ] {
+            try snap(name) { column.overlay { ImageDropOverlay(feedback, open: true) } }
+        }
+    }
 }

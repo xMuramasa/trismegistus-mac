@@ -127,6 +127,8 @@ public enum Opacity {
     public static let terminalContours: Double = 0.3
     /// the duration on a terminal card's header
     public static let cardDetail: Double = 0.85
+    /// the paper veil over the chat while images are dragged over it
+    public static let dropVeil: Double = 0.85
 }
 
 /// `space`: the strict spacing scale; literals round up to the next step.
@@ -267,6 +269,8 @@ public enum Size {
         public let height: CGFloat = 240
     }
     public static let chatImage = ChatImage()
+    /// an arm of the drop frame's corner brackets
+    public static let dropBracket: CGFloat = 20
 }
 
 /// `radius`: corner radii (Endfield is square; cards round one corner).
@@ -307,6 +311,10 @@ public enum Motion {
     public static let panel = Animation.easeInOut(duration: 0.3)
     /// settledWidth
     public static let settle = Duration.milliseconds(150)
+    /// the drop feedback appearing (user-driven), new tray thumbnails
+    public static let dropIn = Animation.easeOut(duration: 0.18)
+    /// the drop feedback leaving
+    public static let dropOut = Animation.easeIn(duration: 0.12)
 }
 
 /// `font.family`: the bundled families (Resources/Fonts, SIL OFL 1.1).

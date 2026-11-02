@@ -3,6 +3,7 @@ import SwiftUI
 
 /// The composer's images above the input: thumbnails `Size.attachmentThumb` tall, each with a remove ×; one being
 /// prepared shows a spinner, one that failed its error ("Too large", "Not an image"). `note` goes under the row.
+/// The caller animates changes of the items (`Motion.dropIn`) so new thumbnails scale in (`insertion`).
 public struct AttachmentTray: View {
     public struct Item: Identifiable {
         public let id: UUID
@@ -20,11 +21,17 @@ public struct AttachmentTray: View {
     let items: [Item]
     let note: String?
     let onRemove: @MainActor (UUID) -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(items: [Item], note: String? = nil, onRemove: @escaping @MainActor (UUID) -> Void) {
         self.items = items
         self.note = note
         self.onRemove = onRemove
+    }
+
+    /// A new thumbnail (or the tray itself) scales in; with Reduce Motion it only fades. Animate with `Motion.dropIn`.
+    public static func insertion(_ reduceMotion: Bool) -> AnyTransition {
+        reduceMotion ? .opacity : .scale.combined(with: .opacity)
     }
 
     public var body: some View {
@@ -36,6 +43,7 @@ public struct AttachmentTray: View {
                             EndfieldButton("Remove", symbol: Symbol.close, kind: .quiet, iconOnly: true) { onRemove(item.id) }
                                 .background(Ink.surface.raised)
                         }
+                        .transition(Self.insertion(reduceMotion))
                 }
             }
             if let note {
