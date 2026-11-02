@@ -2,8 +2,8 @@ import SwiftUI
 import TrismegistusKit
 import TrismegistusUI
 
-/// Window sidebar: `CONVERSATIONS // n`, icon-only new, filter field, the Commands, Jobs, GitHub and Agents rows, one row per session, the
-/// paired device below. On `SidebarSplit`'s sunken ground: no row separators, rows without their own fill.
+/// The Chat section's sidebar: `CONVERSATIONS // n`, icon-only new, filter field, tag chips, one row per conversation
+/// (the daily feed runs are in News). On `SidebarSplit`'s grey ground: no row separators, rows without their own fill.
 struct ConversationSidebar: View {
     @Binding var selection: String?
     /// The Filter field's focus (⌘K).
@@ -22,33 +22,26 @@ struct ConversationSidebar: View {
     /// Tags of the listed conversations with how many carry each; tag ids the app doesn't list are ignored.
     private var tagCounts: [(tag: String, count: Int)] { SessionListing.tagCounts(ids: threads.map(\.id), tags: tags) }
 
-    /// Pinned first, then most recent first with the daily feed runs folded into one News row. Unfiltered.
-    private var listing: (pinned: [SessionOverview], rest: [ConversationListRow<SessionOverview>]) {
+    /// Pinned first, then most recent first, without the daily feed runs (the News section has them). Unfiltered.
+    private var listing: (pinned: [SessionOverview], rest: [SessionOverview]) {
         guard let store = model.store else { return ([], []) }
         let overviews = threads
             .compactMap { store.overview[$0.id] }
             .sorted { ($0.lastActivity ?? .distantPast) > ($1.lastActivity ?? .distantPast) }
-        return ConversationListRow.listing(overviews, news: model.news?.sessionIDs ?? [], newsAt: model.news?.rowTime,
-                                           activity: \.lastActivity, isPinned: { $0.info?.isPinned == true })
+        let listing = ConversationListRow.listing(overviews, news: model.news?.sessionIDs ?? [], newsAt: model.news?.rowTime,
+                                                  activity: \.lastActivity, isPinned: { $0.info?.isPinned == true })
+        return (listing.pinned, listing.rest.compactMap { if case .item(let overview) = $0 { overview } else { nil } })
     }
 
     /// The listing after the filter field and the tag filter.
-    private var shown: (pinned: [SessionOverview], rest: [ConversationListRow<SessionOverview>]) {
+    private var shown: (pinned: [SessionOverview], rest: [SessionOverview]) {
         let needle = filter.trimmingCharacters(in: .whitespaces)
-        let news = model.news
         func matches(_ overview: SessionOverview) -> Bool {
             if let tagFilter, !SessionListing.hasTag(tagFilter, in: tags[overview.id] ?? []) { return false }
             return needle.isEmpty || (overview.info.map(Self.title) ?? "").localizedCaseInsensitiveContains(needle)
         }
         let listing = self.listing
-        return (listing.pinned.filter(matches), listing.rest.filter { row in
-            switch row {
-            case .item(let overview): return matches(overview)
-            case .news:
-                return tagFilter == nil && (needle.isEmpty
-                    || ["News", news?.items.first?.edition.title ?? ""].contains { $0.localizedCaseInsensitiveContains(needle) })
-            }
-        })
+        return (listing.pinned.filter(matches), listing.rest.filter(matches))
     }
 
     /// Every conversation in the order shown, for moving the selection when one goes.
@@ -61,48 +54,17 @@ struct ConversationSidebar: View {
         let shown = self.shown
         VStack(spacing: 0) {
             header(count: shown.pinned.count + shown.rest.count)
-            // Every row sets `listRowBackground`: it replaces the row view's ground, where macOS draws its selection
-            // highlight (a thin blue line still showed past the rows' sunken backing in a key window).
             List(selection: $selection) {
-                CommandsRowView(isSelected: selection == CommandsView.id)
-                    .tag(CommandsView.id)
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden).listRowBackground(Ink.surface.sunken)
-                if let jobs = model.jobs {
-                    JobsRowView(board: jobs, isSelected: selection == JobsView.id)
-                        .tag(JobsView.id)
-                        .listRowInsets(EdgeInsets())
-                        .listRowSeparator(.hidden).listRowBackground(Ink.surface.sunken)
-                }
-                GitHubRowView(github: model.github, isSelected: selection == GitHubRowView.id)
-                    .tag(GitHubRowView.id)
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden).listRowBackground(Ink.surface.sunken)
-                AgentsRowView(board: model.agents, isSelected: selection == AgentsView.id)
-                    .tag(AgentsView.id)
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden).listRowBackground(Ink.surface.sunken)
                 if !shown.pinned.isEmpty {
-                    SectionLabel(title: "Pinned").listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Ink.surface.sunken)
+                    SectionLabel(title: "Pinned").sidebarRow()
                     ForEach(shown.pinned) { conversation($0) }
                     if !shown.rest.isEmpty {
-                        SectionLabel(title: "Conversations").listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Ink.surface.sunken)
+                        SectionLabel(title: "Conversations").sidebarRow()
                     }
                 }
-                ForEach(shown.rest) { row in
-                    switch row {
-                    case .item(let overview): conversation(overview)
-                    case .news:
-                        newsRow
-                            .tag(row.id)
-                            .listRowInsets(EdgeInsets())
-                            .listRowSeparator(.hidden).listRowBackground(Ink.surface.sunken)
-                    }
-                }
+                ForEach(shown.rest) { conversation($0) }
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            footer
+            .sidebarList()
         }
         .confirmsDelete(actions, store: model.store)
         .onChange(of: orderedIDs) { old, new in
@@ -127,29 +89,23 @@ struct ConversationSidebar: View {
                 TagEditor(
                     tags: tags[overview.id] ?? [], known: tagCounts.map(\.tag),
                     onChange: { actions.setTags(overview.id, $0, store: store) }, onDone: { actions.tagging = nil })
+                    // A white panel: its quiet buttons in ink.
+                    .environment(\.onSidebar, false)
                     .padding(Space.s)
             }
         }
         .tag(overview.id)
-        .listRowInsets(EdgeInsets())
-        .listRowSeparator(.hidden).listRowBackground(Ink.surface.sunken)
+        .sidebarRow()
     }
 
     private func header(count: Int) -> some View {
-        VStack(spacing: Space.m) {
-            HStack {
-                Text("Conversations // \(count)").typeRole(.label).foregroundStyle(Ink.text.secondary)
-                Spacer()
-                EndfieldButton("New conversation", symbol: Symbol.plus, kind: .quiet, iconOnly: true) { create() }
-            }
-            EndfieldTextField("Filter", text: $filter, ground: Ink.surface.window, focus: filterFocus)
+        SidebarHeader(title: "Conversations // \(count)", prompt: "Filter conversations", filter: $filter, focus: filterFocus) {
+            EndfieldButton("New conversation", symbol: Symbol.plus, kind: .quiet, iconOnly: true) { create() }
+        } extra: {
             if !tagCounts.isEmpty { tagFilterBar }
-            if createFailed {
-                Text("Could not create a conversation. Try again.").typeRole(.caption).foregroundStyle(Ink.text.error)
-            }
+            ActionError(message: createFailed ? "Could not create a conversation. Try again." : nil)
             ActionError(message: actions.error)
         }
-        .padding(.horizontal, Space.l).padding(.vertical, Space.m)
     }
 
     /// One chip per tag with its count; a second click clears it.
@@ -167,22 +123,6 @@ struct ConversationSidebar: View {
                 }
             }
         }
-    }
-
-    @ViewBuilder private var newsRow: some View {
-        if let news = model.news {
-            TimelineView(.periodic(from: .now, by: 30)) { context in
-                NewsRowView(feed: news, isSelected: selection == NewsRowView.id, now: context.date)
-            }
-        }
-    }
-
-    private var footer: some View {
-        Text(model.deviceName.map { "\($0) · paired" } ?? "not paired")
-            .typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
-            .padding(.horizontal, Space.l).padding(.vertical, Space.s)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .overlay(alignment: .top) { Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline) }
     }
 
     private func create() {
@@ -216,7 +156,7 @@ private struct ConversationRow: View {
                 runElapsed: overview.run.map { Self.clock(context.date.timeIntervalSince($0.startedAt)) },
                 needsApproval: overview.isWaitingForApproval)
             if let info = overview.info {
-                row.conversationChrome(info, tags: tags, actions: actions, store: store)
+                row.conversationChrome(info, tags: tags, isSelected: isSelected, actions: actions, store: store)
             } else {
                 row
             }

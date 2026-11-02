@@ -3,14 +3,13 @@ import SwiftUI
 import TrismegistusKit
 import TrismegistusUI
 
-/// One issue: back, `owner/repo#n`, title, state and board fields, the body and comments as Markdown. Actions:
+/// One issue: `owner/repo#n`, title, state and board fields, the body and comments as Markdown. Actions:
 /// open in the browser and start a conversation for every device; Status, Priority, close/reopen and commenting for a
 /// manager only. None of them is destructive, so none asks first.
 struct GitHubIssueView: View {
     let github: GitHubModel
     let repo: String
     let number: Int
-    let onBack: @MainActor () -> Void
     /// Opens a conversation in the window.
     let onOpen: (String) -> Void
 
@@ -53,8 +52,6 @@ struct GitHubIssueView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: Space.s) {
             HStack(alignment: .top, spacing: Space.m) {
-                // No esc: it would fire from the comment field and drop the draft.
-                EndfieldButton("Back", symbol: "chevron.left", kind: .quiet, iconOnly: true, action: onBack)
                 VStack(alignment: .leading, spacing: Space.xxs) {
                     HStack(spacing: Space.s) {
                         Text("\(repo)#\(number)").typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)

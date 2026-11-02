@@ -2,59 +2,45 @@ import SwiftUI
 import TrismegistusKit
 import TrismegistusUI
 
-/// The window sidebar's Agents row, after GitHub: how many background agents run on optiplex.
-struct AgentsRowView: View {
-    let board: AgentBoard?
-    let isSelected: Bool
+/// The Agents section's sidebar: `AGENTS // n RUNNING`, the filter, one row per agent.
+struct AgentsSidebar: View {
+    @Binding var selection: String?
+    var filterFocus: FocusState<Bool>.Binding
 
-    @Environment(\.sunkenRows) private var sunken
-
-    private var detail: String {
-        guard let board else { return "not connected" }
-        if board.notConfigured { return "not set up" }
-        if board.error != nil, board.agents.isEmpty { return "can't load" }
-        if !board.isLoaded { return "loading" }
-        return board.runningCount > 0 ? "\(board.runningCount) running" : "idle"
-    }
+    @Environment(AppModel.self) private var model
+    @State private var filter = ""
 
     var body: some View {
-        HStack(spacing: Space.s) {
-            VStack(alignment: .leading, spacing: Space.xs) {
-                Text("Agents").typeRole(.headline).foregroundStyle(Ink.text.primary).lineLimit(1)
-                HStack(spacing: Space.s) {
-                    Image(systemName: AgentsView.symbol).font(.system(size: Icon.m))
-                    Text(detail).typeRole(.monoSmall).lineLimit(1)
+        let board = model.agents
+        let needle = filter.trimmingCharacters(in: .whitespaces)
+        let agents = (board?.agents ?? []).filter { needle.isEmpty || $0.title.localizedCaseInsensitiveContains(needle) }
+        VStack(spacing: 0) {
+            SidebarHeader(title: "Agents // \(board?.runningCount ?? 0) running", prompt: "Filter agents", filter: $filter,
+                          focus: filterFocus)
+            if let board, board.agents.isEmpty {
+                SidebarNote(text: board.notConfigured ? "Not set up."
+                    : board.isLoaded ? "No background agents running or finished in the last day." : "Reading the agents…")
+            } else if board == nil {
+                SidebarNote(text: "Not connected.")
+            }
+            List(selection: $selection) {
+                ForEach(agents) { agent in
+                    AgentRow(agent: agent, isSelected: selection == agent.id).tag(agent.id).sidebarRow()
                 }
-                .foregroundStyle(sunken ? Ink.text.secondary : Ink.text.muted)
             }
-            Spacer(minLength: Space.s)
-            if board?.anyRunning == true {
-                Circle().fill(Ink.status.online).frame(width: Size.dot, height: Size.dot)
-                    .overlay(Circle().strokeBorder(Ink.line.strong, lineWidth: Stroke.hairline))
-                    .accessibilityHidden(true)
-            }
-            if isSelected {
-                Image(systemName: Symbol.chevronRight).font(.system(size: Icon.s)).foregroundStyle(Ink.text.primary)
-            }
+            .sidebarList()
         }
-        .padding(.horizontal, Space.m)
-        .frame(height: Size.row)
-        .rowGround(isSelected: isSelected)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
-/// Background work on optiplex (Claude Code delegate runs, Hermes background processes): the list on top (up to four
-/// rows, then it scrolls), the selected agent's detail and transcript below it. The list is fetched every 3 s while
-/// shown. Hermes subagents are not here: the relay can't see them.
+/// Background work on optiplex (Claude Code delegate runs, Hermes background processes): the selected agent's detail
+/// and transcript at full height. The list is fetched every 3 s while shown. Hermes subagents are not here: the relay
+/// can't see them.
 struct AgentsView: View {
-    nonisolated static let id = "trismegistus.agents" // in selections; not a Hermes session id
-    static let symbol = "cpu"
+    @Binding var selection: String?
     let onOpen: (String) -> Void
 
     @Environment(AppModel.self) private var model
-    @State private var selected: String?
 
     var body: some View {
         Group {
@@ -67,7 +53,7 @@ struct AgentsView: View {
                         }
                     }
                     .onChange(of: board.agents.map(\.id), initial: true) { _, ids in
-                        if !ids.contains(selected ?? "") { selected = ids.first }
+                        if board.isLoaded { selection = WindowSection.kept(selection, in: ids) }
                     }
             } else {
                 Text("Not connected.").typeRole(.caption).foregroundStyle(Ink.text.muted)
@@ -77,31 +63,19 @@ struct AgentsView: View {
         .background(Ink.surface.window)
     }
 
-    private func content(_ board: AgentBoard) -> some View {
-        VStack(spacing: 0) {
-            header(board)
-            Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline)
-            if board.notConfigured {
-                NotConfigured()
-            } else {
+    @ViewBuilder private func content(_ board: AgentBoard) -> some View {
+        if board.notConfigured {
+            NotConfigured()
+        } else {
+            VStack(spacing: 0) {
                 if let error = board.error { notice(error, board: board) }
-                list(board)
-                Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline)
-                if let agent = board.agents.first(where: { $0.id == selected }) {
+                if let agent = board.agents.first(where: { $0.id == selection }) {
                     AgentDetail(agent: agent, board: board, onOpen: onOpen).id(agent.id)
                 } else {
-                    Spacer(minLength: 0)
+                    SectionEmpty(symbol: WindowSection.agents.symbol, text: board.isLoaded ? "No agent selected" : "Reading the agents…")
                 }
             }
         }
-    }
-
-    private func header(_ board: AgentBoard) -> some View {
-        HStack(spacing: Space.s) {
-            Text("Agents // \(board.runningCount) running").typeRole(.label).foregroundStyle(Ink.text.secondary)
-            Spacer(minLength: Space.s)
-        }
-        .padding(.horizontal, Space.l).padding(.vertical, Space.m)
     }
 
     /// One line over the agents already fetched, which stay.
@@ -115,26 +89,6 @@ struct AgentsView: View {
         .foregroundStyle(Ink.text.secondary)
         .padding(.horizontal, Space.l).padding(.vertical, Space.s)
         .background(Ink.surface.sunken)
-    }
-
-    @ViewBuilder private func list(_ board: AgentBoard) -> some View {
-        if board.agents.isEmpty {
-            Text(board.isLoaded ? "No background agents running or finished in the last day." : "Reading the agents…")
-                .typeRole(.caption).foregroundStyle(Ink.text.muted)
-                .padding(Space.l).frame(maxWidth: .infinity)
-        } else {
-            let rows = VStack(spacing: 0) {
-                ForEach(board.agents) { agent in
-                    Button { selected = agent.id } label: { AgentRow(agent: agent, isSelected: selected == agent.id) }
-                        .buttonStyle(.plain)
-                }
-            }
-            if board.agents.count <= 4 {
-                rows
-            } else {
-                ScrollView { rows }.frame(height: Size.row * 4.5)
-            }
-        }
     }
 }
 
@@ -155,13 +109,16 @@ private struct NotConfigured: View {
     }
 }
 
-/// An agent in the list: title and how it stands, then kind, start or end, turns and duration, then its last
+/// An agent in the sidebar: title and how it stands, then kind, start or end, turns and duration, then its last
 /// progress line (a process shows its command).
 private struct AgentRow: View {
     let agent: Agent
     let isSelected: Bool
 
+    @Environment(\.onSidebar) private var onSidebar
+
     var body: some View {
+        let ink = RowInk(onSidebar: onSidebar, isSelected: isSelected)
         TimelineView(.periodic(from: .now, by: 30)) { context in
             VStack(alignment: .leading, spacing: Space.xs) {
                 HStack(spacing: Space.s) {
@@ -170,19 +127,18 @@ private struct AgentRow: View {
                             .overlay(Circle().strokeBorder(Ink.line.strong, lineWidth: Stroke.hairline))
                             .accessibilityHidden(true)
                     }
-                    Text(agent.title).typeRole(.headline).foregroundStyle(Ink.text.primary).lineLimit(1)
+                    Text(agent.title).typeRole(.headline).foregroundStyle(ink.title).lineLimit(1)
                     Spacer(minLength: Space.s)
-                    Text(agent.statusWords).typeRole(.label).foregroundStyle(agent.failed ? Ink.text.error : Ink.text.secondary)
+                    Text(agent.statusWords).typeRole(.label).foregroundStyle(agent.failed ? ink.error : ink.meta)
                 }
-                Text(AgentFacts.line(agent, now: context.date)).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary).lineLimit(1)
+                Text(AgentFacts.line(agent, now: context.date)).typeRole(.monoSmall).foregroundStyle(ink.meta).lineLimit(1)
                 if let line = agent.progress ?? agent.command {
-                    Text(line).typeRole(.monoSmall).foregroundStyle(Ink.text.muted).lineLimit(1).truncationMode(.tail)
+                    Text(line).typeRole(.monoSmall).foregroundStyle(ink.meta).lineLimit(1).truncationMode(.tail)
                 }
             }
             .padding(.horizontal, Space.m).padding(.vertical, Space.s)
             .frame(maxWidth: .infinity, minHeight: Size.row, alignment: .leading)
             .rowGround(isSelected: isSelected)
-            .contentShape(Rectangle())
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? .isSelected : [])

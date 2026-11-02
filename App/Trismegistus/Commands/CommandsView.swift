@@ -2,67 +2,70 @@ import SwiftUI
 import TrismegistusKit
 import TrismegistusUI
 
-/// The window sidebar's Commands row, above the conversations.
-struct CommandsRowView: View {
-    let isSelected: Bool
+/// The Commands section's sidebar: `COMMANDS // n`, the search (it filters the log), "All conversations", then the
+/// conversations whose calls match, most recent first. The selection is a conversation id, `""` for all.
+struct CommandsSidebar: View {
+    @Binding var selection: String?
+    @Binding var search: String
+    /// The session list the log fetched last (`CommandsView`); the app's own until then.
+    let sessions: [SessionInfo]?
+    var filterFocus: FocusState<Bool>.Binding
 
-    @Environment(\.sunkenRows) private var sunken
+    @Environment(AppModel.self) private var model
+    @Environment(CommandLog.self) private var log: CommandLog?
 
     var body: some View {
-        // Title and a meta line, like the conversation rows: on one line "all conversations" wrapped at 260 pt.
-        HStack(spacing: Space.s) {
-            VStack(alignment: .leading, spacing: Space.xs) {
-                Text("Commands").typeRole(.headline).foregroundStyle(Ink.text.primary).lineLimit(1)
-                HStack(spacing: Space.s) {
-                    Image(systemName: Symbol.terminal).font(.system(size: Icon.m))
-                    Text("all conversations").typeRole(.monoSmall).lineLimit(1)
+        let entries = (log?.all ?? []).filter { CommandsView.matches($0, search) }
+        let counts = Dictionary(grouping: entries.compactMap(\.sessionID), by: \.self).mapValues(\.count)
+        let conversations = (sessions ?? model.sessions).filter { counts[$0.id] != nil }
+        VStack(spacing: 0) {
+            SidebarHeader(title: "Commands // \(entries.count)", prompt: "Search commands and output", filter: $search,
+                          focus: filterFocus)
+            if log == nil { SidebarNote(text: "Not connected.") }
+            List(selection: $selection) {
+                SidebarRow(title: "All conversations", meta: Self.count(entries.count), isSelected: selection == "")
+                    .tag("").sidebarRow()
+                ForEach(conversations) { info in
+                    SidebarRow(title: ConversationSidebar.title(info), meta: Self.count(counts[info.id] ?? 0),
+                               isSelected: selection == info.id)
+                        .tag(info.id).sidebarRow()
                 }
-                .foregroundStyle(sunken ? Ink.text.secondary : Ink.text.muted)
             }
-            Spacer(minLength: Space.s)
-            if isSelected {
-                Image(systemName: Symbol.chevronRight).font(.system(size: Icon.s)).foregroundStyle(Ink.text.primary)
-            }
+            .sidebarList()
         }
-        .padding(.horizontal, Space.m)
-        .frame(height: Size.row)
-        .rowGround(isSelected: isSelected)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
+
+    private static func count(_ n: Int) -> String { "\(n) \(n == 1 ? "call" : "calls")" }
 }
 
 /// Recent tool calls across conversations, newest first, from Hermes' history (Telegram, cron and CLI runs too),
-/// fetched again every 10 s while shown. Filters: commands or all tools, failed only, conversation, text. Each entry
+/// fetched again every 10 s while shown. Filters: the sidebar's conversation and search, failed only here. Each entry
 /// opens its conversation.
 struct CommandsView: View {
-    nonisolated static let id = "trismegistus.commands" // in selections; not a Hermes session id
+    /// A conversation id, `""` for all.
+    let conversation: String
+    let search: String
+    @Binding var sessions: [SessionInfo]?
     let onOpen: (String) -> Void
 
     @Environment(AppModel.self) private var model
     @Environment(CommandLog.self) private var log: CommandLog?
     @State private var failedOnly = false
-    @State private var conversation: String?
-    @State private var search = ""
-    /// The list this view fetched last; the app's own is only reloaded on connect.
-    @State private var sessions: [SessionInfo]?
     @State private var listFailed = false
 
     private var titles: [String: String] {
         Dictionary((sessions ?? model.sessions).map { ($0.id, ConversationSidebar.title($0)) }, uniquingKeysWith: { a, _ in a })
     }
 
-    private var entries: [TerminalEntry] {
+    static func matches(_ e: TerminalEntry, _ search: String) -> Bool {
         let needle = search.trimmingCharacters(in: .whitespaces)
-        return (log?.all ?? []).filter { e in
-            (!failedOnly || e.failed) && (conversation == nil || e.sessionID == conversation)
-                && (needle.isEmpty || [e.command, e.cwd, e.output, e.errorText].contains { $0?.localizedCaseInsensitiveContains(needle) == true })
-        }
+        return needle.isEmpty || [e.command, e.cwd, e.output, e.errorText].contains { $0?.localizedCaseInsensitiveContains(needle) == true }
     }
 
-    /// The conversations that have calls, most recent first.
-    private var conversations: [SessionInfo] {
-        (sessions ?? model.sessions).filter { !(log?.entries(of: $0.id).isEmpty ?? true) }
+    private var entries: [TerminalEntry] {
+        (log?.all ?? []).filter { e in
+            (!failedOnly || e.failed) && (conversation.isEmpty || e.sessionID == conversation) && Self.matches(e, search)
+        }
     }
 
     var body: some View {
@@ -112,25 +115,14 @@ struct CommandsView: View {
     }
 
     private func header(count: Int) -> some View {
-        VStack(spacing: Space.m) {
-            HStack(spacing: Space.s) {
-                Text("Commands // \(count)").typeRole(.label).foregroundStyle(Ink.text.secondary)
-                if listFailed && log?.all.isEmpty == false {
-                    Text("can't reach the relay").typeRole(.caption).foregroundStyle(Ink.text.error)
-                }
-                Spacer(minLength: Space.s)
-                FilterChip(title: "Failed", symbol: "exclamationmark.triangle", isOn: failedOnly) { failedOnly.toggle() }
+        HStack(spacing: Space.s) {
+            Text("\(conversation.isEmpty ? "All conversations" : titles[conversation] ?? conversation) // \(count)")
+                .typeRole(.label).foregroundStyle(Ink.text.secondary).lineLimit(1)
+            if listFailed && log?.all.isEmpty == false {
+                Text("can't reach the relay").typeRole(.caption).foregroundStyle(Ink.text.error)
             }
-            HStack(spacing: Space.s) {
-                EndfieldTextField("Search commands and output", text: $search)
-                Picker("Conversation", selection: $conversation) {
-                    Text("All conversations").tag(String?.none)
-                    ForEach(conversations) { Text(ConversationSidebar.title($0)).tag(Optional($0.id)) }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .frame(maxWidth: Size.pickerMax)
-            }
+            Spacer(minLength: Space.s)
+            FilterChip(title: "Failed", symbol: "exclamationmark.triangle", isOn: failedOnly) { failedOnly.toggle() }
         }
         .padding(.horizontal, Space.l).padding(.vertical, Space.m)
     }

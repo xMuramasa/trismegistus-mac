@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The window's sidebar as our own column (#32): macOS 26 draws a `NavigationSplitView` sidebar as a floating glass
-/// panel with a white list; the draft has one flat `sunken` column from under the toolbar to the bottom, a 1 pt rule,
+/// panel with a white list; the draft has one flat column (`surface.sidebar`, grey since #41) from under the toolbar to the bottom, a 1 pt rule,
 /// then the detail. The toolbar's steel strip runs above both from the window's left edge. Showing and hiding follows
 /// the caller's animation (the column slides out to the left; the detail's width animates, so its content wants
 /// `settledWidth`). Dragging the rule sets `width`, kept within 220-340 pt.
@@ -34,10 +34,10 @@ public struct SidebarSplit<Sidebar: View, Detail: View>: View {
             if isShown {
                 HStack(spacing: 0) {
                     sidebar
-                        .environment(\.sunkenRows, true)
+                        .environment(\.onSidebar, true)
                         .frame(width: min(max(width, Self.widths.lowerBound), Self.widths.upperBound))
                         // Not into the top safe area: the toolbar's strip stays steel above the column.
-                        .background(Ink.surface.sunken, ignoresSafeAreaEdges: [])
+                        .background(Ink.surface.sidebar, ignoresSafeAreaEdges: [])
                     divider
                 }
                 .transition(.move(edge: .leading))

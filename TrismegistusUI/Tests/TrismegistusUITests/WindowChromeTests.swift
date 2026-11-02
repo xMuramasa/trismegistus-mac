@@ -65,12 +65,12 @@ final class WindowChromeTests: XCTestCase {
                 List(selection: $selection) {
                     ForEach(0..<3, id: \.self) { i in
                         SessionRowView(name: "Row \(i)", source: .trismegistus, activity: "now", isSelected: selection == i)
-                            .tag(i).listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Palette.sunken)
+                            .tag(i).listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Ink.surface.sidebar)
                     }
                 }
                 .listStyle(.plain).scrollContentBackground(.hidden)
-                .environment(\.sunkenRows, true)
-                .background(Palette.sunken)
+                .environment(\.onSidebar, true)
+                .background(Ink.surface.sidebar)
                 .frame(width: 260, height: 170)
             }
         }

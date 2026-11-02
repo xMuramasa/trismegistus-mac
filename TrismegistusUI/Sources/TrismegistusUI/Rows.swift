@@ -133,32 +133,49 @@ public struct SegmentRule: View {
 }
 
 public extension EnvironmentValues {
-    /// True in the window's sidebar (`SidebarSplit` sets it): rows sit on its `sunken` ground, the selected one white
-    /// with a 1 pt yellow border, meta text in `secondary` (muted is too faint on sunken). Off (the popover): white
-    /// rows, a yellow bar on the selected one, meta in `muted`.
-    @Entry var sunkenRows = false
+    /// True in the window's sidebar (`SidebarSplit` sets it): rows sit on its `secondary` grey ground (#41) with light
+    /// text, the selected one a white card with a 1 pt yellow border and ink text. Off (the popover): white rows, a
+    /// yellow bar on the selected one, meta in `muted`.
+    @Entry var onSidebar = false
+}
+
+/// The text colours of a list row: ink on the white rows (the popover, the sidebar's selected card), light on the
+/// window sidebar's grey, where nothing is dimmer than `on-sidebar-secondary` (red and blue are too dark there).
+public struct RowInk: Sendable {
+    public let title: Color
+    public let meta: Color
+    public let error: Color
+    public let link: Color
+
+    public init(onSidebar: Bool, isSelected: Bool) {
+        let onGrey = onSidebar && !isSelected
+        title = onGrey ? Ink.text.onSidebar : Ink.text.primary
+        meta = onGrey ? Ink.text.onSidebarSecondary : onSidebar ? Ink.text.secondary : Ink.text.muted
+        error = onGrey ? Ink.text.onSidebar : Ink.text.error
+        link = onGrey ? Ink.text.onSidebar : Ink.text.link
+    }
 }
 
 public extension View {
-    /// The ground and selection mark of a list row (`SessionRowView`, the app's News and Commands rows); see
-    /// `sunkenRows`. On sunken the fill is opaque so the list's own selection highlight never shows through.
+    /// The ground and selection mark of a list row (`SessionRowView`, the window sidebar's rows); see `onSidebar`.
+    /// On the sidebar the fill is opaque so the list's own selection highlight never shows through.
     func rowGround(isSelected: Bool) -> some View { modifier(RowGround(isSelected: isSelected)) }
 }
 
 private struct RowGround: ViewModifier {
     let isSelected: Bool
-    @Environment(\.sunkenRows) private var sunken
+    @Environment(\.onSidebar) private var onSidebar
 
     func body(content: Content) -> some View {
-        if sunken {
+        if onSidebar {
             content
                 .padding(.leading, Stroke.mark)
-                .background(isSelected ? Ink.surface.raised : Ink.surface.sunken)
+                .background(isSelected ? Ink.surface.raised : Ink.surface.sidebar)
                 .overlay { if isSelected { Rectangle().strokeBorder(Ink.selection, lineWidth: Stroke.hairline) } }
                 // macOS keeps an 8 pt inset on list rows and draws its selection highlight (blue in a key window)
-                // across the full row, so it showed in those margins beside the selected row. A sunken backing
-                // under the margins hides it whatever the window state.
-                .background { Ink.surface.sunken.padding(.horizontal, -Space.s) }
+                // across the full row, so it showed in those margins beside the selected row. A backing in the
+                // sidebar's ground under the margins hides it whatever the window state.
+                .background { Ink.surface.sidebar.padding(.horizontal, -Space.s) }
         } else {
             HStack(spacing: 0) {
                 Rectangle().fill(isSelected ? Ink.selection : .clear).frame(width: Stroke.mark)
@@ -192,18 +209,19 @@ public struct SessionRowView: View {
         self.needsApproval = needsApproval
     }
 
-    @Environment(\.sunkenRows) private var sunken
+    @Environment(\.onSidebar) private var onSidebar
 
     public var body: some View {
+        let ink = RowInk(onSidebar: onSidebar, isSelected: isSelected)
         HStack(spacing: Space.s) {
             VStack(alignment: .leading, spacing: Space.xs) {
-                Text(name).typeRole(.headline).foregroundStyle(Ink.text.primary).lineLimit(1)
+                Text(name).typeRole(.headline).foregroundStyle(ink.title).lineLimit(1)
                 HStack(spacing: Space.s) {
                     SourceIcon(source)
                     if isReadOnly { Image(systemName: Symbol.lock).font(.system(size: Icon.s)) }
                     Text(isReadOnly ? "\(activity) · read-only" : activity).typeRole(.monoSmall)
                 }
-                .foregroundStyle(sunken ? Ink.text.secondary : Ink.text.muted)
+                .foregroundStyle(ink.meta)
             }
             Spacer(minLength: Space.s)
             if needsApproval {
@@ -211,8 +229,8 @@ public struct SessionRowView: View {
                     .padding(.horizontal, Space.s).padding(.vertical, Space.xxs).background(Ink.marker)
             } else if let runElapsed {
                 HStack(spacing: Space.s) {
-                    Text("Run").typeRole(.label).foregroundStyle(Ink.text.link)
-                    Text(runElapsed).typeRole(.monoSmall).foregroundStyle(Ink.text.primary)
+                    Text("Run").typeRole(.label).foregroundStyle(ink.link)
+                    Text(runElapsed).typeRole(.monoSmall).foregroundStyle(ink.title)
                 }
             } else if isSelected {
                 Image(systemName: Symbol.chevronRight).font(.system(size: Icon.s)).foregroundStyle(Ink.text.primary)

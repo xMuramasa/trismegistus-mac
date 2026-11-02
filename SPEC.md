@@ -90,15 +90,29 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   messages, foldable tool rows with duration and error flag, subagent rows, the answer rendered as Markdown, a working
   indicator, an input field; `⌘↩` sends. One run per session: a prompt during a run offers "send as steer". Header:
   connection status, open window, settings. Empty and reconnecting states as drawn.
-- **Main window:** `NavigationSplitView` (conversations sidebar, chat) plus an `.inspector` terminal pane (`⌘⌥T`). The
+- **Main window:** our own sidebar column (`SidebarSplit`, #32; not `NavigationSplitView`), the detail, and our own
+  trailing terminal pane (`⌘⌥T`). **Six sections** (#41, design 09f): Chat, GitHub, News, Agents, Jobs, Commands, picked
+  from the icon bar at the sidebar's bottom (under the paired-device footer; it hides with the sidebar) or with
+  ⌘1…⌘6 (View menu; tooltips `Chat (⌘1)` …). Each section has its own sidebar list (header `TITLE // n`, a filter field
+  that ⌘K focuses, arrow keys move the selection) and detail: Chat the conversations (pin, rename, tags, delete, new)
+  and the conversation; GitHub the Work board by status (repo, priority and list-kind pickers, Done folded) and the
+  issue; News the editions by day and the edition; Agents the runs and the agent's detail and transcript; Jobs the
+  jobs (+ New job) and the job's detail or form; Commands "All conversations" and the conversations with matching
+  calls (the filter is the log's search) and the log (failed-only in its header). Each section keeps its own selection
+  (`window.section`, `window.selection.<section>`; Chat keeps `window.selectedSession`). Opening a conversation from
+  GitHub, Agents, Jobs, Commands or a notification switches to Chat with it selected (a news run opens News). The
+  terminal pane shows Chat's conversation only. The sidebar ground is `surface.sidebar` (the palette's secondary grey)
+  with light text (`text.on-sidebar`, `text.on-sidebar-secondary`, ≈4.7:1, nothing dimmer); the selected row is a
+  white card with a yellow outline and ink text; the filter fields stay light. The daily feed runs are not in Chat's
+  list (News has them); the popover keeps its one News row. The
   chat keeps messages and answers; each run shows one marker (`4 COMMANDS · 6.1 s · 1 failed`) that focuses the pane.
   The **terminal pane** is a read-only transcript of the selected conversation's tool calls: `$ command` from the
   `tool.started` preview, then output, exit code and duration from the `tool.completed` preview (JSON for the
   terminal tool; shown raw when cut). Filter: commands only or all tools. Live output arrives when a command finishes and is
   cut at 4,000 characters; past calls come from the Hermes history (every source, output in full), fetched again every
-  10 s while the pane is shown. A **Commands** row in the sidebar lists recent calls across conversations (filters:
-  commands/all tools, failed, conversation, search), synced incrementally and cached per relay in the app's Caches
-  (deleted on unpair). It is not a shell.
+  10 s while the pane is shown. The **Commands** section lists recent calls across conversations (filters: failed,
+  conversation, search), synced incrementally and cached per relay in the app's Caches (deleted on unpair). It is not
+  a shell.
 - **Markdown:** prose with `AttributedString(markdown:)`; fenced code blocks are split out and drawn as views with a
   language label and a copy button.
 - **Row status for every conversation:** the client subscribes to every listed session (the relay allows 64 per

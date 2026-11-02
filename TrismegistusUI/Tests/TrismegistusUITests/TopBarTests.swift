@@ -4,7 +4,7 @@ import XCTest
 
 @testable import TrismegistusUI
 
-/// The window as laid out since #32: the toolbar's steel strip across the whole window, our own `sunken` sidebar column
+/// The window as laid out since #32: the toolbar's steel strip across the whole window, our own sidebar column
 /// (`SidebarSplit`) with a rule, the conversation header continuing the strip with the title rule under it, the chat
 /// and its key hints, the terminal as our own trailing column (`TrailingSplit`). Rendered from the window's frame view (toolbar included) to
 /// `.build/snapshots/Window32*.png`, sidebar open and closed.
@@ -161,8 +161,8 @@ final class TopBarTests: XCTestCase {
             assertSteel(rgb(rep, CGPoint(x: 150, y: top / 2), scale: scale), "\(name): toolbar above the sidebar")
             let low = window.contentView!.bounds.height - 60
             if shown {
-                // One flat sunken column from under the toolbar to the bottom, darker than the chat's paper, then the
-                // 1 pt rule at x = 260, darker again.
+                // One flat grey column (#41) from under the toolbar to the bottom, darker than the chat's paper, then
+                // the 1 pt rule at x = 260, between the two.
                 let under = rgb(rep, CGPoint(x: 150, y: top + 2), scale: scale)
                 let ground = rgb(rep, CGPoint(x: 150, y: low), scale: scale)
                 let rule = rgb(rep, CGPoint(x: 260.5, y: low), scale: scale)
@@ -170,7 +170,8 @@ final class TopBarTests: XCTestCase {
                 print("window32 \(name): sidebar under the toolbar \(under), ground \(ground), rule \(rule), chat paper \(paper)")
                 for i in 0..<3 { XCTAssertEqual(under[i], ground[i], accuracy: 0.01, "the sidebar is not one flat ground") }
                 assertDarker(ground, than: paper, "\(name): sidebar ground against the paper")
-                assertDarker(rule, than: ground, "\(name): sidebar rule against its ground")
+                assertDarker(ground, than: rule, "\(name): sidebar rule against its ground")
+                assertDarker(rule, than: paper, "\(name): sidebar rule against the paper")
                 // The second row (selected) is white: under the 89 pt header and the first 52 pt row.
                 assertDarker(ground, than: rgb(rep, CGPoint(x: 200, y: top + 89 + 52 + 26), scale: scale), "\(name): selected row")
             } else {

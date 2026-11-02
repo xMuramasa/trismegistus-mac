@@ -43,6 +43,10 @@ public enum Ink {
         public let secondary = Palette.secondary
         public let muted = Palette.muted
         public let onDark = Palette.onSteel
+        /// titles and the selected section's icon on the window sidebar's secondary ground
+        public let onSidebar = Palette.raised
+        /// headers, meta lines and the footer on the window sidebar (about 4.7:1 on secondary; nothing dimmer)
+        public let onSidebarSecondary = Palette.onSteel
         public let link = Palette.blue
         public let error = Palette.red
     }
@@ -51,6 +55,8 @@ public enum Ink {
         public let window = Palette.paper
         public let raised = Palette.raised
         public let sunken = Palette.sunken
+        /// the window sidebar's ground (#40, 09f)
+        public let sidebar = Palette.secondary
         public let terminal = Palette.ink
         /// ink behind a chip, a toggle that is on, a pressed button, a switch that is on
         public let inverse = Palette.ink
@@ -63,6 +69,8 @@ public enum Ink {
         public let onDark = Palette.onSteel.opacity(Opacity.ruleOnDark)
         /// an outline on the steel bar
         public let outlineOnDark = Palette.onSteel.opacity(Opacity.outlineOnDark)
+        /// a rule on the window sidebar
+        public let onSidebar = Palette.onSteel.opacity(Opacity.ruleOnSidebar)
         /// the crosses on the paper ground
         public let paperCross = Palette.ink.opacity(Opacity.paperCrosses)
     }
@@ -72,6 +80,11 @@ public enum Ink {
         public let empty = Palette.borderInactive
     }
     public static let mark = Mark()
+    public struct Icon: Sendable {
+        /// an unselected section icon on the window sidebar
+        public let onSidebar = Palette.rule
+    }
+    public static let icon = Icon()
     /// the square beside an approval, and the approval badge
     public static let marker = Palette.magenta
     public static let selection = Palette.yellow
@@ -108,6 +121,7 @@ public enum Opacity {
     public static let secondaryOnDark: Double = 0.7
     public static let outlineOnDark: Double = 0.5
     public static let ruleOnDark: Double = 0.12
+    public static let ruleOnSidebar: Double = 0.24
     public static let track: Double = 0.5
     public static let paperCrosses: Double = 0.55
     public static let terminalContours: Double = 0.3
@@ -136,6 +150,8 @@ public enum Icon {
     public static let s: CGFloat = 10
     public static let m: CGFloat = 11
     public static let l: CGFloat = 14
+    /// a section icon in the sidebar's section bar; also the width of its selection bar
+    public static let section: CGFloat = 16
     /// an empty state's symbol
     public static let empty: CGFloat = 28
 }
@@ -211,6 +227,8 @@ public enum Size {
     public static let cardAccent: CGFloat = 11
     /// a divider's drag area
     public static let grip: CGFloat = 7
+    /// the click target of a section bar icon
+    public static let sectionTarget: CGFloat = 28
     /// the square of an icon-only menu (the conversation's ellipsis)
     public static let menuButton: CGFloat = 22
     /// one cell of the context meter

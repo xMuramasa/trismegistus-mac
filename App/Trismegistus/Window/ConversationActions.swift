@@ -99,12 +99,14 @@ struct ConversationMenuButton: View {
     let actions: ConversationActions
     let store: SessionStore?
 
+    @Environment(\.onSidebar) private var onSidebar
+
     var body: some View {
         Menu {
             ConversationMenuItems(info: info, actions: actions, store: store)
         } label: {
             Image(systemName: "ellipsis")
-                .typeRole(.button).foregroundStyle(Ink.text.primary)
+                .typeRole(.button).foregroundStyle(onSidebar ? Ink.text.onSidebar : Ink.text.primary)
                 .frame(width: Size.menuButton, height: Size.menuButton)
                 .contentShape(Rectangle())
         }
@@ -146,27 +148,35 @@ extension View {
 
 // MARK: Rows
 
-/// Pin glyph, `…` button, tag chips, right-click menu and the inline rename, laid over a `SessionRowView`.
+/// Pin glyph, `…` button, tag chips, right-click menu and the inline rename, laid over a `SessionRowView`; light on
+/// the window sidebar's grey unless the row is the selected white card.
 private struct ConversationChrome: ViewModifier {
     let info: SessionInfo
     let tags: [String]
+    let isSelected: Bool
     let actions: ConversationActions
     let store: SessionStore?
 
+    @Environment(\.onSidebar) private var onSidebar
+
     func body(content: Content) -> some View {
+        let onGrey = onSidebar && !isSelected
         content
             .overlay(alignment: .topTrailing) {
                 HStack(spacing: Space.xxs) {
                     if info.isPinned {
-                        Image(systemName: "pin.fill").font(.system(size: Icon.s)).foregroundStyle(Ink.text.secondary)
+                        Image(systemName: "pin.fill").font(.system(size: Icon.s))
+                            .foregroundStyle(RowInk(onSidebar: onSidebar, isSelected: isSelected).meta)
                             .accessibilityLabel("Pinned")
                     }
                     ConversationMenuButton(info: info, actions: actions, store: store)
                 }
                 .padding(.top, Space.xs).padding(.trailing, Space.s)
+                .environment(\.onSidebar, onGrey)
             }
             .overlay(alignment: .bottomTrailing) {
                 TagChips(tags: tags).padding(.bottom, Space.s).padding(.trailing, Space.m)
+                    .environment(\.onSidebar, onGrey)
             }
             .overlay {
                 if actions.renaming == info.id { RenameField(info: info, actions: actions, store: store) }
@@ -176,8 +186,9 @@ private struct ConversationChrome: ViewModifier {
 }
 
 extension View {
-    func conversationChrome(_ info: SessionInfo, tags: [String], actions: ConversationActions, store: SessionStore?) -> some View {
-        modifier(ConversationChrome(info: info, tags: tags, actions: actions, store: store))
+    func conversationChrome(_ info: SessionInfo, tags: [String], isSelected: Bool = false, actions: ConversationActions,
+                            store: SessionStore?) -> some View {
+        modifier(ConversationChrome(info: info, tags: tags, isSelected: isSelected, actions: actions, store: store))
     }
 }
 
@@ -228,12 +239,15 @@ struct TagChips: View {
     let tags: [String]
     var limit = 2
 
+    @Environment(\.onSidebar) private var onSidebar
+
     var body: some View {
         if !tags.isEmpty {
             HStack(spacing: Space.xs) {
                 ForEach(tags.prefix(limit), id: \.self) { TagChip(tag: $0) }
                 if tags.count > limit {
-                    Text("+\(tags.count - limit)").typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
+                    Text("+\(tags.count - limit)").typeRole(.monoSmall)
+                        .foregroundStyle(onSidebar ? Ink.text.onSidebarSecondary : Ink.text.secondary)
                 }
             }
             .frame(maxWidth: Size.tagsMax, alignment: .trailing)
@@ -340,13 +354,16 @@ struct FlowLayout: Layout {
     }
 }
 
-/// A one-line refusal under a list or header.
+/// A one-line refusal under a list or header (light on the window sidebar's grey, where red doesn't read).
 struct ActionError: View {
     let message: String?
 
+    @Environment(\.onSidebar) private var onSidebar
+
     var body: some View {
         if let message {
-            Text(message).typeRole(.caption).foregroundStyle(Ink.text.error).frame(maxWidth: .infinity, alignment: .leading)
+            Text(message).typeRole(.caption).foregroundStyle(onSidebar ? Ink.text.onSidebar : Ink.text.error)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
@@ -355,8 +372,10 @@ struct ActionError: View {
 struct SectionLabel: View {
     let title: String
 
+    @Environment(\.onSidebar) private var onSidebar
+
     var body: some View {
-        Text(title).typeRole(.label).foregroundStyle(Ink.text.secondary)
+        Text(title).typeRole(.label).foregroundStyle(onSidebar ? Ink.text.onSidebarSecondary : Ink.text.secondary)
             .padding(.horizontal, Space.l).padding(.vertical, Space.s)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityAddTraits(.isHeader)

@@ -3,8 +3,8 @@ import SwiftUI
 import TrismegistusKit
 import TrismegistusUI
 
-/// The one News row standing in for the daily feed runs: newspaper icon, the latest edition's title and age, the
-/// edition count. Same shape as SessionRowView, which only knows the four session sources.
+/// The popover's one News row standing in for the daily feed runs: newspaper icon, the latest edition's title and
+/// age, the edition count. Same shape as SessionRowView, which only knows the four session sources.
 struct NewsRowView: View {
     nonisolated static let id = "trismegistus.news"
     static let symbol = "newspaper"
@@ -19,8 +19,6 @@ struct NewsRowView: View {
         return "\(age) · \(count) \(count == 1 ? "edition" : "editions") · read-only"
     }
 
-    @Environment(\.sunkenRows) private var sunken
-
     var body: some View {
         HStack(spacing: Space.s) {
             VStack(alignment: .leading, spacing: Space.xs) {
@@ -30,7 +28,7 @@ struct NewsRowView: View {
                     Image(systemName: Symbol.lock).font(.system(size: Icon.s))
                     Text(detail).typeRole(.monoSmall).lineLimit(1)
                 }
-                .foregroundStyle(sunken ? Ink.text.secondary : Ink.text.muted)
+                .foregroundStyle(Ink.text.muted)
             }
             Spacer(minLength: Space.s)
             Text("News").typeRole(.label).foregroundStyle(Ink.text.primary)
@@ -46,39 +44,95 @@ struct NewsRowView: View {
     }
 }
 
-/// The News conversation, read-only: editions newest first under a heading per day, each with its feed tag, title,
-/// lead and stories (collapsed to headline and one line until clicked).
+/// The News section's sidebar: `NEWS // n`, the filter, the editions newest first under a heading per day, one row
+/// per edition (title, then feed and time).
+struct NewsSidebar: View {
+    @Binding var selection: String?
+    var filterFocus: FocusState<Bool>.Binding
+
+    @Environment(AppModel.self) private var model
+    @State private var filter = ""
+
+    var body: some View {
+        let needle = filter.trimmingCharacters(in: .whitespaces)
+        let items = (model.news?.items ?? []).filter { item in
+            needle.isEmpty || [item.edition.title, item.edition.tag].contains { $0.localizedCaseInsensitiveContains(needle) }
+        }
+        VStack(spacing: 0) {
+            SidebarHeader(title: "News // \(model.news?.items.count ?? 0)", prompt: "Filter editions", filter: $filter,
+                          focus: filterFocus)
+            if model.news == nil {
+                SidebarNote(text: "Not connected.")
+            } else if model.news?.items.isEmpty == true {
+                SidebarNote(text: "No editions yet.")
+            }
+            List(selection: $selection) {
+                ForEach(NewsView.days(items), id: \.date) { day in
+                    SectionLabel(title: NewsView.dayTitle(day.date)).sidebarRow()
+                    ForEach(day.items) { item in
+                        let time = item.publishedAt?.formatted(date: .omitted, time: .shortened)
+                        SidebarRow(title: item.edition.title, meta: [item.edition.tag, time].compactMap(\.self).joined(separator: " · "),
+                                   isSelected: selection == item.id)
+                            .tag(item.id).sidebarRow()
+                    }
+                }
+            }
+            .sidebarList()
+        }
+    }
+}
+
+/// The News section's detail: the selected edition, with the reader-unreachable line over it.
+struct NewsDetail: View {
+    @Binding var selection: String?
+
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let items = model.news?.items ?? []
+        VStack(spacing: 0) {
+            if model.news?.readerError != nil { NewsUnreachable() }
+            if let item = items.first(where: { $0.id == selection }) {
+                ScrollView {
+                    EditionView(item: item)
+                        .frame(maxWidth: Size.chatColumn, alignment: .leading)
+                        .padding(Space.l)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .id(item.id)
+            } else {
+                SectionEmpty(symbol: NewsRowView.symbol, text: items.isEmpty ? "The daily news runs show up here when one finishes." : "No edition selected")
+            }
+        }
+        .background(Ink.surface.window)
+        .task { await model.news?.refreshEditions() }
+        .onChange(of: items.map(\.id), initial: true) { _, ids in
+            if !ids.isEmpty { selection = WindowSection.kept(selection, in: ids) }
+        }
+    }
+}
+
+/// The News conversation, read-only (the popover's News page): editions newest first under a heading per day, each
+/// with its feed tag, title, lead and stories (collapsed to headline and one line until clicked).
 struct NewsView: View {
     @Environment(AppModel.self) private var model
 
-    private var days: [(date: String, items: [NewsFeed.Item])] {
-        Dictionary(grouping: model.news?.items ?? [], by: \.edition.editionDate)
+    private var days: [(date: String, items: [NewsFeed.Item])] { Self.days(model.news?.items ?? []) }
+
+    /// Newest day first.
+    static func days(_ items: [NewsFeed.Item]) -> [(date: String, items: [NewsFeed.Item])] {
+        Dictionary(grouping: items, by: \.edition.editionDate)
             .sorted { $0.key > $1.key }
             .map { ($0.key, $0.value) }
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            if model.news?.readerError != nil { unreachable }
+            if model.news?.readerError != nil { NewsUnreachable() }
             editions
         }
         .background(Ink.surface.window)
         .task { await model.news?.refreshEditions() }
-    }
-
-    /// One line over the editions already fetched, which stay.
-    private var unreachable: some View {
-        HStack(spacing: Space.s) {
-            Image(systemName: "exclamationmark.triangle").font(.system(size: Icon.m)).accessibilityHidden(true)
-            Text("Can't reach the news reader. Showing what was loaded.").typeRole(.callout).lineLimit(1)
-            Spacer(minLength: Space.s)
-            EndfieldButton("Retry", symbol: Symbol.retry, kind: .quiet, iconOnly: true) {
-                Task { await model.news?.refreshEditions() }
-            }
-        }
-        .foregroundStyle(Ink.text.secondary)
-        .padding(.horizontal, Space.l).padding(.vertical, Space.s)
-        .background(Ink.surface.sunken)
     }
 
     private var editions: some View {
@@ -114,6 +168,25 @@ struct NewsView: View {
     }
 }
 
+/// One line over the editions already fetched, which stay.
+private struct NewsUnreachable: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        HStack(spacing: Space.s) {
+            Image(systemName: "exclamationmark.triangle").font(.system(size: Icon.m)).accessibilityHidden(true)
+            Text("Can't reach the news reader. Showing what was loaded.").typeRole(.callout).lineLimit(1)
+            Spacer(minLength: Space.s)
+            EndfieldButton("Retry", symbol: Symbol.retry, kind: .quiet, iconOnly: true) {
+                Task { await model.news?.refreshEditions() }
+            }
+        }
+        .foregroundStyle(Ink.text.secondary)
+        .padding(.horizontal, Space.l).padding(.vertical, Space.s)
+        .background(Ink.surface.sunken)
+    }
+}
+
 /// A popover page: back (‹ and esc), the News title, NewsView.
 struct NewsPage: View {
     let onBack: @MainActor () -> Void
@@ -140,7 +213,7 @@ struct NewsPage: View {
 }
 
 /// A reader edition shows its summary until `load` brings the whole one (fetched when it first scrolls into view).
-private struct EditionView: View {
+struct EditionView: View {
     let item: NewsFeed.Item
 
     @Environment(AppModel.self) private var model

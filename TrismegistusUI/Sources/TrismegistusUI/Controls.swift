@@ -27,6 +27,7 @@ public struct EndfieldButtonStyle: ButtonStyle {
         let configuration: ButtonStyleConfiguration
         let style: EndfieldButtonStyle
         @Environment(\.isEnabled) private var isEnabled
+        @Environment(\.onSidebar) private var onSidebar
 
         private var palette: (fill: Color, edge: Color, text: Color) {
             if !isEnabled { return (Ink.surface.sunken, Ink.line.rule, Ink.text.muted) }
@@ -35,7 +36,8 @@ public struct EndfieldButtonStyle: ButtonStyle {
             case .primary: return (Ink.selection, Ink.line.strong, Ink.text.primary)
             case .secondary: return (Ink.surface.raised, Ink.line.strong, Ink.text.primary)
             case .danger: return (Ink.surface.raised, Ink.text.error, Ink.text.error)
-            case .quiet: return (.clear, .clear, Ink.text.primary)
+            // No ground of its own: light on the window sidebar's grey.
+            case .quiet: return (.clear, .clear, onSidebar ? Ink.text.onSidebar : Ink.text.primary)
             }
         }
 

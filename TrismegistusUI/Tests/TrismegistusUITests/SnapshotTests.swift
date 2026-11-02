@@ -118,6 +118,20 @@ final class SnapshotTests: XCTestCase {
         }
     }
 
+    /// The window sidebar (09f): rows and the section bar on the grey ground, Jobs selected.
+    func testSectionBar() throws {
+        try snap("SectionBar", width: 260) {
+            VStack(spacing: 0) {
+                SessionRowView(name: "Daily AI news feed", source: .cron, activity: "14 h", isSelected: true)
+                SessionRowView(name: "Daily Chile news feed", source: .cron, activity: "14 h")
+                SessionRowView(name: "Endfield gallery render", source: .trismegistus, activity: "1 min", runElapsed: "00:42")
+                SectionBar(selection: .constant(.jobs))
+            }
+            .environment(\.onSidebar, true)
+            .background(Ink.surface.sidebar)
+        }
+    }
+
     func testToolRows() throws {
         try snap("ToolRowView", width: 320) {
             VStack(spacing: 8) {
