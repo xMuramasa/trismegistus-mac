@@ -52,6 +52,9 @@ struct GitHubMarkdown: View {
                     CodeBlockView(language: language, code: code)
                 case .table(let header, let rows, let alignments):
                     MarkdownTableView(header: header, rows: rows, alignments: alignments, clean: MarkdownBlocks.stripHTML)
+                case .image(let path):
+                    // Hermes' image line; an issue body has no session to fetch it from.
+                    Text("MEDIA:" + path).typeRole(.body).foregroundStyle(Ink.text.primary).textSelection(.enabled)
                 }
             }
         }

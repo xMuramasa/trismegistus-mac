@@ -7,6 +7,8 @@ public enum MarkdownBlock: Sendable, Equatable {
     case code(language: String?, text: String)
     /// A GitHub-style pipe table. Cells are inline Markdown; every row has as many cells as the header.
     case table(header: [String], rows: [[String]], alignments: [Alignment])
+    /// Hermes' `MEDIA:<absolute path>` line: a file of its to show as an image.
+    case image(path: String)
 
     public enum Alignment: Sendable, Equatable { case leading, center, trailing }
 }
@@ -42,6 +44,9 @@ public enum MarkdownBlocks {
             } else if let f = Fence(opening: line) {
                 flushProse()
                 open = f
+            } else if let path = mediaPath(line) {
+                flushProse()
+                blocks.append(.image(path: path))
             } else {
                 prose.append(line)
             }
@@ -57,6 +62,15 @@ public enum MarkdownBlocks {
         text.replacing(/(?s)<!--.*?-->/, with: "")
             .replacing(/<br\s*\/?>/.ignoresCase(), with: "\n")
             .replacing(/<\/?[A-Za-z][A-Za-z0-9-]*(?:\s[^<>]*)?\/?>/, with: "")
+    }
+
+    /// The path of a line that is only `MEDIA:<absolute path>`, optionally in backticks.
+    private static func mediaPath(_ line: Substring) -> String? {
+        var t = line.trimmingCharacters(in: .whitespaces)[...]
+        if t.count > 2, t.hasPrefix("`"), t.hasSuffix("`") { t = t.dropFirst().dropLast() }
+        guard t.hasPrefix("MEDIA:") else { return nil }
+        let path = t.dropFirst(6).trimmingCharacters(in: .whitespaces)
+        return path.hasPrefix("/") ? path : nil
     }
 
     private static func proseBlock(_ lines: [Substring]) -> [MarkdownBlock] {

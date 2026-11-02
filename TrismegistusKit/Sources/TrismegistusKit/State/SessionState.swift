@@ -25,6 +25,8 @@ public struct OutgoingPrompt: Sendable, Equatable, Identifiable {
     public var id: String
     public var text: String
     public var status: Status
+    /// Its images, with the bytes kept so a retry can upload them again.
+    public var images: [ImageUpload] = []
 }
 
 /// One open session: REST history plus the live events the history doesn't have yet. A pure value; SessionStore

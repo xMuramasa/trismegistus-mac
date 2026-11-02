@@ -88,6 +88,7 @@ final class AppModel {
         await disconnect()
         // The command log's cache holds command output from this relay.
         try? FileManager.default.removeItem(at: CommandLog.cacheURL(for: relayURL))
+        try? FileManager.default.removeItem(at: Self.imagesURL(for: relayURL))
         deviceName = nil
         defaults.removeObject(forKey: Keys.deviceName)
         try tokens.deleteToken()
@@ -96,10 +97,10 @@ final class AppModel {
     /// Sends a prompt (opening the session first); it waits in the session's outbox until the history has it.
     /// Returns the client_msg_id, or nil when not paired. During a run the relay answers `busy`: offer steer.
     @discardableResult
-    func send(_ text: String, to sessionID: String) async -> String? {
+    func send(_ text: String, images: [ImageUpload] = [], to sessionID: String) async -> String? {
         guard let store else { return nil }
         await store.open(sessionID)
-        return await store.sendPrompt(text, to: sessionID)
+        return await store.sendPrompt(text, images: images, to: sessionID)
     }
 
     func approve(_ approval: PendingApproval, choice: ApprovalChoice) async throws {
@@ -124,6 +125,7 @@ final class AppModel {
             client: RelayClient(relayURL: relayURL, token: token),
             rest: RelayREST(baseURL: relayURL, token: token)
         )
+        store.images = ImageFiles(directory: Self.imagesURL(for: relayURL), rest: store.rest)
         self.store = store
         news = NewsFeed(rest: store.rest)
         let device = DeviceProfile(rest: store.rest)
@@ -169,6 +171,11 @@ final class AppModel {
         jobs = nil
         github = nil
         agents = nil
+    }
+
+    /// The chat's images from this relay, in the app's Caches.
+    private static func imagesURL(for relay: URL) -> URL {
+        URL.cachesDirectory.appending(path: "images-" + (relay.host() ?? "relay"))
     }
 
     private enum Keys {

@@ -37,8 +37,9 @@ public enum ClientMessage: Codable, Sendable, Equatable {
     /// With afterSeq, stored events with a larger seq are replayed first (or `error replay_gap`).
     case subscribe(sessionID: String, afterSeq: Int? = nil)
     case unsubscribe(sessionID: String)
-    /// clientMsgID (a UUID) makes resends safe.
-    case prompt(clientMsgID: String, sessionID: String, text: String)
+    /// clientMsgID (a UUID) makes resends safe. attachments: 1-4 unique ids from `POST /api/attachments`; text may be
+    /// empty when there is one.
+    case prompt(clientMsgID: String, sessionID: String, text: String, attachments: [String] = [])
     case stop(runID: String)
     case steer(runID: String, text: String)
     case approve(runID: String, requestID: String, choice: ApprovalChoice)
@@ -74,8 +75,12 @@ public enum ClientMessage: Codable, Sendable, Equatable {
             try c.only(["type", "session_id"])
             self = .unsubscribe(sessionID: try str("session_id"))
         case "prompt":
-            try c.only(["type", "client_msg_id", "session_id", "text"])
-            self = .prompt(clientMsgID: try str("client_msg_id"), sessionID: try str("session_id"), text: try str("text"))
+            try c.only(["type", "client_msg_id", "session_id", "text", "attachments"])
+            let ids = try c.decodeIfPresent([String].self, forKey: "attachments")
+            try c.check(ids.map { (1...4).contains($0.count) && Set($0).count == $0.count } ?? true, "attachments",
+                        "attachments must hold 1-4 unique ids")
+            self = .prompt(clientMsgID: try str("client_msg_id"), sessionID: try str("session_id"), text: try str("text"),
+                           attachments: ids ?? [])
         case "stop":
             try c.only(["type", "run_id"])
             self = .stop(runID: try str("run_id"))
@@ -105,10 +110,11 @@ public enum ClientMessage: Codable, Sendable, Equatable {
             try c.encodeIfPresent(afterSeq, forKey: "after_seq")
         case .unsubscribe(let sessionID):
             try c.encode(sessionID, forKey: "session_id")
-        case .prompt(let clientMsgID, let sessionID, let text):
+        case .prompt(let clientMsgID, let sessionID, let text, let attachments):
             try c.encode(clientMsgID, forKey: "client_msg_id")
             try c.encode(sessionID, forKey: "session_id")
             try c.encode(text, forKey: "text")
+            if !attachments.isEmpty { try c.encode(attachments, forKey: "attachments") }
         case .stop(let runID):
             try c.encode(runID, forKey: "run_id")
         case .steer(let runID, let text):

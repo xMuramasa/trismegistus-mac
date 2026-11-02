@@ -27,7 +27,7 @@ struct OlderParts: View {
 
     @ViewBuilder private func history(_ part: String) -> some View {
         if let messages = histories[part] {
-            ChatTranscript(items: ChatTimeline.items(state(part, messages), compact: compact))
+            ChatTranscript(items: ChatTimeline.items(state(part, messages), compact: compact), sessionID: part)
         } else if let error = errors[part] {
             HStack(spacing: Space.s) {
                 Text(error).typeRole(.caption).foregroundStyle(Ink.text.error)

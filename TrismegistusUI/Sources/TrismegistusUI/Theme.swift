@@ -73,4 +73,5 @@ public enum Symbol {
     public static let chevronRight = "chevron.right"
     public static let chevronDown = "chevron.down"
     public static let chevronUp = "chevron.up"
+    public static let attach = "paperclip"
 }

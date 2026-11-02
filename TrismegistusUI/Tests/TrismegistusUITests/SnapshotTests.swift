@@ -232,4 +232,40 @@ final class SnapshotTests: XCTestCase {
             .foregroundStyle(Palette.ink)
         }
     }
+
+    private func picture(_ width: CGFloat, _ height: CGFloat, _ color: NSColor) -> NSImage {
+        NSImage(size: NSSize(width: width, height: height), flipped: false) { rect in
+            color.setFill()
+            rect.fill()
+            NSColor.white.setFill()
+            NSRect(x: rect.midX - 8, y: rect.midY - 8, width: 16, height: 16).fill()
+            return true
+        }
+    }
+
+    func testAttachments() throws {
+        try snap("AttachmentTray") {
+            AttachmentTray(items: [
+                .init(id: UUID(), image: picture(1280, 800, .systemTeal), error: nil),
+                .init(id: UUID(), image: picture(600, 900, .systemOrange), error: nil),
+                .init(id: UUID(), image: nil, error: nil),
+                .init(id: UUID(), image: nil, error: "Too large"),
+            ], note: "Steers are text only: the images go with the next new message.") { _ in }
+        }
+        try snap("ChatImageOne") {
+            ChatImageGrid(cells: [.init(id: "a", image: picture(1280, 800, .systemTeal))]) { _ in }
+        }
+        try snap("ChatImageGrid") {
+            ChatImageGrid(cells: [
+                .init(id: "a", image: picture(1280, 800, .systemTeal)),
+                .init(id: "b", image: picture(600, 900, .systemOrange)),
+                .init(id: "c", image: nil, pixelSize: CGSize(width: 10, height: 10)),
+                .init(id: "d", image: nil, caption: "img_86942c9e70d7.jpg"),
+            ]) { _ in }
+        }
+        XCTAssertEqual(ChatImageGrid.fitted(CGSize(width: 1280, height: 800)), CGSize(width: 320, height: 200))
+        XCTAssertEqual(ChatImageGrid.fitted(CGSize(width: 600, height: 900)), CGSize(width: 160, height: 240))
+        XCTAssertEqual(ChatImageGrid.fitted(CGSize(width: 100, height: 50)), CGSize(width: 100, height: 50))
+        XCTAssertEqual(ChatImageGrid.fitted(nil), CGSize(width: 320, height: 240))
+    }
 }

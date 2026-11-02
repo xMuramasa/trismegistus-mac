@@ -9,9 +9,18 @@ public struct ToolRow: Sendable, Equatable {
     public var exitCode: Int?
 }
 
+/// An image in the chat.
+public enum ChatImage: Sendable, Equatable, Hashable {
+    /// Sent through the relay (`GET /api/attachments/{id}`).
+    case attachment(AttachmentRef)
+    /// A file of Hermes' that the session's messages name (`GET /api/sessions/{id}/media?path=`).
+    case media(path: String)
+}
+
 /// One row of the chat.
 public enum ChatItem: Sendable, Equatable, Identifiable {
-    case user(id: String, text: String, time: Date?)
+    /// From the history; `text` may be empty when the message is only images.
+    case user(id: String, text: String, time: Date?, images: [ChatImage] = [])
     /// A prompt from the outbox: pending, sent (time of its run's first event) or failed.
     case prompt(OutgoingPrompt, time: Date?)
     case answer(id: String, text: String, time: Date?)
@@ -23,7 +32,7 @@ public enum ChatItem: Sendable, Equatable, Identifiable {
 
     public var id: String {
         switch self {
-        case .user(let id, _, _), .answer(let id, _, _), .tool(let id, _), .subagent(let id, _, _, _),
+        case .user(let id, _, _, _), .answer(let id, _, _), .tool(let id, _), .subagent(let id, _, _, _),
             .marker(let id, _), .note(let id, _, _):
             id
         case .prompt(let p, _): "o-\(p.id)"
@@ -71,7 +80,8 @@ public enum ChatTimeline {
             let time = m.timestamp.map { Date(timeIntervalSince1970: $0) }
             switch m.role {
             case .user:
-                items.append(.user(id: "h-\(m.id)", text: m.content, time: time))
+                let (text, images) = userMessage(m.content, attachments: m.attachments)
+                items.append(.user(id: "h-\(m.id)", text: text, time: time, images: images))
             case .assistant:
                 if !m.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     items.append(.answer(id: "h-\(m.id)", text: m.content, time: time))
@@ -87,6 +97,35 @@ public enum ChatTimeline {
             }
         }
         return items
+    }
+
+    /// A history user message as the chat shows it. Hermes keeps no images, only a `[screenshot]` line for each: with
+    /// the relay's attachments the trailing `[screenshot]` lines go; Telegram's `[Image attached at: <path>]` lines
+    /// become images, with the `[screenshot]` lines right after them. Other text stays as written.
+    public static func userMessage(_ content: String, attachments: [AttachmentRef]) -> (text: String, images: [ChatImage]) {
+        var kept: [Substring] = []
+        var media: [ChatImage] = []
+        var afterImage = false
+        for line in content.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline) {
+            let t = line.trimmingCharacters(in: .whitespaces)
+            if t.hasPrefix("[Image attached at: "), t.hasSuffix("]") {
+                let path = t.dropFirst(20).dropLast().trimmingCharacters(in: .whitespaces)
+                if path.hasPrefix("/") {
+                    media.append(.media(path: path))
+                    afterImage = true
+                    continue
+                }
+            }
+            if afterImage, t == "[screenshot]" { continue }
+            afterImage = false
+            kept.append(line)
+        }
+        if !attachments.isEmpty {
+            while let last = kept.last, ["[screenshot]", ""].contains(last.trimmingCharacters(in: .whitespaces)) { kept.removeLast() }
+        }
+        let images = attachments.map(ChatImage.attachment) + media
+        guard !images.isEmpty else { return (content, []) }
+        return (kept.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines), images)
     }
 
     private static func historyTool(_ call: HistoryMessage.ToolCall, result: String?) -> ToolRow {

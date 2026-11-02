@@ -259,6 +259,14 @@ public enum Size {
         public let width: CGFloat = 440
     }
     public static let handoffSheet = HandoffSheet()
+    /// a thumbnail in the composer's image tray
+    public static let attachmentThumb: CGFloat = 64
+    /// a message's one image fits inside; two to four are a two-column grid of squares this wide
+    public struct ChatImage: Sendable {
+        public let width: CGFloat = 320
+        public let height: CGFloat = 240
+    }
+    public static let chatImage = ChatImage()
 }
 
 /// `radius`: corner radii (Endfield is square; cards round one corner).

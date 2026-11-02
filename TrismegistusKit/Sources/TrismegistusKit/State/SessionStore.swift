@@ -43,6 +43,8 @@ public final class SessionStore {
 
     public let client: RelayClient
     public let rest: RelayREST
+    /// The chat's images on disk; uploads land here so the sender's own message shows without a download.
+    @ObservationIgnored public var images: ImageFiles?
     @ObservationIgnored private var feed: Task<Void, Never>?
     @ObservationIgnored private var loading: Set<String> = []
     @ObservationIgnored private var wasConnected = false
@@ -131,20 +133,55 @@ public final class SessionStore {
         }
     }
 
-    /// Sends a prompt to an open session; it waits in the session's outbox until the history has it. One run per
-    /// session: during a run the relay answers `busy` (offer to send it as a steer). Returns the client_msg_id.
+    /// Sends a prompt to an open session; it waits in the session's outbox until the history has it. Images not
+    /// uploaded yet are uploaded first. One run per session: during a run the relay answers `busy` (offer to send it
+    /// as a steer). Returns the client_msg_id.
     @discardableResult
-    public func sendPrompt(_ text: String, to sessionID: String) async -> String {
+    public func sendPrompt(_ text: String, images: [ImageUpload] = [], to sessionID: String) async -> String {
         let id = UUID().uuidString.lowercased()
-        sessions[sessionID]?.outbox.append(OutgoingPrompt(id: id, text: text, status: .pending))
-        do {
-            try await client.send(.prompt(clientMsgID: id, sessionID: sessionID, text: text))
-        } catch {
+        sessions[sessionID]?.outbox.append(OutgoingPrompt(id: id, text: text, status: .pending, images: images))
+        func failed(_ code: ErrorCode?, _ message: String) {
             if let i = sessions[sessionID]?.outbox.firstIndex(where: { $0.id == id }) {
-                sessions[sessionID]?.outbox[i].status = .failed(code: nil, message: "Not connected to the relay.")
+                sessions[sessionID]?.outbox[i].status = .failed(code: code, message: message)
             }
         }
+        do {
+            var ids: [String] = []
+            for (n, image) in images.enumerated() {
+                if let known = image.attachmentID {
+                    ids.append(known)
+                    continue
+                }
+                let ref = try await rest.uploadAttachment(image.data, mime: image.mime)
+                await self.images?.store(image.data, for: ref)
+                ids.append(ref.id)
+                if let i = sessions[sessionID]?.outbox.firstIndex(where: { $0.id == id }) {
+                    sessions[sessionID]?.outbox[i].images[n].attachmentID = ref.id
+                }
+            }
+            try await client.send(.prompt(clientMsgID: id, sessionID: sessionID, text: text, attachments: ids))
+        } catch let error as RelayAPIError {
+            failed(error.code, error.message)
+        } catch {
+            failed(nil, "Not connected to the relay.")
+        }
         return id
+    }
+
+    /// A failed prompt again, in place of the old entry. Its images are uploaded again: the relay deletes uploads no
+    /// prompt used within an hour, and the same bytes answer the same id. Nil when it isn't a failed prompt.
+    @discardableResult
+    public func retryPrompt(_ promptID: String, in sessionID: String) async -> String? {
+        guard let i = sessions[sessionID]?.outbox.firstIndex(where: { $0.id == promptID }),
+            let prompt = sessions[sessionID]?.outbox[i], case .failed = prompt.status
+        else { return nil }
+        sessions[sessionID]?.outbox.remove(at: i)
+        let images = prompt.images.map { image in
+            var image = image
+            image.attachmentID = nil
+            return image
+        }
+        return await sendPrompt(prompt.text, images: images, to: sessionID)
     }
 
     /// Also adds and drops subscriptions to match the list.

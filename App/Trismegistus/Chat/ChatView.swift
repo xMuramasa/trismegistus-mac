@@ -1,6 +1,7 @@
 import SwiftUI
 import TrismegistusKit
 import TrismegistusUI
+import UniformTypeIdentifiers
 
 /// One conversation: approval banner, messages, working indicator, input. `compact` is the popover layout (tool and
 /// subagent rows inline); the window passes `compact: false` and gets one marker per run that calls `onShowTerminal`.
@@ -17,6 +18,9 @@ struct ChatView: View {
     /// When this view first saw the current run, for a run with no events yet.
     @State private var runSeen = Date()
     @State private var handingOff: SessionInfo?
+    /// Images waiting for the next message, per conversation.
+    @State private var tray = ImageTray()
+    @State private var dropTargeted = false
 
     /// The newest part of the conversation's thread: older parts show folded above, the composer sends here.
     private var id: String { model.store?.threadTip(of: sessionID) ?? sessionID }
@@ -35,7 +39,7 @@ struct ChatView: View {
                 LazyVStack(alignment: .leading, spacing: compact ? Space.m : Space.xl) {
                     OlderParts(tipID: id, compact: compact)
                     historyStatus
-                    ChatTranscript(items: items, onShowTerminal: showTerminal, retry: retry(_:))
+                    ChatTranscript(items: items, sessionID: id, onShowTerminal: showTerminal, retry: retry(_:))
                     if let run { working(run) } else if let info, SessionCapabilities(info).canHandOff, Self.stalled(items) { stallRow(info) }
                 }
                 // The window: Space.m under the header's title rule, wider side margins (the draft, #32).
@@ -54,7 +58,13 @@ struct ChatView: View {
             if !compact { KeyHintStrip(hints).background(Ink.surface.window) }
         }
         .background { if compact { Ink.surface.window } else { EndfieldBackdrop() } }
-        .task(id: id) { await model.store?.open(id) }
+        .overlay { if dropTargeted && canAttach { Rectangle().strokeBorder(Ink.selection, lineWidth: Stroke.mark).allowsHitTesting(false) } }
+        .onDrop(of: [.fileURL, .image], isTargeted: $dropTargeted) { canAttach && tray.add($0, to: id) }
+        .background(PasteCatcher { canAttach && tray.paste(to: id) })
+        .task(id: id) {
+            await model.store?.images?.forgetFailures() // a reopened conversation asks again for images that failed
+            await model.store?.open(id)
+        }
         .onChange(of: run?.id, initial: true) { runSeen = Date() }
         .handoffSheet($handingOff)
     }
@@ -153,8 +163,23 @@ struct ChatView: View {
     private var input: some View {
         let steering = run != nil
         let empty = draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let images = tray.items[id, default: []]
+        // Text, or images when not steering (steers are text only); never while an image is still being prepared.
+        let sendable = (!empty || (!steering && !tray.uploads(id).isEmpty)) && !tray.isPreparing(id)
         return VStack(alignment: .leading, spacing: Space.s) {
+            if !images.isEmpty {
+                AttachmentTray(
+                    items: images.map { AttachmentTray.Item(id: $0.id, image: $0.thumbnail, error: $0.error) },
+                    note: steering ? "Steers are text only: the images go with the next new message." : nil
+                ) { tray.remove($0, from: id) }
+            }
+            if let notice = tray.notice {
+                Text(notice).typeRole(.caption).foregroundStyle(Ink.text.error).lineLimit(1)
+            }
             HStack(spacing: Space.s) {
+                if canAttach {
+                    EndfieldButton("Attach images", symbol: Symbol.attach, kind: .quiet, iconOnly: true) { tray.choose(for: id) }
+                }
                 EndfieldTextField(
                     approval != nil ? "Steer or wait" : steering ? "Steer this run" : "Message Hermes", text: $draft)
                 if steering {
@@ -162,12 +187,12 @@ struct ChatView: View {
                     EndfieldButton("Steer", symbol: Symbol.steer, kind: approval == nil ? .primary : .secondary, shortcut: KeyboardShortcut(.return, modifiers: .command)) {
                         submit()
                     }
-                    .disabled(empty)
+                    .disabled(!sendable)
                 } else {
                     EndfieldButton("Send", symbol: Symbol.send, kind: .primary, iconOnly: true, shortcut: KeyboardShortcut(.return, modifiers: .command)) {
                         submit()
                     }
-                    .disabled(empty)
+                    .disabled(!sendable)
                 }
             }
             .disabled(isReadOnly)
@@ -186,6 +211,9 @@ struct ChatView: View {
 
     private var isReadOnly: Bool { SessionInfo.isReadOnly(id: id, info: info) }
 
+    /// Images go only from a manager device (the relay refuses a viewer's upload) into a writable conversation.
+    private var canAttach: Bool { !isReadOnly && model.device?.canManage == true }
+
     /// The window's keys (the popover's chat page has its own strip). ⌘K is the window's "Conversations" command.
     private var hints: [(key: String, action: String)] {
         var hints: [(key: String, action: String)] = []
@@ -194,12 +222,13 @@ struct ChatView: View {
         return hints + [("⌘⌥T", "terminal"), ("⌘K", "conversations")]
     }
 
-    /// `⌘↩`: a prompt, or a steer while a run is active (the relay answers a prompt during a run with `busy`).
+    /// `⌘↩`: a prompt with the tray's images, or a steer while a run is active (the relay answers a prompt during a run
+    /// with `busy`); a steer leaves the images for the next prompt.
     private func submit() {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
-        draft = ""
         if let run {
+            guard !text.isEmpty else { return }
+            draft = ""
             act {
                 do {
                     try await model.steer(runID: run.id, text: text)
@@ -209,17 +238,21 @@ struct ChatView: View {
                 }
             }
         } else {
-            Task { await model.send(text, to: id) }
+            guard !tray.isPreparing(id), !text.isEmpty || !tray.uploads(id).isEmpty else { return }
+            draft = ""
+            let images = tray.take(id)
+            Task { await model.send(text, images: images, to: id) }
         }
     }
 
-    /// A failed prompt again: as a steer when the relay said busy and the run is still going, else as a prompt.
+    /// A failed prompt again: as a steer when the relay said busy, the run is still going and it has no images (steers
+    /// are text only), else as a prompt in its place.
     private func retry(_ prompt: OutgoingPrompt) {
-        hidden.insert(prompt.id)
-        if case .failed(.busy, _) = prompt.status, let run {
+        if case .failed(.busy, _) = prompt.status, let run, prompt.images.isEmpty {
+            hidden.insert(prompt.id)
             act { try await model.steer(runID: run.id, text: prompt.text) }
         } else {
-            Task { await model.send(prompt.text, to: id) }
+            Task { await model.store?.retryPrompt(prompt.id, in: id) }
         }
     }
 
@@ -239,6 +272,8 @@ extension EnvironmentValues {
 
 struct ChatTranscript: View {
     let items: [ChatItem]
+    /// Whose messages: Hermes' media files are fetched per session.
+    let sessionID: String
     var onShowTerminal: (@MainActor () -> Void)? = nil
     var retry: @MainActor (OutgoingPrompt) -> Void = { _ in }
     @State private var expanded: Set<String> = []
@@ -246,16 +281,18 @@ struct ChatTranscript: View {
     var body: some View {
         ForEach(items) { item in
             switch item {
-            case .user(_, let text, let time):
-                UserMessage(text: text, label: "You" + stamp(time))
+            case .user(_, let text, let time, let images):
+                UserMessage(text: text, label: "You" + stamp(time), sessionID: sessionID, images: images.map(MessageImage.chat))
             case .prompt(let p, let time):
                 VStack(alignment: .leading, spacing: Space.xs) {
-                    UserMessage(text: p.text, label: "You" + (time != nil ? stamp(time) : p.status == .pending ? " // sending" : ""))
+                    UserMessage(
+                        text: p.text, label: "You" + (time != nil ? stamp(time) : p.status == .pending ? " // sending" : ""),
+                        sessionID: sessionID, images: p.images.map(MessageImage.upload))
                     if case .failed(let code, let message) = p.status {
                         HStack(spacing: Space.s) {
                             Text(message).typeRole(.caption).foregroundStyle(Ink.text.error).lineLimit(2)
                             Spacer()
-                            if code == .busy {
+                            if code == .busy, p.images.isEmpty {
                                 EndfieldButton("Steer", symbol: Symbol.steer) { retry(p) }
                             } else {
                                 EndfieldButton("Retry", symbol: Symbol.retry, kind: .quiet, iconOnly: true) { retry(p) }
@@ -264,7 +301,7 @@ struct ChatTranscript: View {
                     }
                 }
             case .answer(_, let text, let time):
-                AnswerMessage(text: text, label: "Hermes" + stamp(time))
+                AnswerMessage(text: text, label: "Hermes" + stamp(time), sessionID: sessionID)
             case .tool(let id, let row):
                 ToolRowView(
                     tool: row.tool, summary: row.summary, duration: row.duration, output: row.output, exitCode: row.exitCode,
@@ -291,25 +328,31 @@ struct ChatTranscript: View {
 private struct UserMessage: View {
     let text: String
     let label: String
+    let sessionID: String
+    let images: [MessageImage]
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.xs) {
             Text(label).typeRole(.label).foregroundStyle(Ink.text.secondary)
-            Text(text).typeRole(.body).foregroundStyle(Ink.text.primary).textSelection(.enabled)
-                .padding(Space.m)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Ink.surface.raised)
-                .overlay(Rectangle().strokeBorder(Ink.line.rule, lineWidth: Stroke.hairline))
+            if !images.isEmpty { MessageImages(sessionID: sessionID, images: images) }
+            if !text.isEmpty || images.isEmpty {
+                Text(text).typeRole(.body).foregroundStyle(Ink.text.primary).textSelection(.enabled)
+                    .padding(Space.m)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Ink.surface.raised)
+                    .overlay(Rectangle().strokeBorder(Ink.line.rule, lineWidth: Stroke.hairline))
+            }
         }
     }
 }
 
 /// The answer as Markdown: prose with inline styles (line breaks and list markers kept as written, since `Text` drops
-/// block structure), fenced code as `CodeBlockView`. Parsed once per text: the lazy stack recreates a row each time it
+/// block structure), fenced code as `CodeBlockView`, Hermes' `MEDIA:` files as images. Parsed once per text: the lazy stack recreates a row each time it
 /// scrolls back into view.
 private struct AnswerMessage: View {
     let text: String
     let label: String
+    let sessionID: String
     /// Plain (the window): the text inset Space.m, level with a user message's text. Else a yellow bar beside it.
     @Environment(\.plainAnswers) private var plain
 
@@ -317,6 +360,7 @@ private struct AnswerMessage: View {
         case prose(AttributedString)
         case code(language: String?, text: String)
         case table(header: [String], rows: [[String]], alignments: [MarkdownBlock.Alignment])
+        case image(path: String)
     }
 
     private final class Parsed {
@@ -338,6 +382,7 @@ private struct AnswerMessage: View {
                 .prose((try? AttributedString(markdown: s, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(s))
             case .code(let language, let code): .code(language: language, text: code)
             case .table(let header, let rows, let alignments): .table(header: header, rows: rows, alignments: alignments)
+            case .image(let path): .image(path: path)
             }
         }
         parsed.setObject(Parsed(blocks), forKey: text as NSString)
@@ -360,6 +405,8 @@ private struct AnswerMessage: View {
                             CodeBlockView(language: language, code: code)
                         case .table(let header, let rows, let alignments):
                             MarkdownTableView(header: header, rows: rows, alignments: alignments)
+                        case .image(let path):
+                            MessageImages(sessionID: sessionID, images: [.chat(.media(path: path))])
                         }
                     }
                 }
@@ -383,8 +430,8 @@ private struct AnswerMessage: View {
     var state = SessionState(id: "s")
     for e in (try? JSONDecoder().decode([Event].self, from: Data(frames.utf8))) ?? [] { state.apply(.event(e)) }
     return VStack(spacing: 24) {
-        ScrollView { LazyVStack(alignment: .leading, spacing: 10) { ChatTranscript(items: ChatTimeline.items(state, compact: true)) } }
-        ScrollView { LazyVStack(alignment: .leading, spacing: 10) { ChatTranscript(items: ChatTimeline.items(state, compact: false)) } }
+        ScrollView { LazyVStack(alignment: .leading, spacing: 10) { ChatTranscript(items: ChatTimeline.items(state, compact: true), sessionID: "s") } }
+        ScrollView { LazyVStack(alignment: .leading, spacing: 10) { ChatTranscript(items: ChatTimeline.items(state, compact: false), sessionID: "s") } }
     }
     .padding().frame(width: 360, height: 720).background(Ink.surface.window)
 }

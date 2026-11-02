@@ -88,6 +88,8 @@ public struct HistoryMessage: Decodable, Sendable, Equatable {
     public var toolCallID: String?
     public var toolName: String?
     public var timestamp: Double?
+    /// The relay's images on a user message its run sent with them (Hermes keeps only a `[screenshot]` line).
+    public var attachments: [AttachmentRef]
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: AnyKey.self)
@@ -98,6 +100,7 @@ public struct HistoryMessage: Decodable, Sendable, Equatable {
         toolCallID = try c.decodeIfPresent(String.self, forKey: "tool_call_id")
         toolName = try c.decodeIfPresent(String.self, forKey: "tool_name")
         timestamp = try c.decodeIfPresent(Double.self, forKey: "timestamp")
+        attachments = (try? c.decodeIfPresent(Lossy<AttachmentRef>.self, forKey: "attachments"))??.items ?? []
     }
 }
 
@@ -237,6 +240,30 @@ public struct RelayREST: Sendable {
         let path = try sessionPath(sessionID) + "/messages?limit=\(limit)&offset=\(offset)&order=oldest"
         let page = try decode(Envelope<Lossy<HistoryMessage>>.self, try await call("GET", path)).data
         return (page.items, page.count)
+    }
+
+    /// Manager only (403 `forbidden`). `mime` is `image/png`, `image/jpeg` or `image/gif`; at most 8 MiB (413
+    /// `too_large`). The same bytes again answer the same id.
+    public func uploadAttachment(_ data: Data, mime: String) async throws -> AttachmentRef {
+        try decode(AttachmentRef.self, try await call("POST", "/api/attachments", raw: (data, mime), timeout: 120))
+    }
+
+    /// An attachment's bytes (immutable). Every device.
+    public func attachment(_ id: String) async throws -> Data {
+        guard AttachmentRef.isValidID(id) else { throw RelayAPIError(status: 0, code: .notFound, message: "Unknown attachment.") }
+        return try await call("GET", "/api/attachments/" + id, timeout: 60)
+    }
+
+    /// A file of Hermes' that a session's messages name (`MEDIA:<path>`, Telegram's `[Image attached at: <path>]`);
+    /// 404 `not_found` for any other path, 503 `hermes_unavailable` when the host helper is down. Every device.
+    public func sessionMedia(_ sessionID: String, path: String) async throws -> Data {
+        var query = URLComponents()
+        query.queryItems = [URLQueryItem(name: "path", value: path)]
+        guard path.hasPrefix("/"), let q = query.percentEncodedQuery else {
+            throw RelayAPIError(status: 0, code: .notFound, message: "Unknown file.")
+        }
+        // URLComponents leaves `+` as is, which a server reads as a space.
+        return try await call("GET", try sessionPath(sessionID) + "/media?" + q.replacingOccurrences(of: "+", with: "%2B"), timeout: 60)
     }
 
     /// Hermes' cron jobs, paused ones included. Every device.
@@ -416,20 +443,24 @@ public struct RelayREST: Sendable {
         do { return try Wire.decode(type, from: data) } catch { throw RelayAPIError.unexpected }
     }
 
+    /// `raw` is a body that isn't JSON, with its content type.
     private func call(
-        _ method: String, _ path: String, body: [String: JSONValue]? = nil,
-        failure: (Int, Data) -> any Error = { RelayAPIError(status: $0, body: $1) }
+        _ method: String, _ path: String, body: [String: JSONValue]? = nil, raw: (Data, String)? = nil,
+        timeout: TimeInterval = 15, failure: (Int, Data) -> any Error = { RelayAPIError(status: $0, body: $1) }
     ) async throws -> Data {
         var base = baseURL.absoluteString
         while base.hasSuffix("/") { base.removeLast() }
         guard let url = URL(string: base + path) else { throw RelayAPIError(status: 0, code: .badRequest, message: "Bad relay URL.") }
-        var request = URLRequest(url: url, timeoutInterval: 15)
+        var request = URLRequest(url: url, timeoutInterval: timeout)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if !token.isEmpty { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         if let body {
             request.httpBody = try Wire.encode(body)
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        } else if let (data, type) = raw {
+            request.httpBody = data
+            request.setValue(type, forHTTPHeaderField: "Content-Type")
         }
         let (data, response) = try await http.response(for: request)
         guard (200..<300).contains(response.statusCode) else { throw failure(response.statusCode, data) }

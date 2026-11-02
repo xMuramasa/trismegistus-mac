@@ -28,4 +28,6 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Trismegistus/Trismegistus.entitlements
         ENABLE_APP_SANDBOX: YES
         ENABLE_OUTGOING_NETWORK_CONNECTIONS: YES
+        # The chat's 📎 open panel (#43).
+        ENABLE_USER_SELECTED_FILES: readonly
     scheme: {}
