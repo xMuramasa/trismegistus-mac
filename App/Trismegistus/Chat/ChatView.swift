@@ -39,7 +39,8 @@ struct ChatView: View {
         let empty = items.isEmpty && state?.historyLoaded == true && state?.historyError == nil
         VStack(spacing: 0) {
             if let approval { banner(approval) }
-            ScrollView {
+            // The run strip and the input lie over the scroll view's bottom, never under it (#52, `DockedScroll`).
+            DockedScroll {
                 LazyVStack(alignment: .leading, spacing: compact ? Space.m : Space.xl) {
                     OlderParts(tipID: id, compact: compact)
                     historyStatus
@@ -51,14 +52,14 @@ struct ChatView: View {
                 // A readable column: on a wide window, opening a pane or the sidebar doesn't re-wrap the messages.
                 .frame(maxWidth: Size.chatColumn)
                 .frame(maxWidth: .infinity)
+                .environment(\.plainAnswers, !compact)
+            } dock: {
+                VStack(spacing: 0) {
+                    if let run { runStrip(run) }
+                    input
+                }
             }
-            .defaultScrollAnchor(.bottom)
-            .defaultScrollAnchor(.bottom, for: .sizeChanges)
-            .settledWidth()
-            .environment(\.plainAnswers, !compact)
             .background { if !compact && !empty { Ink.surface.window.frame(maxWidth: Size.chatColumn) } }
-            if let run { runStrip(run) }
-            input
             if !compact { KeyHintStrip(hints).background(Ink.surface.window) }
         }
         .background { if compact { Ink.surface.window } else { EndfieldBackdrop() } }
