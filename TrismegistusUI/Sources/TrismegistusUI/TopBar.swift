@@ -102,6 +102,8 @@ public struct TopBarBackdrop: View {
                 .offset(x: offset(proxy, full))
         }
         .clipped()
+        // Window-wide under the clip, like `EndfieldBackdrop`: it takes no clicks, or it would cover its neighbours (#53).
+        .allowsHitTesting(false)
     }
 
     private func offset(_ proxy: GeometryProxy, _ full: CGFloat) -> CGFloat {

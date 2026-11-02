@@ -141,6 +141,10 @@ struct EndfieldPaperProvider: ViewModifier {
 
 /// Paper with the window's Endfield background showing through, for the detail column and its empty states. The
 /// image is window-sized and placed at minus this view's global origin, so the view only picks a window of it.
+///
+/// It takes no clicks (#53): `clipped()` clips the drawing, not hit testing, so the window-sized image of a view low
+/// in the stack (the chat's background) lay over everything above it in the window and swallowed their clicks (the
+/// conversation header's model menu and ⋯ never opened).
 public struct EndfieldBackdrop: View {
     @Environment(\.endfieldPaper) private var paper
 
@@ -158,5 +162,6 @@ public struct EndfieldBackdrop: View {
             }
             .clipped()
         }
+        .allowsHitTesting(false)
     }
 }
