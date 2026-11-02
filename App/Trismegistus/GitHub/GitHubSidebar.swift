@@ -30,6 +30,8 @@ struct GitHubSidebar: View {
 
     var body: some View {
         let github = model.github
+        // `owner/repo#n` of the issues with a live run.
+        let running = Set((model.agents?.agents ?? []).filter(\.alive).compactMap { a in a.repo.flatMap { r in a.issue.map { "\(r)#\($0)" } } })
         VStack(spacing: 0) {
             SidebarHeader(title: "GitHub // \(github?.board?.openCount ?? 0) open", prompt: "Filter issues", filter: $filter,
                           focus: filterFocus) {
@@ -64,11 +66,11 @@ struct GitHubSidebar: View {
                         ForEach(issues.issues.filter { matches($0.title, "\(repo)#\($0.number)") }) { issue in
                             let ref = "\(repo)#\(issue.number)"
                             IssueRow(ref: ref, title: issue.title, priority: "", isClosed: issue.state == "closed",
-                                     isSelected: selection == ref)
+                                     isRunning: running.contains(ref), isSelected: selection == ref)
                                 .tag(ref).sidebarRow()
                         }
                     } else {
-                        boardRows(board)
+                        boardRows(board, running: running)
                     }
                 }
             }
@@ -108,7 +110,7 @@ struct GitHubSidebar: View {
         }
     }
 
-    @ViewBuilder private func boardRows(_ board: GitHubBoard) -> some View {
+    @ViewBuilder private func boardRows(_ board: GitHubBoard, running: Set<String>) -> some View {
         ForEach(board.groups(repo: repo, priority: priority), id: \.status) { group in
             let folded = GitHubBoard.isDone(group.status) != toggled.contains(group.status)
             Button {
@@ -132,7 +134,7 @@ struct GitHubSidebar: View {
             if !folded {
                 ForEach(group.items.filter { matches($0.title, $0.id) }) { item in
                     IssueRow(ref: item.id, title: item.title, priority: item.priority, isClosed: item.state == "closed",
-                             isSelected: selection == item.id)
+                             isRunning: running.contains(item.id), isSelected: selection == item.id)
                         .tag(item.id).sidebarRow()
                 }
             }
@@ -196,6 +198,8 @@ private struct IssueRow: View {
     let title: String
     let priority: String
     let isClosed: Bool
+    /// A run is alive on it: a triangle beside the number.
+    let isRunning: Bool
     let isSelected: Bool
 
     @Environment(\.onSidebar) private var onSidebar
@@ -204,6 +208,7 @@ private struct IssueRow: View {
         let ink = RowInk(onSidebar: onSidebar, isSelected: isSelected)
         VStack(alignment: .leading, spacing: Space.xxs) {
             HStack(spacing: Space.s) {
+                if isRunning { RunningTriangle().foregroundStyle(ink.meta) }
                 Text(ref).typeRole(.monoSmall).foregroundStyle(ink.meta).lineLimit(1).truncationMode(.middle)
                 if !priority.isEmpty { PriorityMark(priority: priority) }
                 if isClosed { Text("closed").typeRole(.label).foregroundStyle(ink.meta) }

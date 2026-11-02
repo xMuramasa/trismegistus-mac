@@ -29,6 +29,9 @@ public final class AgentBoard {
     /// The host helper isn't installed or isn't running.
     public var notConfigured: Bool { error?.isNotConfigured == true }
 
+    /// The run on an issue (`owner/name` and number), if the helper lists one.
+    public func run(on repo: String, issue: Int) -> Agent? { Agent.run(on: repo, issue: issue, in: agents) }
+
     public func refresh() async {
         do {
             agents = try await rest.agents()

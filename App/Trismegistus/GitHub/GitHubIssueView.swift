@@ -19,6 +19,13 @@ struct GitHubIssueView: View {
     @State private var actionError: String?
     @State private var busy = false
     @State private var draft = ""
+    @State private var confirmingStop = false
+    // Opening a run's transcript sets the same keys the main window reads for its section and the Agents selection.
+    @AppStorage("window.section") private var section = WindowSection.chat
+    @AppStorage(WindowSection.agents.selectionKey) private var selectedAgent = ""
+
+    /// The run working on this issue, from the agents list the board polls.
+    private var run: Agent? { model.agents?.run(on: repo, issue: number) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,6 +54,12 @@ struct GitHubIssueView: View {
         }
         .background(Ink.surface.window)
         .task { await load() }
+        .alert("Stop \(run?.title ?? "the run")?", isPresented: $confirmingStop) {
+            Button("Stop", role: .destructive) { stopRun() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Its process tree is ended.")
+        }
     }
 
     private var header: some View {
@@ -65,6 +78,11 @@ struct GitHubIssueView: View {
                         .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
                 }
                 Spacer(minLength: 0)
+                if let run, run.alive {
+                    TimelineView(.periodic(from: .now, by: 30)) { context in
+                        RunningMark(detail: [run.model, PopoverFormat.ago(run.started, now: context.date)].compactMap { $0 }.joined(separator: " · "))
+                    }
+                }
                 if let issue {
                     EndfieldButton("Open in browser", symbol: "arrow.up.right", kind: .quiet, iconOnly: true) { openInBrowser(issue) }
                     EndfieldButton("Start conversation", symbol: "bubble.left.and.text.bubble.right", kind: .primary) { startConversation(issue) }
@@ -72,6 +90,7 @@ struct GitHubIssueView: View {
                 }
             }
             if let issue { actions(issue) }
+            if let run, let board = model.agents { runRow(run, board: board) }
             ActionError(message: actionError)
         }
         .padding(.horizontal, Space.l).padding(.vertical, Space.m)
@@ -97,6 +116,28 @@ struct GitHubIssueView: View {
                      : "Not on the Work board")
                     .typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
                 Spacer(minLength: 0)
+            }
+        }
+    }
+
+    /// The run in the Agents list's style; Stop (a manager's, while it runs) asks first, as in Agents.
+    private func runRow(_ run: Agent, board: AgentBoard) -> some View {
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            IssueRunRow(model: run.model, age: PopoverFormat.ago(run.alive ? run.started : run.ended ?? run.started, now: context.date),
+                        status: run.statusWords, isAlive: run.alive, failed: run.failed, progress: run.progress,
+                        canStop: board.canManage && run.alive, isStopping: board.stopping.contains(run.id),
+                        openTranscript: { selectedAgent = run.id; section = .agents }, stop: { confirmingStop = true })
+        }
+    }
+
+    private func stopRun() {
+        guard let run, let board = model.agents else { return }
+        Task {
+            do {
+                try await board.stop(run)
+                actionError = nil
+            } catch {
+                actionError = AgentsError.describe(error)
             }
         }
     }

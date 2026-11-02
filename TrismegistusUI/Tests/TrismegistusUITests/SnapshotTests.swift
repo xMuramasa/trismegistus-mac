@@ -265,6 +265,26 @@ final class SnapshotTests: XCTestCase {
         }
     }
 
+    /// The issue header's right side with the mark, the run row alive (with Stop) and finished, and the row's triangle.
+    func testIssueRun() throws {
+        try snap("IssueRun", width: 640) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Text("xMuramasa/trismegistus-mac#50").typeRole(.monoSmall)
+                    Spacer()
+                    RunningMark(detail: "sonnet · 5 min")
+                    EndfieldButton("Start conversation", symbol: Symbol.send, kind: .primary) {}
+                }
+                IssueRunRow(model: "sonnet", age: "5 min", status: "running", isAlive: true, failed: false,
+                            progress: "items 1-2 done; Kit tests pass", canStop: true, isStopping: false, openTranscript: {}, stop: {})
+                IssueRunRow(model: "opus", age: "2 h", status: "out of turns", isAlive: false, failed: true,
+                            progress: nil, canStop: false, isStopping: false, openTranscript: {}, stop: {})
+                HStack(spacing: 4) { RunningTriangle(); Text("#50").typeRole(.monoSmall) }
+            }
+            .foregroundStyle(Palette.ink)
+        }
+    }
+
     private func picture(_ width: CGFloat, _ height: CGFloat, _ color: NSColor) -> NSImage {
         NSImage(size: NSSize(width: width, height: height), flipped: false) { rect in
             color.setFill()

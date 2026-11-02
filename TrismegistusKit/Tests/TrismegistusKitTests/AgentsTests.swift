@@ -62,6 +62,47 @@ import Testing
         #expect(agent.title == "proc_x" && agent.kind == "process" && !agent.alive && !agent.hasTranscript)
     }
 
+    // MARK: Issue runs
+
+    static let dispatched = #"""
+        {"agents":[
+         {"id":"run_mac-issue-50-attempt2","kind":"delegate","title":"mac-issue-50-attempt2","started_at":1793500500,"alive":true,"transcript":true,"progress":"item 1 done","repo":"xMuramasa/trismegistus-mac","issue":50,"issue_title":"GitHub view: show the live run","model":"sonnet"},
+         {"id":"run_mac-issue-50","kind":"delegate","title":"mac-issue-50","started_at":1793500000,"alive":false,"transcript":true,"outcome":"error_max_turns","repo":"xMuramasa/trismegistus-mac","issue":50,"issue_title":"GitHub view: show the live run","model":"sonnet"},
+         {"id":"run_old","kind":"delegate","title":"old","started_at":1793400000,"alive":false,"transcript":true,"outcome":"success","repo":"xMuramasa/trismegistus-mac","issue":50,"model":"opus"},
+         {"id":"run_other-repo","kind":"delegate","title":"other","started_at":1793500900,"alive":true,"transcript":true,"repo":"xMuramasa/trismegistus","issue":50},
+         {"id":"run_27","kind":"delegate","title":"27","started_at":1793300000,"alive":false,"transcript":true,"outcome":"success","repo":"xMuramasa/trismegistus","issue":27,"issue_title":"Agents helper","model":"sonnet"},
+         {"id":"run_hand","kind":"delegate","title":"hand","started_at":1793600000,"alive":true,"transcript":true},
+         {"id":"proc_x","kind":"process","title":"npm run dev","alive":true,"transcript":false}]}
+        """#
+
+    @Test func issueFieldsDecodeAndOldHelpersStillDo() async throws {
+        let (api, _) = rest { _ in (200, Self.dispatched) }
+        let agents = try await api.agents()
+        let run = agents[0]
+        #expect(run.repo == "xMuramasa/trismegistus-mac" && run.issue == 50 && run.model == "sonnet")
+        #expect(run.issueTitle == "GitHub view: show the live run" && run.issueRef == "trismegistus-mac#50")
+        #expect(agents[2].issueTitle == nil && agents[2].model == "opus")
+        // A hand-launched run, a process and the old fixture carry none of it.
+        #expect(agents[5].issueRef == nil && agents[6].repo == nil && agents[6].issue == nil)
+        let (oldApi, _) = rest { _ in (200, Self.list) }
+        let old = try await oldApi.agents()
+        #expect(old.count == 5 && old.allSatisfy { $0.repo == nil && $0.issue == nil && $0.issueTitle == nil && $0.model == nil && $0.issueRef == nil })
+    }
+
+    @Test func runOnIssue() async throws {
+        let (api, _) = rest { _ in (200, Self.dispatched) }
+        let agents = try await api.agents()
+        // The newest alive attempt wins over a newer-numbered finished one.
+        #expect(Agent.run(on: "xMuramasa/trismegistus-mac", issue: 50, in: agents)?.id == "run_mac-issue-50-attempt2")
+        // Same number, other repo.
+        #expect(Agent.run(on: "xMuramasa/trismegistus", issue: 50, in: agents)?.id == "run_other-repo")
+        // Only finished runs: the newest.
+        #expect(Agent.run(on: "xMuramasa/trismegistus", issue: 27, in: agents)?.id == "run_27")
+        #expect(Agent.run(on: "xMuramasa/trismegistus-mac", issue: 27, in: agents) == nil)
+        #expect(Agent.run(on: "xMuramasa/trismegistus-mac", issue: 50, in: agents.filter { $0.alive == false })?.id == "run_mac-issue-50")
+        #expect(Agent.run(on: "xMuramasa/trismegistus-mac", issue: 50, in: []) == nil)
+    }
+
     @Test func page() throws {
         let json = #"""
             {"steps":[{"line":3,"kind":"text","text":"Reading the spec."},{"line":4,"kind":"tool","text":"Bash: go test ./..."},

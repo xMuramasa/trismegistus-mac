@@ -25,12 +25,31 @@ public struct Agent: Decodable, Sendable, Equatable, Identifiable {
     public var outcome: String?
     public var numTurns: Int?
     public var durationMs: Int?
+    /// Runs started by `dispatch` only: `owner/name`, issue number, its title and the model (`sonnet`, `opus`).
+    public var repo: String?
+    public var issue: Int?
+    public var issueTitle: String?
+    public var model: String?
 
     public var isDelegate: Bool { kind == "delegate" }
     public var started: Date? { startedAt.map(Date.init(timeIntervalSince1970:)) }
     public var ended: Date? { endedAt.map(Date.init(timeIntervalSince1970:)) }
     /// A finished run that ended in anything but `success`.
     public var failed: Bool { !alive && outcome.map { $0 != "success" } ?? false }
+
+    /// `trismegistus-mac#50`: the repo without its owner, then the issue; nil unless both are known.
+    public var issueRef: String? {
+        guard let repo, let issue else { return nil }
+        return "\(repo.split(separator: "/").last.map(String.init) ?? repo)#\(issue)"
+    }
+
+    /// The run working on an issue: the newest alive one, else the newest finished (retries archived as `<name>-attemptK`
+    /// carry the same repo and issue). `repo` is the full `owner/name`.
+    public static func run(on repo: String, issue: Int, in agents: [Agent]) -> Agent? {
+        let matching = agents.filter { $0.repo == repo && $0.issue == issue }
+        let newest = { (a: Agent, b: Agent) in (a.startedAt ?? 0) < (b.startedAt ?? 0) }
+        return matching.filter(\.alive).max(by: newest) ?? matching.max(by: newest)
+    }
 
     /// "running", "done", "out of turns", "failed", or "ended" when nothing says how.
     public var statusWords: String {
@@ -47,6 +66,7 @@ public struct Agent: Decodable, Sendable, Equatable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, kind, title, command, cwd, alive, transcript, progress, outcome
         case startedAt = "started_at", endedAt = "ended_at", sessionID = "session_id", numTurns = "num_turns", durationMs = "duration_ms"
+        case repo, issue, issueTitle = "issue_title", model
     }
 
     public init(from decoder: any Decoder) throws {
@@ -65,6 +85,10 @@ public struct Agent: Decodable, Sendable, Equatable, Identifiable {
         outcome = try c.decodeIfPresent(String.self, forKey: .outcome)
         numTurns = try c.decodeIfPresent(Int.self, forKey: .numTurns)
         durationMs = try c.decodeIfPresent(Int.self, forKey: .durationMs)
+        repo = try c.decodeIfPresent(String.self, forKey: .repo)
+        issue = try c.decodeIfPresent(Int.self, forKey: .issue)
+        issueTitle = try c.decodeIfPresent(String.self, forKey: .issueTitle)
+        model = try c.decodeIfPresent(String.self, forKey: .model)
     }
 }
 

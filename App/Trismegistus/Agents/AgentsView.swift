@@ -13,7 +13,9 @@ struct AgentsSidebar: View {
     var body: some View {
         let board = model.agents
         let needle = filter.trimmingCharacters(in: .whitespaces)
-        let agents = (board?.agents ?? []).filter { needle.isEmpty || $0.title.localizedCaseInsensitiveContains(needle) }
+        let agents = (board?.agents ?? []).filter {
+            needle.isEmpty || [$0.title, $0.issueTitle, $0.issueRef].contains { $0?.localizedCaseInsensitiveContains(needle) == true }
+        }
         VStack(spacing: 0) {
             SidebarHeader(title: "Agents // \(board?.runningCount ?? 0) running", prompt: "Filter agents", filter: $filter,
                           focus: filterFocus)
@@ -127,7 +129,7 @@ private struct AgentRow: View {
                             .overlay(Circle().strokeBorder(Ink.line.strong, lineWidth: Stroke.hairline))
                             .accessibilityHidden(true)
                     }
-                    Text(agent.title).typeRole(.headline).foregroundStyle(ink.title).lineLimit(1)
+                    Text(agent.issueTitle ?? agent.title).typeRole(.headline).foregroundStyle(ink.title).lineLimit(1)
                     Spacer(minLength: Space.s)
                     Text(agent.statusWords).typeRole(.label).foregroundStyle(agent.failed ? ink.error : ink.meta)
                 }
@@ -147,9 +149,9 @@ private struct AgentRow: View {
 
 /// The facts line of a row and of the detail header.
 @MainActor enum AgentFacts {
-    /// `delegate · started 5 min ago` or `delegate · ended 2 hr ago · 41 turns · 1 hr, 2 min`.
+    /// `repo#12 · delegate · started 5 min ago` or `delegate · ended 2 hr ago · 41 turns · 1 hr, 2 min`.
     static func line(_ agent: Agent, now: Date) -> String {
-        var parts = [agent.isDelegate ? "delegate" : "process"]
+        var parts = [agent.issueRef, agent.isDelegate ? "delegate" : "process"].compactMap { $0 }
         if agent.alive {
             if let start = agent.started { parts.append("started \(JobDetail.relative(start, now: now))") }
         } else {
