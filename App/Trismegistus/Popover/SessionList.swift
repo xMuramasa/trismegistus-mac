@@ -12,17 +12,42 @@ struct SessionList: View {
     let onNew: () -> Void
 
     @Environment(AppModel.self) private var model
+    @AppStorage("chat.kind") private var storedKind = ConversationKind.app
     @State private var selection: String?
     @State private var actions = ConversationActions()
     @FocusState private var focused: Bool
 
     /// One row per thread: its newest part.
     private var sessions: [SessionInfo] { SessionListing.threads(model.sessions, id: \.id, links: model.store?.links ?? [:]) }
-    /// Pinned conversations first; then the rest with the daily feed runs folded into one News row.
-    private var listing: (pinned: [SessionInfo], rest: [ConversationListRow<SessionInfo>]) {
+    /// Pinned conversations first; then the rest with the daily feed runs folded into one News row. Every kind.
+    private var fullListing: (pinned: [SessionInfo], rest: [ConversationListRow<SessionInfo>]) {
         ConversationListRow.listing(sessions, news: model.news?.sessionIDs ?? [], newsAt: model.news?.rowTime,
                                     activity: { model.store?.overview[$0.id]?.lastActivity ?? $0.lastActive.map(Date.init(timeIntervalSince1970:)) },
                                     isPinned: \.isPinned)
+    }
+    /// The tab's counts and marks over the whole listing.
+    private var summary: ConversationKind.Summary {
+        let listing = fullListing
+        let shown = listing.pinned + listing.rest.compactMap { if case .item(let session) = $0 { session } else { nil } }
+        return ConversationKind.Summary(shown.map { session in
+            let overview = model.store?.overview[session.id]
+            return (source: session.source,
+                    attention: ConversationKind.Attention(isWaitingForApproval: overview?.isWaitingForApproval ?? false,
+                                                          isRunning: overview?.run != nil))
+        })
+    }
+    /// The window's tab (one choice for both).
+    private var kind: ConversationKind { summary.resolving(storedKind) }
+    /// The tab's rows; the News row is the app's, so in APP and All.
+    private var listing: (pinned: [SessionInfo], rest: [ConversationListRow<SessionInfo>]) {
+        let kind = self.kind
+        let listing = fullListing
+        return (listing.pinned.filter { kind.includes($0.source) }, listing.rest.filter {
+            switch $0 {
+            case .item(let session): kind.includes(session.source)
+            case .news: kind == .app || kind == .all
+            }
+        })
     }
     private var rows: [ConversationListRow<SessionInfo>] {
         let listing = self.listing
@@ -53,13 +78,20 @@ struct SessionList: View {
     private var list: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Sessions // \(rows.count)").typeRole(.label).foregroundStyle(Ink.text.secondary)
+                Text("\(kind.name) // \(rows.count)").typeRole(.label).foregroundStyle(Ink.text.secondary)
                 Spacer()
                 EndfieldButton("New session", symbol: Symbol.plus, kind: .quiet, iconOnly: true, shortcut: newShortcut) {
                     onNew()
                 }
             }
             .padding(.horizontal, Space.l).padding(.vertical, Space.s)
+            ChatKindTabs(summary: summary, kind: $storedKind)
+                .padding(.horizontal, Space.l).padding(.bottom, Space.s)
+            if rows.isEmpty {
+                Text(kind.emptyText).typeRole(.caption).foregroundStyle(Ink.text.secondary)
+                    .padding(.horizontal, Space.l).padding(.vertical, Space.s)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             ScrollViewReader { proxy in
                 ScrollView {
                     TimelineView(.periodic(from: .now, by: 1)) { context in

@@ -10,6 +10,7 @@ struct PopoverRoot: View {
 
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
+    @AppStorage("chat.kind") private var chatKind = ConversationKind.app
     @State private var page = Page.list
     @State private var reconnect = Reconnect()
     @State private var error: String?
@@ -122,6 +123,7 @@ struct PopoverRoot: View {
         Task {
             do {
                 let session = try await store.createSession()
+                chatKind = .app // back on the list it is in the tab
                 page = .chat(session.id)
             } catch {
                 self.error = (error as? RelayAPIError)?.message ?? "Can't reach the relay."

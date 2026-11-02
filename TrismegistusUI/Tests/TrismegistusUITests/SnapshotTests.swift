@@ -132,6 +132,38 @@ final class SnapshotTests: XCTestCase {
         }
     }
 
+    /// The chat kind tabs (#48) under their header, on the 220 pt sidebar (188 pt of content), the 260 pt one (228 pt)
+    /// and the popover's ground (380 pt): Telegram selected with its approval dot and a green one on Terminal; One-shots
+    /// and All chosen under MORE; APP selected with the MORE mark.
+    func testKindTabs() throws {
+        let tabs = [KindChip(id: "app", title: "App", symbol: Symbol.kindApp, count: 4),
+                    KindChip(id: "telegram", title: "Telegram", symbol: Symbol.kindTelegram, count: 4, mark: .approval),
+                    KindChip(id: "terminal", title: "Terminal", symbol: Symbol.kindTerminal, count: 8, mark: .running)]
+        let more = [KindChip(id: "oneshot", title: "One-shots", symbol: Symbol.kindOneShot, count: 6),
+                    KindChip(id: "cron", title: "Cron", symbol: Symbol.clock, count: 0),
+                    KindChip(id: "all", title: "All", symbol: Symbol.kindAll, count: 22)]
+        func strips(sidebar: Bool) -> some View {
+            let names = ["telegram": "Telegram", "oneshot": "One-shots", "all": "All", "app": "App"]
+            let counts = ["telegram": 4, "oneshot": 6, "all": 22, "app": 4]
+            return VStack(alignment: .leading, spacing: Space.m) {
+                ForEach(["telegram", "oneshot", "all", "app"], id: \.self) { id in
+                    VStack(alignment: .leading, spacing: Space.s) {
+                        Text("\(names[id]!) // \(counts[id]!)").typeRole(.label)
+                            .foregroundStyle(sidebar ? Ink.text.onSidebarSecondary : Ink.text.secondary)
+                        KindTabs(tabs: tabs, more: more, moreMark: id == "app" ? .running : nil, selection: id) { _ in }
+                    }
+                }
+            }
+            .padding(.horizontal, Space.l).padding(.vertical, Space.m)
+            .environment(\.onSidebar, sidebar)
+            .background(sidebar ? Ink.surface.sidebar : Ink.surface.window)
+        }
+        // The sidebar's own padding (Space.l each side) is inside `strips`, so the widths are the sidebar's.
+        try snap("KindTabs", width: 220) { strips(sidebar: true) }
+        try snap("KindTabsWide", width: 260) { strips(sidebar: true) }
+        try snap("KindTabsPopover", width: 380) { strips(sidebar: false) }
+    }
+
     func testToolRows() throws {
         try snap("ToolRowView", width: 320) {
             VStack(spacing: 8) {

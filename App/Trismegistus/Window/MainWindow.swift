@@ -16,6 +16,8 @@ struct MainWindow: View {
     @AppStorage(WindowSection.jobs.selectionKey) private var selectedJob = ""
     /// `""`: all conversations.
     @AppStorage(WindowSection.commands.selectionKey) private var commandsConversation = ""
+    /// Chat's tab (APP, TELEGRAM, TERMINAL or a MORE entry), shared with the popover.
+    @AppStorage("chat.kind") private var chatKind = ConversationKind.app
     @AppStorage("window.terminalShown") private var terminalShown = true
     @AppStorage("window.terminalWidth") private var terminalWidth = Double(Size.terminal.default)
     @AppStorage("window.sidebarShown") private var sidebarShown = true
@@ -44,7 +46,11 @@ struct MainWindow: View {
 
     private func open(_ id: String) {
         section = WindowSection.opening(id, newsID: NewsRowView.id)
-        if section == .chat { selectedSession = id }
+        guard section == .chat else { return }
+        selectedSession = id
+        // The tab of the thread's newest part (the row shown); All stays All, and an unlisted id leaves the tab alone.
+        let tip = model.store?.threadTip(of: id) ?? id
+        if chatKind != .all, let info = model.sessions.first(where: { $0.id == tip }) { chatKind = ConversationKind(source: info.source) }
     }
 
     var body: some View {

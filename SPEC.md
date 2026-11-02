@@ -113,8 +113,23 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   terminal pane shows Chat's conversation only. The sidebar ground is `surface.sidebar` (the palette's secondary grey)
   with light text (`text.on-sidebar`, `text.on-sidebar-secondary`, ≈4.7:1, nothing dimmer); the selected row is a
   white card with a yellow outline and ink text; the filter fields stay light. The daily feed runs are not in Chat's
-  list (News has them); the popover keeps its one News row. The
-  chat keeps messages and answers; each run shows one marker (`4 COMMANDS · 6.1 s · 1 failed`) that focuses the pane.
+  list (News has them); the popover keeps its one News row.
+  **Chat kind tabs** (#48): under the header, which names the tab (`TELEGRAM // 4`), above the filter, a row of bare
+  icon tabs in the section bar's look: APP `macwindow`, TELEGRAM `paperplane`, TERMINAL `terminal`, MORE
+  `ellipsis.circle` ▾, each with its count in mono; the selected one with the yellow bar (ink in the popover); a
+  badge on the icon, magenta while an approval waits, green while a run goes. Tooltips carry the full name.
+  The list shows the chosen kind only, by Hermes' `source`: **APP** `api_server` (the default), **TELEGRAM**
+  `telegram`, **TERMINAL** `cli` and `tui`; the **MORE** menu has One-shots (`oneshot`), Cron, any other source by its
+  name and All (with a MORE entry chosen its icon and count take MORE's place, `⚡ 6 ▾`). The header count is the tab's; an
+  empty tab says `No conversations from the terminal`. A pinned conversation shows only in its own tab (pinned first
+  there). ⌘K filters within the tab; when it finds nothing there but matches elsewhere a row `2 more in TELEGRAM ›`
+  switches tab. A tab's icon gets a badge while its conversations need you: magenta while an approval waits, green while a run
+  goes (approval wins; MORE shows the strongest among its entries); notifications are unchanged. Opening a conversation
+  from a notification, Jobs, GitHub, Agents or Commands switches to its kind's tab (All stays All), + New makes an app
+  conversation and switches to APP, and a tab switch keeps the open conversation in the detail until another is
+  picked. A Telegram chat continued in the app is an app conversation (APP, its Telegram part folded above). The
+  popover's list has the same tabs and follows the window's (one choice, `chat.kind`); its News row is in APP and All.
+  The Commands section's conversation list is not filtered. The chat keeps messages and answers; each run shows one marker (`4 COMMANDS · 6.1 s · 1 failed`) that focuses the pane.
   The **terminal pane** is a read-only transcript of the selected conversation's tool calls: `$ command` from the
   `tool.started` preview, then output, exit code and duration from the `tool.completed` preview (JSON for the
   terminal tool; shown raw when cut). Filter: commands only or all tools. Live output arrives when a command finishes and is

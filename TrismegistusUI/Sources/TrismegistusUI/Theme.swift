@@ -74,4 +74,12 @@ public enum Symbol {
     public static let chevronDown = "chevron.down"
     public static let chevronUp = "chevron.up"
     public static let attach = "paperclip"
+    /// the chat kind tabs (the app maps each kind to one)
+    public static let kindApp = "macwindow"
+    public static let kindTelegram = "paperplane"
+    public static let kindTerminal = "terminal"
+    public static let kindOneShot = "bolt"
+    public static let kindAll = "square.stack"
+    public static let kindOther = "bubble.left"
+    public static let more = "ellipsis.circle"
 }
