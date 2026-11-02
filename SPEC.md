@@ -118,7 +118,9 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
 - **Images** (#43, #44, #45; relay trismegistus#25, #26): a message takes up to 4 images by drop onto the chat column, the
   📎 button (open panel) or ⌘V; a tray above the input shows them. The drop target is an AppKit view over the whole
   column (SwiftUI's `onDrop` sits behind the scroll view, the selectable text and the field, so AppKit never offered
-  it a drag), registered for files and image data but not text, and letting clicks through. While a drag is over it
+  it a drag), registered for files, file promises (Photos, some browser drags: received into a temporary folder, 20 s at most, a
+  failed one shows an error cell; a file or image data on the drag wins over a promise) and image data but not text,
+  and letting clicks through. While a drag is over it
   the column dims under a paper veil, a yellow frame opens from the centre and a card says what a drop does (`3
   IMAGES`, `2 OF 3 FIT // UP TO 4`, other files skipped, `GOES WITH YOUR NEXT MESSAGE` during a run); it turns red
   with the reason when nothing can be attached (`IMAGES ONLY`, `UP TO 4 PER MESSAGE`, `THIS DEVICE CAN ONLY VIEW`,

@@ -3,15 +3,19 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// The images on a pasteboard (a drag or the clipboard): image files, and image data on items with no file (a browser's
-/// image, a screenshot's thumbnail). Files that are not images (a PDF, a folder) are only counted.
+/// image, a screenshot's thumbnail). Files that are not images (a PDF, a folder) are only counted. A drag that only
+/// promises files (Photos, some browser drags, #46) counts by the promised type; a file or data on the board wins over
+/// a promise.
 public struct PasteboardImages {
     public let files: [URL]
     /// Files that are not images.
     public let others: Int
     /// Items with image data and no file, with the type to read.
     private let items: [(NSPasteboardItem, NSPasteboard.PasteboardType)]
+    /// Promises of image files; empty when the board has a file URL or image data.
+    private let promised: [NSFilePromiseReceiver]
 
-    public var count: Int { files.count + items.count }
+    public var count: Int { files.count + items.count + promised.count }
 
     public init(_ board: NSPasteboard) {
         // Read as NSURL: that also takes the sandbox's grant for dragged files.
@@ -19,21 +23,78 @@ public struct PasteboardImages {
         files = board.readObjects(forClasses: [NSURL.self], options: [
             .urlReadingFileURLsOnly: true, .urlReadingContentsConformToTypes: [UTType.image.identifier],
         ]) as? [URL] ?? []
-        others = all.count - files.count
         items = (board.pasteboardItems ?? []).compactMap { item in
             guard !item.types.contains(.fileURL),
                 let type = item.types.first(where: { UTType($0.rawValue)?.conforms(to: .image) == true })
             else { return nil }
             return (item, type)
         }
+        let promises = files.isEmpty && items.isEmpty ? board.readObjects(forClasses: [NSFilePromiseReceiver.self]) as? [NSFilePromiseReceiver] ?? [] : []
+        promised = promises.filter { $0.fileTypes.contains { UTType($0)?.conforms(to: .image) == true } }
+        others = all.count - files.count + promises.count - promised.count
     }
 
     /// The bytes of the image data items; read a drag's before its drop returns.
     public func data() -> [Data] { items.compactMap { $0.0.data(forType: $0.1) } }
 
-    /// What a drop target registers: files and image data, never text (a dragged string still reaches the text field).
+    /// Hands the files and data to `perform`. Promised images are received first, into a fresh temporary folder that is
+    /// deleted after `perform` returns (so `perform` must read the files before it returns). A promise that fails or is
+    /// not kept within `timeout` becomes a file that doesn't exist, which the tray shows as an error cell.
+    /// Call it inside the drop: a promise can only be received while its drag is being performed.
+    @MainActor
+    public func deliver(timeout: TimeInterval = 20, to perform: @escaping @MainActor ([URL], [Data]) -> Void) {
+        let files = files, data = data()
+        guard !promised.isEmpty else { return perform(files, data) }
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ImageDrop-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let gather = PromiseGather(count: promised.count, timeout: timeout) { received, failed in
+            perform(files + received + Array(repeating: folder.appendingPathComponent("failed"), count: failed), data)
+            try? FileManager.default.removeItem(at: folder)
+        }
+        let queue = OperationQueue()
+        for receiver in promised {
+            receiver.receivePromisedFiles(atDestination: folder, options: [:], operationQueue: queue) { gather.received($0, $1) }
+        }
+    }
+
+    /// What a drop target registers: files, file promises and image data, never text (a dragged string still reaches
+    /// the text field).
     static let dragTypes: [NSPasteboard.PasteboardType] =
-        [.fileURL] + NSImage.imageTypes.filter { UTType($0)?.conforms(to: .image) == true }.map { .init($0) }
+        [.fileURL] + NSFilePromiseReceiver.readableDraggedTypes.map { .init($0) }
+        + NSImage.imageTypes.filter { UTType($0)?.conforms(to: .image) == true }.map { .init($0) }
+}
+
+/// Collects the files of several promises (they arrive on a background queue): calls `done` once, on the main actor,
+/// when all are in or `timeout` has passed (the ones still missing count as failed).
+private final class PromiseGather: @unchecked Sendable {
+    private let lock = NSLock()
+    private var waiting: Int
+    private var urls: [URL] = []
+    private var failed = 0
+    private var done: (@MainActor @Sendable ([URL], Int) -> Void)?
+
+    init(count: Int, timeout: TimeInterval, done: @escaping @MainActor @Sendable ([URL], Int) -> Void) {
+        waiting = count
+        self.done = done
+        DispatchQueue.global().asyncAfter(deadline: .now() + timeout) { [self] in finish(timedOut: true) }
+    }
+
+    func received(_ url: URL, _ error: Error?) {
+        lock.withLock {
+            waiting -= 1
+            if error == nil { urls.append(url) } else { failed += 1 }
+        }
+        finish(timedOut: false)
+    }
+
+    private func finish(timedOut: Bool) {
+        let result: (done: @MainActor @Sendable ([URL], Int) -> Void, urls: [URL], failed: Int)? = lock.withLock {
+            guard let done, waiting == 0 || timedOut else { return nil }
+            self.done = nil
+            return (done, urls, failed + waiting)
+        }
+        if let result { Task { @MainActor in result.done(result.urls, result.failed) } }
+    }
 }
 
 /// What the chat shows while a drag is over it.
@@ -66,7 +127,8 @@ public struct ImageDropFeedback: Equatable, Sendable {
 
 extension View {
     /// Takes images dropped anywhere on this view and shows what a drop would do while they are dragged over it (#45).
-    /// `perform` gets the image files and the image data of a drop (more than `room` is left to the caller).
+    /// `perform` gets the image files and the image data of a drop (more than `room` is left to the caller); promised
+    /// files arrive as files in a temporary folder that is deleted when `perform` returns.
     public func imageDrop(
         room: Int, limit: Int, refusal: ImageDropFeedback.Refusal?, later: Bool,
         perform: @escaping @MainActor (_ files: [URL], _ data: [Data]) -> Void
@@ -88,7 +150,7 @@ struct ImageDropModifier: ViewModifier {
             .overlay {
                 ImageDropTarget(feedback: $feedback) {
                     .judge(images: $0.count, others: $0.others, room: room, limit: limit, refusal: refusal, later: later)
-                } perform: { perform($0.files, $0.data()) }
+                } perform: { $0.deliver(to: perform) }
             }
             .overlay {
                 ZStack {

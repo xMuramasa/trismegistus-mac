@@ -72,9 +72,76 @@ final class ImageDropTests: XCTestCase {
         XCTAssertEqual(images.others, 1)
     }
 
+    /// A promise of a file, as Photos writes it. Receiving one needs a real drag.
+    private final class Promise: NSObject, NSFilePromiseProviderDelegate {
+        func filePromiseProvider(_ provider: NSFilePromiseProvider, fileNameForType fileType: String) -> String { "promised" }
+        func filePromiseProvider(_ provider: NSFilePromiseProvider, writePromiseTo url: URL, completionHandler: @escaping @Sendable ((any Error)?) -> Void) {
+            completionHandler(CocoaError(.fileNoSuchFile))
+        }
+    }
+    private let promise = Promise()
+
+    private func provider(_ type: UTType) -> NSFilePromiseProvider { NSFilePromiseProvider(fileType: type.identifier, delegate: promise) }
+
+    func testPromisesCountByTheirType() {
+        board.writeObjects([provider(.png), provider(.jpeg), provider(.pdf)])
+        let images = PasteboardImages(board)
+        XCTAssertEqual(images.count, 2)
+        XCTAssertEqual(images.others, 1)
+        XCTAssertEqual(images.files, [])
+        XCTAssertEqual(judge(images.count, others: images.others).lines, ["2 IMAGES", "1 OTHER FILE SKIPPED"])
+    }
+
+    func testAPromiseOfAPDFIsNotAnImage() {
+        board.writeObjects([provider(.pdf)])
+        let images = PasteboardImages(board)
+        XCTAssertEqual(images.count, 0)
+        XCTAssertEqual(images.others, 1)
+        XCTAssertEqual(judge(images.count, others: images.others).title, "IMAGES ONLY")
+    }
+
+    func testAFileOrImageDataBeatsAPromise() throws {
+        board.writeObjects([try file("a.png", png) as NSURL, provider(.png)])
+        var images = PasteboardImages(board)
+        XCTAssertEqual(images.files.map(\.lastPathComponent), ["a.png"])
+        XCTAssertEqual(images.count, 1)
+        XCTAssertEqual(images.others, 0)
+
+        board.clearContents()
+        let item = NSPasteboardItem()
+        item.setData(png, forType: .png)
+        board.writeObjects([item, provider(.png)])
+        images = PasteboardImages(board)
+        XCTAssertEqual(images.count, 1)
+        XCTAssertEqual(images.data(), [png])
+    }
+
+    func testDeliveringWithoutPromisesIsImmediate() throws {
+        board.writeObjects([try file("a.png", png) as NSURL])
+        var got: ([URL], [Data])?
+        PasteboardImages(board).deliver { got = ($0, $1) }
+        XCTAssertEqual(got?.0.map(\.lastPathComponent), ["a.png"])
+        XCTAssertEqual(got?.1, [])
+    }
+
+    /// A promise whose drag isn't real fails or is never kept; either way the tray gets a file to show an error for.
+    func testAPromiseThatIsNotKeptEndsInAnErrorCellNotAHang() async throws {
+        board.writeObjects([provider(.png)])
+        let done = expectation(description: "delivered")
+        var got: [URL] = []
+        PasteboardImages(board).deliver(timeout: 0.5) { files, _ in
+            got = files
+            done.fulfill()
+        }
+        await fulfillment(of: [done], timeout: 5)
+        XCTAssertEqual(got.count, 1)
+        XCTAssertFalse(got.contains { FileManager.default.fileExists(atPath: $0.path) })
+    }
+
     func testRegisteredTypesTakeFilesAndImagesNeverText() {
         let types = PasteboardImages.dragTypes
         XCTAssertTrue(types.contains(.fileURL))
+        for type in NSFilePromiseReceiver.readableDraggedTypes { XCTAssertTrue(types.contains(.init(type)), type) }
         XCTAssertTrue(types.contains(.png))
         XCTAssertTrue(types.contains(.tiff))
         XCTAssertFalse(types.contains(.string))
