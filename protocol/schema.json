@@ -112,8 +112,13 @@
         "session_id": { "$ref": "#/$defs/id" }
       }
     },
+    "attachment_id": {
+      "description": "An uploaded image (POST /api/attachments): the SHA-256 of its bytes, lowercase hex.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
     "prompt": {
-      "description": "Phone → relay. Start a turn. client_msg_id (a UUID) makes resends safe.",
+      "description": "Phone → relay. Start a turn. client_msg_id (a UUID) makes resends safe. attachments: 1-4 uploaded images; text may be empty only with at least one.",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "client_msg_id", "session_id", "text"],
@@ -121,8 +126,19 @@
         "type": { "const": "prompt" },
         "client_msg_id": { "$ref": "#/$defs/id" },
         "session_id": { "$ref": "#/$defs/id" },
-        "text": { "$ref": "#/$defs/text" }
-      }
+        "text": { "type": "string", "maxLength": 32768 },
+        "attachments": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/attachment_id" }
+        }
+      },
+      "anyOf": [
+        { "properties": { "text": { "minLength": 1 } } },
+        { "required": ["attachments"] }
+      ]
     },
     "stop": {
       "type": "object",

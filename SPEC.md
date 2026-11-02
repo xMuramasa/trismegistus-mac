@@ -115,6 +115,14 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   a shell.
 - **Markdown:** prose with `AttributedString(markdown:)`; fenced code blocks are split out and drawn as views with a
   language label and a copy button.
+- **Images** (#43, #44; relay trismegistus#25, #26): a message takes up to 4 images by drop onto the chat column, the
+  📎 button (open panel) or ⌘V; a tray above the input shows them. They are resized (longest edge 2048 px) and
+  re-encoded before upload (EXIF and GPS dropped), uploaded to `POST /api/attachments`, then sent with the `prompt`
+  (`attachments`); steers stay text only, so images wait in the tray during a run. Messages show their images (one
+  within 320×240 pt, 2–4 in a grid; Quick Look on click); history images come from the relay's `attachments` on user
+  messages (Hermes keeps only a `[screenshot]` line, which is hidden). Hermes' `MEDIA:<path>` answer lines and
+  Telegram's `[Image attached at: <path>]` notes load through `GET /api/sessions/{id}/media`. Images are cached in the
+  app's Caches (deleted on unpair). Viewer devices can't attach.
 - **Row status for every conversation:** the client subscribes to every listed session (the relay allows 64 per
   socket), so RUN and APPROVAL marks and approval notifications work for conversations that are not open.
 - **Approval banner:** at the top of the chat and as a notification: command, description, buttons Once / Session
@@ -134,7 +142,7 @@ Not in v1: live terminal output (needs a relay change), dark mode, multiple rela
 - Token only in the Keychain; `RelayClient` takes it as a value and never logs it. Log lines carry ids and kinds,
   never message text or approval commands.
 - TLS to `hermes.lab.x-muramasa.dev` (tailnet-only name, Caddy certificate); ATS defaults, no exceptions.
-- The app is sandboxed with the network-client entitlement only.
+- The app is sandboxed with the network-client entitlement and read-only access to the files the user picks or drops (`com.apple.security.files.user-selected.read-only`, for attaching images, #43); nothing else.
 
 ## Phases
 
