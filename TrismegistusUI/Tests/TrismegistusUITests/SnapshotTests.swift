@@ -285,6 +285,36 @@ final class SnapshotTests: XCTestCase {
         }
     }
 
+    /// The check panel with lines and a note typed, without lines, and as a viewer sees it; the header's right side
+    /// with Dispatch yellow (Start conversation plain) and with the info mark (Start conversation yellow).
+    func testCheckPanelAndDispatch() throws {
+        let lines = ["the grey sidebar against 09f", "⌘1–⌘6 and the six icons switch sections", "each section's list + detail"]
+        try snap("CheckPanel", width: 700) {
+            VStack(alignment: .leading, spacing: 16) {
+                CheckPanel(lines: lines, source: "from Hermes · 2 Nov 00:48", canAct: true, busy: false,
+                           note: .constant("The sidebar is still white."), looksGood: {}, notRight: {})
+                CheckPanel(lines: [], source: "from Hermes · 2 Nov 00:48", canAct: true, busy: false, note: .constant(""),
+                           looksGood: {}, notRight: {})
+                CheckPanel(lines: lines, source: "from Hermes · 2 Nov 00:48", canAct: false, busy: false, note: .constant(""),
+                           looksGood: {}, notRight: {})
+            }
+        }
+        try snap("DispatchHeader", width: 700) {
+            VStack(alignment: .trailing, spacing: 12) {
+                HStack {
+                    EndfieldButton("Open in browser", symbol: "arrow.up.right", kind: .quiet, iconOnly: true) {}
+                    EndfieldButton("Start conversation", symbol: "bubble.left.and.text.bubble.right") {}
+                    EndfieldButton("Dispatch", symbol: "play.fill", kind: .primary) {}
+                }
+                HStack {
+                    EndfieldButton("Open in browser", symbol: "arrow.up.right", kind: .quiet, iconOnly: true) {}
+                    EndfieldButton("Start conversation", symbol: "bubble.left.and.text.bubble.right", kind: .primary) {}
+                    DispatchHiddenMark(reason: "Dispatch hidden: needs-design (design not agreed)")
+                }
+            }
+        }
+    }
+
     private func picture(_ width: CGFloat, _ height: CGFloat, _ color: NSColor) -> NSImage {
         NSImage(size: NSSize(width: width, height: height), flipped: false) { rect in
             color.setFill()

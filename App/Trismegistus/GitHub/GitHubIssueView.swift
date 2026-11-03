@@ -23,6 +23,9 @@ struct GitHubIssueView: View {
     // Opening a run's transcript sets the same keys the main window reads for its section and the Agents selection.
     @AppStorage("window.section") private var section = WindowSection.chat
     @AppStorage(WindowSection.agents.selectionKey) private var selectedAgent = ""
+    // An answered inbox item selects the next one in the sidebar.
+    @AppStorage(WindowSection.github.selectionKey) private var selectedIssue = ""
+    @State private var checkNote = ""
 
     /// The run working on this issue, from the agents list the board polls.
     private var run: Agent? { model.agents?.run(on: repo, issue: number) }
@@ -34,6 +37,7 @@ struct GitHubIssueView: View {
             if let issue {
                 ScrollView {
                     VStack(alignment: .leading, spacing: Space.l) {
+                        if GitHubInbox.isNeedsCheck(issue.status) { checkPanel(issue) }
                         post(author: issue.author, date: issue.createdAt, text: issue.body.isEmpty ? "*No description.*" : issue.body)
                         if issue.commentsTotal > issue.comments.count {
                             Text("\(issue.commentsTotal - issue.comments.count) older comments are on GitHub")
@@ -84,9 +88,21 @@ struct GitHubIssueView: View {
                     }
                 }
                 if let issue {
+                    // One yellow: Looks good while the check panel shows, else Dispatch, else Start conversation.
+                    let option = GitHubDispatch.option(labels: issue.labels, isOpen: issue.isOpen, canManage: github.isManager,
+                                                       hasLiveRun: run?.alive == true)
+                    let checking = GitHubInbox.isNeedsCheck(issue.status)
                     EndfieldButton("Open in browser", symbol: "arrow.up.right", kind: .quiet, iconOnly: true) { openInBrowser(issue) }
-                    EndfieldButton("Start conversation", symbol: "bubble.left.and.text.bubble.right", kind: .primary) { startConversation(issue) }
+                    EndfieldButton("Start conversation", symbol: "bubble.left.and.text.bubble.right",
+                                   kind: option == .button || checking ? .secondary : .primary) { startConversation(issue) }
                         .disabled(busy || model.store == nil)
+                    switch option {
+                    case .button:
+                        EndfieldButton("Dispatch", symbol: "play.fill", kind: checking ? .secondary : .primary) { dispatch(issue) }
+                            .disabled(busy || model.store == nil)
+                    case .hidden(let tooltip): DispatchHiddenMark(reason: tooltip)
+                    case .none: EmptyView()
+                    }
                 }
             }
             if let issue { actions(issue) }
@@ -233,20 +249,91 @@ struct GitHubIssueView: View {
 
     /// A new relay conversation titled after the issue, its first prompt the issue; then the chat opens.
     private func startConversation(_ issue: GitHubIssue) {
-        guard let store = model.store else { return }
         busy = true
         Task {
             defer { busy = false }
             do {
-                let session = try await store.createSession()
-                // A refused title leaves Hermes' own; the conversation still starts.
-                try? await store.renameSession(session.id, to: GitHubPrompt.title(issue))
-                await model.send(GitHubPrompt.text(issue), to: session.id)
-                onOpen(session.id)
+                try await start(issue, prompt: GitHubPrompt.text(issue))
             } catch {
                 actionError = GitHubError.describe(error)
             }
         }
+    }
+
+    private func start(_ issue: GitHubIssue, prompt: String) async throws {
+        guard let store = model.store else { return }
+        let session = try await store.createSession()
+        // A refused title leaves Hermes' own; the conversation still starts.
+        try? await store.renameSession(session.id, to: GitHubPrompt.title(issue))
+        await model.send(prompt, to: session.id)
+        onOpen(session.id)
+    }
+
+    /// Status Ready, then the chat that Hermes reacts to; a failed status write starts nothing. No confirm: the word is the commitment.
+    private func dispatch(_ issue: GitHubIssue) {
+        busy = true
+        Task {
+            defer { busy = false }
+            do {
+                try await GitHubInbox.dispatch(github.rest, repo: issue.repo, number: issue.number) {
+                    try await start(issue, prompt: GitHubDispatch.prompt(repo: issue.repo, number: issue.number))
+                }
+                actionError = nil
+            } catch {
+                actionError = GitHubError.describe(error)
+            }
+            await github.refresh()
+            await load()
+        }
+    }
+
+    // MARK: Needs check
+
+    private func checkPanel(_ issue: GitHubIssue) -> some View {
+        let note = GitHubInbox.note(in: issue.comments)
+        return CheckPanel(lines: note?.lines ?? [], source: note.map { "from Hermes · " + Self.stamp($0.date) } ?? "",
+                          canAct: github.isManager, busy: busy, note: $checkNote,
+                          looksGood: { answer { try await GitHubInbox.confirm(github.rest, repo: issue.repo, number: issue.number) } },
+                          notRight: {
+                              let text = checkNote
+                              answer {
+                                  try await GitHubInbox.reject(github.rest, repo: issue.repo, number: issue.number, note: text, isOpen: issue.isOpen)
+                                  checkNote = ""
+                              }
+                          })
+    }
+
+    /// Writes, reads the board again and, from the inbox, selects the item after this one that is still there.
+    private func answer(_ write: @escaping () async throws -> Void) {
+        busy = true
+        Task {
+            defer { busy = false }
+            let before = github.board?.needsCheck().flatMap(\.items).map(\.id) ?? []
+            var done = false
+            do {
+                try await write()
+                actionError = nil
+                done = true
+            } catch {
+                actionError = GitHubError.describe(error)
+            }
+            await github.refresh()
+            let current = "\(repo)#\(number)"
+            if done, github.inboxShown, let at = before.firstIndex(of: current) {
+                let left = Set(github.board?.needsCheck().flatMap(\.items).map(\.id) ?? [])
+                if let next = (before[(at + 1)...] + before[..<at]).first(where: left.contains) {
+                    selectedIssue = next
+                    return
+                }
+            }
+            await load()
+        }
+    }
+
+    /// `2 Nov 00:48` in the Mac's zone.
+    static func stamp(_ text: String) -> String {
+        let date = (try? Date.ISO8601FormatStyle(includingFractionalSeconds: true).parse(text)) ?? (try? Date.ISO8601FormatStyle().parse(text))
+        return date?.formatted(.dateTime.day().month(.abbreviated).hour(.twoDigits(amPM: .omitted)).minute()) ?? text
     }
 
     static func age(_ text: String) -> String {

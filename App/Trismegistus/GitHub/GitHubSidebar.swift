@@ -21,7 +21,10 @@ struct GitHubSidebar: View {
     @State private var repoIssues: GitHubIssueList?
     @State private var repoError: String?
 
-    enum ListKind { case board, open, closed }
+    enum ListKind { case board, open, closed, needsCheck }
+
+    /// A repo's open or closed issue list, which needs a repo chosen.
+    private var isRepoList: Bool { list == .open || list == .closed }
 
     private func matches(_ title: String, _ ref: String) -> Bool {
         let needle = filter.trimmingCharacters(in: .whitespaces)
@@ -33,7 +36,9 @@ struct GitHubSidebar: View {
         // `owner/repo#n` of the issues with a live run.
         let running = Set((model.agents?.agents ?? []).filter(\.alive).compactMap { a in a.repo.flatMap { r in a.issue.map { "\(r)#\($0)" } } })
         VStack(spacing: 0) {
-            SidebarHeader(title: "GitHub // \(github?.board?.openCount ?? 0) open", prompt: "Filter issues", filter: $filter,
+            SidebarHeader(title: list == .needsCheck ? "Needs check // \(github?.board?.needsCheckCount ?? 0)"
+                                                      : "GitHub // \(github?.board?.openCount ?? 0) open",
+                          prompt: "Filter issues", filter: $filter,
                           focus: filterFocus) {
                 if let github {
                     EndfieldButton("Refresh", symbol: Symbol.retry, kind: .quiet, iconOnly: true) { Task { await github.refresh() } }
@@ -50,7 +55,7 @@ struct GitHubSidebar: View {
                     SidebarNote(text: "Not set up on the relay.")
                 } else if github.board == nil {
                     SidebarNote(text: github.error ?? "Loading the board…")
-                } else if list != .board, repoIssues == nil {
+                } else if isRepoList, repoIssues == nil {
                     SidebarNote(text: repoError ?? "Loading…")
                 }
             } else {
@@ -58,7 +63,7 @@ struct GitHubSidebar: View {
             }
             List(selection: $selection) {
                 if let board = github?.board {
-                    if let repo, list != .board, let issues = repoIssues {
+                    if let repo, isRepoList, let issues = repoIssues {
                         let state = list == .closed ? "closed" : "open"
                         SidebarNote(text: issues.total > issues.issues.count
                             ? "\(issues.issues.count) of \(issues.total) \(state), recently updated first" : "\(issues.total) \(state)")
@@ -69,6 +74,8 @@ struct GitHubSidebar: View {
                                      isRunning: running.contains(ref), isSelected: selection == ref)
                                 .tag(ref).sidebarRow()
                         }
+                    } else if list == .needsCheck {
+                        inboxRows(board, running: running)
                     } else {
                         boardRows(board, running: running)
                     }
@@ -76,7 +83,15 @@ struct GitHubSidebar: View {
             }
             .sidebarList()
         }
-        .onChange(of: repo) { if repo == nil { list = .board } }
+        .onChange(of: repo) { if repo == nil, isRepoList { list = .board } }
+        .onChange(of: list) { model.github?.inboxShown = list == .needsCheck }
+        .onAppear { model.github?.inboxShown = false }
+        // The inbox reads each item's comments while it is open; a changed item is read again.
+        .task(id: list == .needsCheck ? inboxSignature : nil) {
+            if list == .needsCheck, let github = model.github, let items = github.board?.needsCheck().flatMap(\.items) {
+                await github.loadNotes(for: items)
+            }
+        }
         .task(id: "\(repo ?? "") \(list)") { await loadRepoIssues() }
     }
 
@@ -97,15 +112,46 @@ struct GitHubSidebar: View {
                     .labelsHidden().pickerStyle(.menu)
                 }
             }
-            if repo != nil {
-                HStack(spacing: 0) {
-                    FilterChip(title: "Board", symbol: "rectangle.split.3x1", isOn: list == .board, fills: true) { list = .board }
-                    FilterChip(title: "Open", symbol: "circle", isOn: list == .open, fills: true) { list = .open }
-                    FilterChip(title: "Closed", symbol: Symbol.check, isOn: list == .closed, fills: true) { list = .closed }
+            HStack(spacing: 0) {
+                TabChip(title: "Board", symbol: "rectangle.split.3x1", isOn: list == .board) { list = .board }
+                // Open and Closed are one repo's issues.
+                if repo != nil {
+                    TabChip(title: "Open", symbol: "circle", isOn: list == .open) { list = .open }
+                    TabChip(title: "Closed", symbol: Symbol.check, isOn: list == .closed) { list = .closed }
                 }
-                // Ink on white: the chips' words don't read on the grey ground.
-                .background(Ink.surface.raised)
-                .overlay(Rectangle().strokeBorder(Ink.line.strong, lineWidth: Stroke.hairline))
+                TabChip(title: "Needs check", symbol: "eye", count: board.needsCheckCount, isOn: list == .needsCheck) { list = .needsCheck }
+            }
+            // Ink on white: the chips' words don't read on the grey ground.
+            .background(Ink.surface.raised)
+            .overlay(Rectangle().strokeBorder(Ink.line.strong, lineWidth: Stroke.hairline))
+        }
+    }
+
+    /// Changes when an inbox item is added or updated.
+    private var inboxSignature: String {
+        (model.github?.board?.items ?? []).filter { GitHubInbox.isNeedsCheck($0.status) }.map { $0.id + $0.updatedAt }.joined(separator: ",")
+    }
+
+    /// Items at Status Needs check, grouped by repo (name without the owner), newest updated first.
+    @ViewBuilder private func inboxRows(_ board: GitHubBoard, running: Set<String>) -> some View {
+        let groups = board.needsCheck(repo: repo, matching: filter)
+        if groups.isEmpty { SidebarNote(text: "Nothing needs your check.").sidebarRow() }
+        ForEach(groups, id: \.repo) { group in
+            HStack(spacing: Space.s) {
+                Text(GitHubInbox.shortName(group.repo)).typeRole(.label)
+                Text("\(group.items.count)").typeRole(.monoSmall)
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(Ink.text.onSidebarSecondary)
+            .padding(.horizontal, Space.l).padding(.top, Space.m).padding(.bottom, Space.xs)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+            .sidebarRow()
+            ForEach(group.items) { item in
+                IssueRow(ref: "#\(item.number)", title: item.title, priority: item.priority, isClosed: item.state == "closed",
+                         isRunning: running.contains(item.id), isSelected: selection == item.id,
+                         caption: model.github?.notes[item.id]?.note?.lines.first)
+                    .tag(item.id).sidebarRow()
             }
         }
     }
@@ -144,7 +190,7 @@ struct GitHubSidebar: View {
     private func loadRepoIssues() async {
         repoIssues = nil
         repoError = nil
-        guard let repo, list != .board, let rest = model.github?.rest else { return }
+        guard let repo, isRepoList, let rest = model.github?.rest else { return }
         do {
             repoIssues = try await rest.githubIssues(repo: repo, state: list == .closed ? "closed" : "open")
         } catch {
@@ -201,6 +247,8 @@ private struct IssueRow: View {
     /// A run is alive on it: a triangle beside the number.
     let isRunning: Bool
     let isSelected: Bool
+    /// The inbox's first "look at" line, one line.
+    var caption: String?
 
     @Environment(\.onSidebar) private var onSidebar
 
@@ -215,11 +263,41 @@ private struct IssueRow: View {
             }
             Text(title).typeRole(.headline).foregroundStyle(ink.title).lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
+            if let caption { Text(caption).typeRole(.caption).foregroundStyle(ink.meta).lineLimit(1) }
         }
         .padding(.horizontal, Space.m).padding(.vertical, Space.s)
         .frame(maxWidth: .infinity, minHeight: Size.row, alignment: .leading)
         .rowGround(isSelected: isSelected)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+/// One of the sidebar's tabs: an icon with an optional count beside it; the name is the tooltip and accessibility
+/// label. `FilterChip`'s look, which spells its word out and is too wide for four tabs.
+private struct TabChip: View {
+    let title: String
+    let symbol: String
+    var count: Int?
+    let isOn: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: Space.s) {
+                Image(systemName: symbol)
+                if let count { Text("\(count)").typeRole(.monoSmall) }
+            }
+            .typeRole(.button)
+            .padding(.horizontal, Space.m).padding(.vertical, Space.s)
+            .frame(maxWidth: .infinity)
+            .foregroundStyle(isOn ? Ink.selection : Ink.text.primary)
+            .background(isOn ? Ink.surface.inverse : .clear)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(title)
+        .accessibilityLabel(count.map { "\(title), \($0)" } ?? title)
+        .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 }

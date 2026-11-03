@@ -13,6 +13,10 @@ final class GitHubModel {
     /// The relay has no GitHub token (or GitHub refused it): the view explains the setup.
     private(set) var notConfigured = false
     let device: DeviceProfile
+    /// The sidebar's Needs check tab is selected: an answered item selects the next one of the inbox.
+    var inboxShown = false
+    /// The "look at" notes of the inbox's items by `owner/repo#n`, with the `updated_at` they were read at (nil: no marker comment).
+    private(set) var notes: [String: (updatedAt: String, note: GitHubInbox.Note?)] = [:]
 
     /// Write controls only for a `manager` device; a viewer, a relay without roles or a failed `/api/me` gets none.
     var isManager: Bool { device.canManage }
@@ -32,6 +36,24 @@ final class GitHubModel {
             guard !Task.isCancelled else { return }
             self.error = GitHubError.describe(error)
             notConfigured = (error as? GitHubError)?.isNotConfigured == true
+        }
+    }
+
+    /// Reads the comments of the items whose note is missing or older than the item, four issues at a time.
+    func loadNotes(for items: [GitHubBoardItem]) async {
+        let todo = items.filter { notes[$0.id]?.updatedAt != $0.updatedAt }
+        for start in stride(from: 0, to: todo.count, by: 4) {
+            guard !Task.isCancelled else { return }
+            let rest = rest
+            await withTaskGroup(of: (id: String, updatedAt: String, note: GitHubInbox.Note?)?.self) { group in
+                for item in todo[start..<min(start + 4, todo.count)] {
+                    group.addTask {
+                        guard let issue = try? await rest.githubIssue(repo: item.repo, number: item.number) else { return nil }
+                        return (item.id, item.updatedAt, GitHubInbox.note(in: issue.comments))
+                    }
+                }
+                for await read in group { if let read { notes[read.id] = (read.updatedAt, read.note) } }
+            }
         }
     }
 }
