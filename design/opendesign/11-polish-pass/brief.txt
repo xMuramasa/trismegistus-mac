@@ -1,0 +1,33 @@
+Prototype: a polish pass on Trismegistus, a native macOS (SwiftUI) control panel for the AI agent "Hermes". Build ONE self-contained index.html that draws the app's main window at exactly 1560x1122 CSS px (macOS points) with all six sections. No device frame, no page around it, no presentation chrome: the window fills the viewport edge to edge.
+
+Navigation: the section icon bar at the sidebar's bottom switches sections, and so does the URL hash: #chat, #github (an open issue), #github-check (the Needs-check inbox with an item selected), #news, #agents, #jobs, #commands. Default #chat. Every hash must render its screen on load (I screenshot each one headless).
+
+ATTACHED: 7 screenshots of the app as it ships today, 1560x1122 at 1x: chat.png, github-issue.png, github-check.png, agents.png, news.png, jobs.png, commands.png. Reuse their real content (conversation titles, messages, issue text, rows, counts, ids) so today vs proposal compares like-for-like. Times are on a 24-hour clock (the screenshots' "01:42" is a bug, read it as 13:42).
+
+GOAL: keep the app's identity and layout, make every screen clearer and more polished. It will be rebuilt in SwiftUI, so everything must be buildable natively: flat fills, 1 px and 0.5 px hairlines, the tokens below; no blur, no glass, no web-only effects, no colours outside the list.
+
+FIXED (the owner decided these; keep them):
+- Light mode only. Fonts: Inter (UI) and JetBrains Mono (data: ids, times, counts, commands), from Google Fonts. This app does NOT use the design system's Space Grotesk / Outfit / Archivo.
+- Top bar 52 px, edge to edge over the sidebar too: steel gradient left to right #666666 -> #35373C -> #191919, text #E9E9E9. Left: macOS traffic lights, sidebar toggle, the TRISMEGISTUS mark. Right edge: green dot + LINKED + host (mono), terminal toggle, settings.
+- Sidebar 304 px: our own flat column on #666666, rows without fills or separators, titles #FFFFFF, meta #E9E9E9; the selected row is a white card with a 1 px yellow #FFFA00 inner border (no left bar) and ink text. Header label like `APP // 10` (label role, uppercase), a filter field, then the list. "macbook · paired" line, then the section icon bar at the bottom: six bare icons (chat bubble, checklist, newspaper, cpu, calendar, terminal), the selected one white with a 2 px yellow bar under it.
+- Detail header: steel band with the title (15/600) and a mono subtitle; under it Endfield's title rule (4 px: magenta #FF1AAC 48 px, yellow #FFFA00 120 px, green #00FFA2 the rest), no hairline.
+- Detail ground: paper #F2F2F2 with a sparse field of + marks and faint contour lines, as in the screenshots.
+- Chat: 700 px column; your messages in white boxes; Hermes' answers as plain text inset 10 px (no bubble, no bar, no box, no markers); labels `YOU // 13:42`, `HERMES // 13:49`.
+- Lists of tool calls / commands are Arknights item cards: orange #E86600 header with white text, white body, a cyan #1FE5E0 / magenta #DA16DC / yellow accent column flush on the right edge, rounded only at the top-right (8 px), outlined by a faint shadow (ink 16%, radius 5, y 1) instead of a stroke, folded by default, 24 px apart.
+- Buttons: square chips, 1 px edge, word then a trailing icon; yellow fill = the single primary action on a screen; obvious actions icon-only (tooltip). Chevrons: a down chevron on a folded item, an up chevron on an open one.
+
+TOKENS (use only these):
+- Colours: paper #F2F2F2, raised #FFFFFF, sunken #E5E5E5, rule #D9D9D9, ink #191919, dark-panel #35373C, secondary #666666, muted #999999, yellow #FFFA00, blue #0040E8 (links), green #00FFA2 (online), magenta #FF1AAC (marker), red #E5332A (errors), border-inactive #C8C8C0, terminal-green #00875A (exit 0), terminal-red #C4271F (failed), ark-orange #E86600, on-steel #E9E9E9, accent-cyan #1FE5E0, accent-magenta #DA16DC. Yellow and magenta are fills and marks, never text on light grounds.
+- Type roles (size/weight): heading 15/700 uppercase tracking 0.6; title 15/600; headline 13/600; body 13/400; callout 12/400; caption 11/400; label 10/600 uppercase tracking 0.8; button 12/600; mono 12/400; mono-small 11/400.
+- Spacing scale only: 2, 4, 8, 12, 16, 20, 24, 32, 40. Rows 52 px (compact 40, tool rows 28), controls 30 px tall, card header 24 px, radius 0 except the card's 8 px corner.
+
+WHAT TO IMPROVE (each seen in the attached screens):
+1. Chat (#chat): Hermes' markdown lists show as plain "- " lines: render real lists (hanging indent, small ink square bullets), bold lead-ins, inline code as sunken mono chips. The bottom stacks three bars (RUN ACTIVE strip, composer, key-hint row): make it one block, the run state inside the composer area (Stop as a red-outline icon button, Steer as the yellow primary while a run is active). The `>_ 2 COMMANDS · 6.7 S` chip and the WORKING line read as one unit.
+2. GitHub issue (#github): `- [ ]` checklists show as text: real checkboxes, a done/total readout (e.g. `3/7`) in the header; the body at a reading width (max 720 px) with section headings; status, priority, tags and agent as one compact readout row; header actions: open-in-browser icon, Start conversation, Dispatch (the yellow primary, play icon).
+3. Needs check (#github-check): keep its parts (3 px yellow top bar, magenta square + NEEDS YOUR CHECK, "from Hermes · 1 Nov 09:48" at the right, the look-at lines, Looks good (yellow) / note field / Not right (red outline, disabled until a note), the explainer line) but make the look-at lines a numbered list with tick boxes the owner can tick while checking.
+4. Agents (#agents): the transcript is a dark wall of raw log: show the run as steps (one row per tool call: tool icon, tool name, its one-line command in mono, duration, status), the final report as a summary card on top, each step's raw output folded under it.
+5. News (#news): fine overall; tighten the sidebar (day heads + rows), give the detail a reading width and clearer section heads.
+6. Jobs (#jobs): the detail is one long mono prompt: schedule as a readout (cadence, next 3 runs, last result with time), the prompt as readable text folded after about 8 lines with "show all", actions (pause, run now, edit) in the header.
+7. Commands (#commands): a wall of identical orange headers, each under a repeated "Swift app ›" link: group by conversation (one head per group with its count), show the command's first line in the folded header, mark failures (exit code in terminal-red), add a compact one-line mode toggle next to the FAILED filter.
+
+Also write CHANGES.md next to index.html: per section, each change in one line with its reason, so it can become a build issue. Keep everything else as in the screenshots.

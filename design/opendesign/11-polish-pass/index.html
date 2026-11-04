@@ -1,0 +1,1355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Trismegistus</title>
+<meta name="viewport" content="width=1560">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* OD-LAYOUT-PRIMITIVES v1 — structure only: display, flex/grid, overflow, wrapping, ratio, geometry.
+   Put this @layer first; product CSS outside the layer wins ordinary layout rules.
+   Native hidden and closed-dialog states take precedence over component display rules. */
+@layer od-layout {
+  [hidden]:not([hidden="until-found" i]) { display: none !important; }
+  dialog:not([open]) { display: none !important; }
+  :where(.od-stack,.od-row,.od-row-top,.od-cluster,.od-grid,.od-field,.od-stat,.od-cell,.od-tile) > :where(*) { min-width: 0; }
+  .od-stack   { display: flex; flex-direction: column; gap: var(--od-gap, 8px); }
+  .od-row     { display: flex; align-items: center; gap: var(--od-gap, 8px); }
+  .od-row-top { display: flex; align-items: flex-start; gap: var(--od-gap, 8px); }
+  .od-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--od-gap, 8px); }
+  .od-fill    { flex: 1 1 0; min-width: 0; }
+  .od-fixed   { flex: none; }
+  .od-grid    { display: grid; gap: var(--od-gap, 12px); grid-template-columns: repeat(var(--od-cols, 3), minmax(0, 1fr)); }
+  .od-stat, .od-field, .od-cell { display: grid; gap: var(--od-gap, 2px); }
+  :where(.od-stat,.od-field,.od-cell) > :where(*) { display: block; }
+  .od-tile { display: grid; grid-template-rows: auto 1fr; }
+  :where(.od-tile) > :where(*) { display: block; }
+  .od-media { display: block; width: 100%; height: auto; aspect-ratio: var(--od-ratio, auto); }
+  .od-media-cover { object-fit: cover; }
+  .od-icon { display: inline-block; inline-size: var(--od-icon-size, 1em); block-size: var(--od-icon-size, 1em); flex: none; }
+  .od-truncate { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .od-clamp-2, .od-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .od-clamp-2 { -webkit-line-clamp: 2; }
+  .od-clamp-3 { -webkit-line-clamp: 3; }
+  .od-lines-2 { min-height: calc(2 * 1.4em); }
+  .od-nowrap  { white-space: nowrap; }
+  .od-keep    { word-break: keep-all; overflow-wrap: anywhere; }
+  .od-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+  .od-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+  .od-rail { display: flex; gap: var(--od-gap, 8px); overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none;
+             padding-inline: var(--od-rail-pad, 16px); scroll-padding-inline: var(--od-rail-pad, 16px); }
+  .od-rail::-webkit-scrollbar { display: none; }
+  :where(.od-rail) > :where(*) { flex: none; scroll-snap-align: start; }
+  :where(.od-rail) > :where(:last-child) { margin-inline-end: var(--od-rail-pad, 16px); }
+  .od-spacer { flex: none; visibility: hidden; pointer-events: none; }
+  .od-touch  { min-width: 44px; min-height: 44px; }
+}
+:root [hidden]:where(:not([hidden="until-found" i])) { display: none; }
+/* /OD-LAYOUT-PRIMITIVES v1 */
+
+/* ── Tokens: every value below maps 1:1 to a SwiftUI token ───────────── */
+:root {
+  --paper:#F2F2F2; --raised:#FFFFFF; --sunken:#E5E5E5; --rule:#D9D9D9; --ink:#191919;
+  --dark-panel:#35373C; --secondary:#666666; --muted:#999999; --yellow:#FFFA00; --blue:#0040E8;
+  --green:#00FFA2; --magenta:#FF1AAC; --red:#E5332A; --border-inactive:#C8C8C0;
+  --terminal-green:#00875A; --terminal-red:#C4271F; --ark-orange:#E86600; --on-steel:#E9E9E9;
+  --accent-cyan:#1FE5E0; --accent-magenta:#DA16DC;
+
+  --s2:2px; --s4:4px; --s8:8px; --s12:12px; --s16:16px; --s20:20px; --s24:24px; --s32:32px; --s40:40px;
+  --row:52px; --row-compact:40px; --row-tool:28px; --control:30px; --card-head:24px; --topbar:52px; --sidebar:304px;
+  --lh-body:18px; --lh-small:16px;
+
+  --sans: Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --steel: linear-gradient(90deg, #666666, #35373C, #191919);
+  --steel-band: linear-gradient(90deg, #35373C, #191919);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--ink); }
+body { font: 400 13px/var(--lh-body) var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; border-radius: 0; }
+button { background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
+button:disabled { cursor: default; }
+h1, h2, h3, h4, p, ul, ol { margin: 0; padding: 0; }
+ul, ol { list-style: none; }
+a { color: var(--blue); text-decoration: none; }
+@media (hover: hover) { a:hover { text-decoration: underline; } }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.topbar :focus-visible, .side :focus-visible, .band :focus-visible { outline-color: var(--yellow); }
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }
+
+/* Type roles */
+.t-heading  { font: 700 15px/20px var(--sans); text-transform: uppercase; letter-spacing: .6px; }
+.t-title    { font: 600 15px/20px var(--sans); }
+.t-headline { font: 600 13px/var(--lh-body) var(--sans); }
+.t-body     { font: 400 13px/var(--lh-body) var(--sans); }
+.t-callout  { font: 400 12px/var(--lh-small) var(--sans); }
+.t-caption  { font: 400 11px/var(--lh-small) var(--sans); }
+.t-label    { font: 600 10px/var(--lh-small) var(--sans); text-transform: uppercase; letter-spacing: .8px; }
+.t-button   { font: 600 12px/var(--lh-small) var(--sans); text-transform: uppercase; letter-spacing: .6px; }
+.t-mono     { font: 400 12px/var(--lh-small) var(--mono); }
+.t-mono-s   { font: 400 11px/var(--lh-small) var(--mono); }
+.c-secondary { color: var(--secondary); }
+
+/* ── Window ──────────────────────────────────────────────────────────── */
+.window { width: 1560px; height: 1122px; display: grid; grid-template-rows: var(--topbar) minmax(0, 1fr); overflow: hidden; background: var(--paper); }
+.columns { display: grid; grid-template-columns: var(--sidebar) minmax(0, 1fr); min-height: 0; }
+.window.no-sidebar .columns { grid-template-columns: 0 minmax(0, 1fr); }
+.window.no-sidebar .side { visibility: hidden; }
+
+/* Top bar */
+.topbar { display: flex; align-items: center; gap: var(--s12); padding: 0 var(--s16) 0 var(--s20); background: var(--steel); color: var(--on-steel); border-bottom: 1px solid var(--ink); }
+.lights { display: flex; gap: var(--s8); margin-right: var(--s20); }
+.lights i { width: 14px; height: 14px; border-radius: 50%; background: var(--dark-panel); border: .5px solid var(--ink); }
+.mark { display: flex; align-items: center; gap: var(--s8); }
+.mark svg { display: block; width: 22px; height: 16px; }
+.mark .word { font: 700 15px/20px var(--sans); letter-spacing: .6px; }
+.link-state { display: flex; align-items: center; gap: var(--s8); margin-left: auto; margin-right: var(--s4); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex: none; }
+.bar-btn { display: grid; place-items: center; width: var(--control); height: var(--control); color: var(--on-steel); border: 1px solid transparent; }
+.bar-btn[aria-pressed="true"] { border-color: var(--on-steel); }
+.bar-btn:disabled { color: var(--muted); }
+@media (hover: hover) { .bar-btn:not(:disabled):hover { border-color: var(--on-steel); } }
+
+/* ── Sidebar ─────────────────────────────────────────────────────────── */
+.side { background: var(--secondary); color: var(--on-steel); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; min-width: 0; overflow: hidden; }
+.side-head { display: flex; align-items: center; justify-content: space-between; height: var(--row); padding: 0 var(--s8) 0 var(--s16); }
+.side-tools { display: grid; gap: var(--s8); padding: 0 var(--s16) var(--s12); }
+.field { display: block; width: 100%; height: var(--control); padding: 0 var(--s12); background: var(--paper); color: var(--ink); border: 1px solid var(--border-inactive); }
+.field::placeholder { color: var(--secondary); opacity: 1; }
+.selects { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: var(--s8); }
+.sel { position: relative; display: block; }
+.sel select { display: block; width: 100%; height: var(--control); padding: 0 var(--s24) 0 var(--s8); appearance: none; -webkit-appearance: none; background: var(--sunken); color: var(--ink); border: 0; cursor: pointer; }
+.sel .od-icon { position: absolute; top: 8px; right: var(--s8); pointer-events: none; color: var(--ink); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; }
+.seg button { display: flex; align-items: center; justify-content: center; gap: var(--s8); height: var(--control); background: var(--raised); color: var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--yellow); }
+.tabs { display: flex; align-items: center; gap: var(--s16); }
+.tabs button { display: flex; align-items: center; gap: var(--s4); height: var(--control); padding: 0 var(--s4); color: var(--on-steel); border-bottom: 2px solid transparent; }
+.tabs button[aria-pressed="true"] { color: #FFFFFF; border-bottom-color: var(--yellow); }
+.tabs .od-icon { --od-icon-size: 16px; }
+
+.side-list { min-height: 0; overflow-y: auto; padding-bottom: var(--s8); }
+.group-head { display: flex; align-items: center; gap: var(--s8); width: 100%; padding: var(--s12) var(--s24) var(--s4); color: var(--on-steel); }
+.group-head .count { font: 400 11px/var(--lh-small) var(--mono); }
+button.group-head .od-icon { order: -1; margin-left: -4px; }
+.row-wrap { position: relative; margin: 0 var(--s8); }
+.row { display: flex; align-items: center; gap: var(--s8); width: 100%; min-height: var(--row); padding: var(--s8) var(--s16); color: #FFFFFF; border: 1px solid transparent; }
+.row.compact { min-height: var(--row-compact); padding-block: var(--s4); }
+.row.sel { background: var(--raised); color: var(--ink); border-color: var(--yellow); }
+.row-main { flex: 1 1 0; min-width: 0; display: grid; gap: var(--s2); }
+.row-title { font: 600 13px/var(--lh-body) var(--sans); }
+.row-meta { display: flex; align-items: center; gap: var(--s8); font: 400 11px/var(--lh-small) var(--mono); color: var(--on-steel); min-width: 0; }
+.row-line { display: block; font: 400 11px/var(--lh-small) var(--mono); color: var(--on-steel); }
+.row-look { display: block; font: 400 11px/var(--lh-small) var(--sans); color: var(--on-steel); }
+.row.sel .row-meta, .row.sel .row-line, .row.sel .row-look { color: var(--secondary); }
+.row-side { flex: none; display: flex; align-items: center; gap: var(--s8); }
+.row-state { font: 600 10px/var(--lh-small) var(--sans); letter-spacing: .8px; text-transform: uppercase; }
+.row.sel .run { color: var(--blue); }
+.row-pin { position: absolute; top: var(--s4); right: var(--s8); display: grid; place-items: center; width: 20px; height: 20px; color: var(--on-steel); opacity: 0; }
+.row-pin.on, .row-wrap:hover .row-pin, .row-pin:focus-visible { opacity: 1; }
+.row-wrap.sel .row-pin { color: var(--ink); }
+.src { display: inline-grid; place-items: center; width: 12px; height: 12px; background: var(--on-steel); color: var(--ink); font: 700 9px/12px var(--sans); flex: none; }
+.row.sel .src { background: var(--ink); color: #FFFFFF; }
+.pri { display: inline-block; padding: 0 var(--s8); background: var(--ink); color: #FFFFFF; font: 600 10px/var(--lh-small) var(--sans); letter-spacing: .8px; }
+.sq { display: inline-block; width: 8px; height: 8px; flex: none; }
+.sq.line { outline: 1px solid var(--ink); outline-offset: -1px; }
+.side-note { padding: var(--s12) var(--s24); font: 400 11px/var(--lh-small) var(--sans); color: var(--on-steel); }
+.side-note.mono { font-family: var(--mono); }
+
+.side-foot { border-top: 1px solid var(--muted); }
+.paired { padding: var(--s8) var(--s16) 0; font: 400 11px/var(--lh-small) var(--mono); color: var(--on-steel); }
+.sections { display: flex; justify-content: space-between; padding: var(--s8) var(--s12) var(--s12); }
+.sections button { display: grid; place-items: center; width: var(--s40); height: var(--s40); color: var(--on-steel); border-bottom: 2px solid transparent; }
+.sections button[aria-current="page"] { color: #FFFFFF; border-bottom-color: var(--yellow); }
+.sections .od-icon { --od-icon-size: 20px; }
+
+/* ── Detail ──────────────────────────────────────────────────────────── */
+.detail { display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--paper); }
+.band { display: flex; align-items: center; gap: var(--s16); min-height: var(--row); padding: var(--s8) var(--s16); background: var(--steel-band); color: var(--on-steel); flex: none; }
+.band-titles { flex: 1 1 0; min-width: 0; display: grid; }
+.band-title { display: flex; align-items: center; gap: var(--s8); color: #FFFFFF; }
+.band-sub { display: block; font: 400 11px/var(--lh-small) var(--mono); color: var(--on-steel); }
+.band-actions { flex: none; display: flex; align-items: center; gap: var(--s8); }
+.band-read { display: flex; align-items: center; gap: var(--s4); font: 400 12px/var(--lh-small) var(--mono); margin-right: var(--s8); color: var(--on-steel); }
+.meter { display: flex; gap: var(--s2); margin-right: var(--s8); }
+.meter i { width: 4px; height: 12px; background: var(--secondary); }
+.meter i.on { background: var(--on-steel); }
+.title-rule { height: 4px; flex: none; display: grid; grid-template-columns: 48px 120px 1fr; }
+.title-rule i:nth-child(1) { background: var(--magenta); }
+.title-rule i:nth-child(2) { background: var(--yellow); }
+.title-rule i:nth-child(3) { background: var(--green); }
+
+.readout { display: flex; align-items: center; gap: var(--s16); min-height: var(--row-compact); padding: 0 var(--s16); background: var(--raised); border-bottom: 1px solid var(--rule); flex: none; }
+.read { display: flex; align-items: center; gap: var(--s8); }
+.read .t-label { color: var(--secondary); }
+.read .sel select { width: 116px; font: 400 12px/var(--lh-small) var(--sans); }
+.read + .read { padding-left: var(--s16); border-left: 1px solid var(--rule); }
+.tag { display: inline-block; padding: 0 var(--s4); background: var(--sunken); color: var(--ink); font: 400 11px/var(--lh-small) var(--mono); white-space: nowrap; }
+
+.body-wrap { position: relative; flex: 1 1 0; min-height: 0; overflow: hidden; }
+.ground { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.scroll { position: relative; height: 100%; overflow-y: auto; overscroll-behavior: contain; padding: var(--s16); }
+.col-700 { width: 700px; max-width: 100%; margin: 0 auto; }
+.col-720 { width: 720px; max-width: 100%; margin: 0 auto; }
+.col-960 { width: 960px; max-width: 100%; margin: 0 auto; }
+.stack-16 { display: grid; gap: var(--s16); }
+.stack-24 { display: grid; gap: var(--s24); }
+.panel { background: var(--raised); border: 1px solid var(--rule); padding: var(--s16); }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: var(--s8); height: var(--control); padding: 0 var(--s12); font: 600 12px/var(--lh-small) var(--sans); text-transform: uppercase; letter-spacing: .6px; white-space: nowrap; border: 1px solid var(--ink); background: var(--raised); color: var(--ink); }
+.btn .od-icon { --od-icon-size: 14px; }
+.btn.primary { background: var(--yellow); border-color: var(--ink); color: var(--ink); }
+.btn.danger { background: var(--raised); border-color: var(--red); color: var(--terminal-red); }
+.btn.steel { background: transparent; border-color: var(--on-steel); color: var(--on-steel); }
+.btn.steel[aria-pressed="true"] { background: var(--raised); color: var(--ink); }
+.btn:disabled { background: var(--sunken); border-color: var(--border-inactive); color: var(--secondary); }
+.btn.steel:disabled { background: var(--dark-panel); border-color: var(--secondary); color: var(--on-steel); }
+.icon-btn { display: inline-grid; place-items: center; width: var(--control); height: var(--control); border: 1px solid var(--border-inactive); background: var(--raised); color: var(--ink); flex: none; }
+.icon-btn.bare { border-color: transparent; background: transparent; }
+.icon-btn.steel { background: transparent; border-color: var(--on-steel); color: var(--on-steel); }
+.icon-btn.danger { border-color: var(--red); color: var(--red); }
+.text-btn { display: inline-flex; align-items: center; gap: var(--s4); height: var(--row-tool); font: 600 12px/var(--lh-small) var(--sans); text-transform: uppercase; letter-spacing: .6px; color: var(--ink); }
+@media (hover: hover) {
+  .btn:not(:disabled):hover { background: var(--sunken); }
+  .btn.primary:not(:disabled):hover { background: var(--ink); color: var(--yellow); }
+  .btn.steel:not(:disabled):not([aria-pressed="true"]):hover { background: var(--dark-panel); }
+  .icon-btn:hover { background: var(--sunken); }
+  .icon-btn.steel:hover { background: var(--dark-panel); }
+  .row:not(.sel):hover { border-color: var(--on-steel); }
+  .sections button:hover { color: #FFFFFF; }
+}
+
+/* Markdown */
+.md { display: grid; gap: var(--s12); }
+.md strong { font-weight: 600; }
+.md p + ul, .md p + ol { margin-top: -8px; }
+.md-h { font: 600 13px/var(--lh-body) var(--sans); }
+.md .md-h + ul, .md .md-h + p { margin-top: -8px; }
+.md li { position: relative; padding-left: var(--s16); }
+.md li + li { margin-top: var(--s2); }
+.md ul > li::before { content: ""; position: absolute; left: 0; top: 7px; width: 4px; height: 4px; background: var(--ink); }
+.md ul ul { margin-top: var(--s2); }
+.md ul ul > li::before { background: var(--raised); outline: 1px solid var(--ink); outline-offset: -1px; }
+.md ol { counter-reset: n; }
+.md ol > li { counter-increment: n; padding-left: var(--s20); }
+.md ol > li::before { content: counter(n); position: absolute; left: 0; top: 0; font: 400 11px/var(--lh-body) var(--mono); color: var(--secondary); }
+.code { padding: 0 var(--s4); background: var(--sunken); font: 400 12px/var(--lh-small) var(--mono); overflow-wrap: anywhere; }
+.md a.url { font: 400 12px/var(--lh-body) var(--mono); }
+.md ul.tasks > li { padding-left: 0; }
+.md ul.tasks > li::before { display: none; }
+.md ul.tasks > li + li { margin-top: var(--s4); }
+.task { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: var(--s8); cursor: pointer; }
+.task.done .task-text { color: var(--secondary); }
+input[type=checkbox] { appearance: none; -webkit-appearance: none; width: 16px; height: 16px; margin: 1px 0 0; background: var(--raised); border: 1px solid var(--ink); cursor: pointer; display: block; }
+input[type=checkbox]:checked { background: var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='%23FFFFFF' stroke-width='1.75'/%3E%3C/svg%3E") center/14px no-repeat; }
+
+/* Item card */
+.cards { display: grid; gap: var(--s24); }
+.card { display: grid; grid-template-columns: minmax(0, 1fr) 12px; background: var(--raised); border-top-right-radius: 8px; box-shadow: 0 1px 5px rgb(25 25 25 / .16); overflow: hidden; }
+.card-head { grid-column: 1; display: flex; align-items: center; gap: var(--s12); width: 100%; height: var(--card-head); padding: 0 var(--s8); background: var(--ark-orange); color: #FFFFFF; font: 400 12px/var(--lh-small) var(--mono); }
+.card-head .first { flex: 1 1 0; min-width: 0; }
+.card-head .t { flex: none; }
+.card-head .tool { flex: none; width: 96px; }
+.card-head .dur { flex: none; }
+.card-body { grid-column: 1; min-width: 0; }
+.card .accent { grid-column: 2; grid-row: 1 / span 2; background: var(--accent-cyan); }
+.card[data-accent="magenta"] .accent { background: var(--accent-magenta); }
+.card[data-accent="yellow"] .accent { background: var(--yellow); }
+.exit { flex: none; padding: 0 var(--s4); background: var(--raised); color: var(--terminal-red); font: 400 11px/var(--lh-small) var(--mono); }
+.raw { display: block; margin: 0; padding: var(--s8) var(--s12); background: var(--paper); font: 400 11px/var(--lh-small) var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
+.raw.fail { color: var(--terminal-red); }
+.card-body .raw { background: var(--raised); }
+.raw-cmd { padding: var(--s8) var(--s12) 0; font: 400 12px/var(--lh-small) var(--mono); overflow-wrap: anywhere; }
+
+/* Tool rows */
+.tool-row { display: grid; grid-template-columns: var(--cols, 16px 48px minmax(0,1fr) 56px 64px 16px); align-items: center; gap: var(--s12); width: 100%; height: var(--row-tool); padding: 0 var(--s12); background: var(--raised); border-top: .5px solid var(--rule); }
+.tool-row.commands { --cols: 72px 112px minmax(0,1fr) 56px 56px 16px; }
+.tool-row .dur { text-align: right; color: var(--secondary); }
+.tool-row .st { display: inline-flex; align-items: center; gap: var(--s4); font: 600 10px/var(--lh-small) var(--sans); letter-spacing: .8px; text-transform: uppercase; }
+.tool-row .st.ok { color: var(--terminal-green); }
+.tool-row .st.fail { color: var(--terminal-red); }
+.tool-list { background: var(--raised); box-shadow: 0 1px 5px rgb(25 25 25 / .16); }
+.say { padding: var(--s8) var(--s12); border-top: .5px solid var(--rule); font: 400 12px/var(--lh-small) var(--sans); color: var(--secondary); }
+@media (hover: hover) { .tool-row:hover { background: var(--paper); } }
+
+/* Chat */
+.msg { display: grid; gap: var(--s4); }
+.msg + .msg { margin-top: var(--s16); }
+.msg-label { color: var(--secondary); }
+.you-box { padding: var(--s12); background: var(--raised); border: 1px solid var(--rule); white-space: pre-wrap; overflow-wrap: anywhere; }
+.hermes { padding-inline: 10px; }
+.work { display: grid; gap: var(--s8); margin-top: var(--s16); }
+.work-line { display: flex; align-items: center; gap: var(--s12); }
+.cmd-chip { display: inline-flex; align-items: center; gap: var(--s8); height: var(--card-head); padding: 0 var(--s8); background: var(--sunken); font: 600 10px/var(--lh-small) var(--sans); letter-spacing: .8px; text-transform: uppercase; }
+.cmd-chip .prompt { font: 400 11px/var(--lh-small) var(--mono); }
+.work-line .readings { color: var(--secondary); }
+.track { position: relative; height: 2px; background: var(--rule); overflow: hidden; }
+.track i { position: absolute; left: 0; top: 0; width: 30%; height: 2px; background: var(--ink); }
+.track i { animation: slide 2.4s ease-in-out infinite alternate; }
+@keyframes slide { to { transform: translateX(233%); } }
+.work .cards { margin-top: var(--s8); margin-bottom: var(--s4); }
+
+.composer { flex: none; background: var(--raised); border-top: 1px solid var(--rule); padding: var(--s12) var(--s16); }
+.run-line { display: flex; align-items: center; gap: var(--s8); min-height: var(--s20); margin-bottom: var(--s8); }
+.run-line .state { display: flex; align-items: center; gap: var(--s8); }
+.run-line .clock { color: var(--secondary); }
+.hints { margin-left: auto; display: flex; align-items: center; gap: var(--s12); color: var(--secondary); }
+.hint { display: flex; align-items: center; gap: var(--s4); }
+.kbd { padding: 0 var(--s4); background: var(--sunken); color: var(--ink); font: 400 11px/var(--lh-small) var(--mono); }
+.input-line { display: flex; align-items: flex-end; gap: var(--s8); }
+.composer textarea { flex: 1 1 0; min-width: 0; display: block; height: var(--control); max-height: 120px; padding: 5px var(--s12); background: var(--raised); color: var(--ink); border: 1px solid var(--ink); resize: none; line-height: var(--lh-body); }
+.composer textarea::placeholder { color: var(--secondary); opacity: 1; }
+.terminal { flex: none; height: 200px; padding: var(--s12) var(--s16); background: var(--dark-panel); color: var(--on-steel); font: 400 12px/var(--lh-body) var(--mono); white-space: pre-wrap; overflow-y: auto; }
+.terminal .p { color: var(--green); }
+
+/* Issues */
+.who { display: flex; align-items: baseline; gap: var(--s8); margin-bottom: var(--s8); }
+.who .t-mono-s { color: var(--secondary); }
+.check { padding-top: var(--s12); border-top: 3px solid var(--yellow); }
+.check-head { display: flex; align-items: center; gap: var(--s8); margin-bottom: var(--s12); }
+.check-head .from { margin-left: auto; color: var(--secondary); }
+.check-intro { margin-bottom: var(--s8); }
+.looks { counter-reset: look; margin-bottom: var(--s16); }
+.look { display: grid; grid-template-columns: 16px 16px minmax(0, 1fr); gap: var(--s8); align-items: start; padding: var(--s4) 0; border-top: .5px solid var(--rule); cursor: pointer; }
+.look:last-child { border-bottom: .5px solid var(--rule); }
+.look .n { font: 400 11px/var(--lh-body) var(--mono); color: var(--secondary); text-align: right; }
+.look.done .look-text { color: var(--secondary); }
+.check-actions { display: flex; align-items: center; gap: var(--s8); margin-bottom: var(--s8); }
+.check-actions .field { flex: 1 1 0; min-width: 0; width: auto; background: var(--sunken); border-color: var(--sunken); }
+.reply { display: grid; gap: var(--s8); }
+.reply textarea { display: block; width: 100%; height: 72px; padding: var(--s12); background: var(--raised); border: 1px solid var(--rule); resize: vertical; }
+.reply textarea::placeholder { color: var(--secondary); opacity: 1; }
+.reply .btn { justify-self: end; }
+.chip { display: inline-block; padding: 0 var(--s4); font: 600 10px/var(--lh-small) var(--sans); letter-spacing: .8px; text-transform: uppercase; white-space: nowrap; flex: none; }
+.chip.warn { background: var(--dark-panel); color: var(--yellow); }
+.chip.neutral { background: var(--sunken); color: var(--secondary); }
+.chip.update { box-shadow: inset 0 0 0 1px var(--blue); color: var(--blue); background: var(--raised); }
+.chip.ok { background: var(--green); color: var(--ink); }
+.chip.err { background: var(--red); color: var(--ink); }
+
+/* News */
+.lead { padding-bottom: var(--s16); }
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: var(--s4); border-bottom: 1px solid var(--ink); }
+.news-sec + .news-sec { margin-top: var(--s24); }
+.story { border-bottom: .5px solid var(--rule); }
+.story:last-child { border-bottom: 0; }
+.story-head { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: var(--s8); width: 100%; padding: var(--s12) 0; align-items: start; }
+.story-head .od-icon { margin-top: 1px; }
+.story-main { display: grid; gap: var(--s4); min-width: 0; }
+.story-main .summary { color: var(--secondary); }
+
+/* Jobs */
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); background: var(--raised); border: 1px solid var(--rule); }
+.stat { display: grid; gap: var(--s4); align-content: start; padding: var(--s12) var(--s16); }
+.stat + .stat { border-left: 1px solid var(--rule); }
+.stat .t-label { color: var(--secondary); }
+.stat .val { display: flex; align-items: center; gap: var(--s8); }
+.prompt-head { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: var(--s4); margin-bottom: var(--s12); border-bottom: 1px solid var(--ink); }
+.prompt-md { --lh-body: 20px; line-height: 20px; gap: var(--s20); overflow: hidden; }
+.prompt-md .code { line-height: 16px; }
+.prompt-md.folded { max-height: 160px; }
+.prompt-md .md-h { line-height: 20px; }
+.prompt-md p + ul, .prompt-md .md-h + ul, .prompt-md .md-h + p { margin-top: 0; }
+.sel.steel select { width: 176px; background: transparent; border: 1px solid var(--on-steel); color: var(--on-steel); font: 400 12px/var(--lh-small) var(--mono); }
+.sel.steel .od-icon { color: var(--on-steel); }
+.sel select option { color: var(--ink); background: var(--raised); }
+.form { display: grid; gap: var(--s12); }
+.form label { display: grid; gap: var(--s4); }
+.form .t-label { color: var(--secondary); }
+.form .pair { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s8); }
+.form input, .form select { display: block; width: 100%; height: var(--control); padding: 0 var(--s12); background: var(--sunken); border: 0; }
+.form input.mono, .form textarea { font: 400 12px/var(--lh-body) var(--mono); }
+.form textarea { display: block; width: 100%; height: 360px; padding: var(--s12); background: var(--raised); border: 1px solid var(--rule); resize: vertical; }
+
+/* Commands */
+.cmd-group + .cmd-group { margin-top: var(--s32); }
+.cmd-head { display: flex; align-items: center; gap: var(--s12); margin-bottom: var(--s12); padding-bottom: var(--s4); border-bottom: 1px solid var(--ink); }
+.cmd-head .to { display: inline-flex; align-items: center; gap: var(--s4); color: var(--blue); }
+.cmd-head .fails { color: var(--terminal-red); }
+.cmd-head .fold { margin-left: auto; display: grid; place-items: center; width: var(--s24); height: var(--s24); }
+.cmd-foot { display: flex; align-items: center; gap: var(--s12); margin-top: var(--s8); color: var(--secondary); }
+
+.empty { display: grid; gap: var(--s4); justify-items: center; padding: var(--s40) var(--s16); text-align: center; color: var(--secondary); }
+.empty .t-label { color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) { .track i { animation: none; } * { scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<div class="window" id="window">
+  <header class="topbar">
+    <div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
+    <button class="bar-btn" data-act="toggle-sidebar" aria-label="Toggle sidebar" title="Toggle sidebar" id="sb-toggle"></button>
+    <div class="mark">
+      <svg viewBox="0 0 22 16" role="img" aria-label="Trismegistus mark"><rect width="16" height="16" fill="#FFFFFF"/><path d="M3 3h10v2.5H9.5V13h-3V5.500H3z" fill="#191919"/><rect x="18" y="4" width="1.500" height="12" fill="#FFFFFF"/><rect x="20.500" y="8" width="1.500" height="8" fill="#FFFFFF"/></svg>
+      <span class="word">TRISMEGISTUS</span>
+    </div>
+    <div class="link-state">
+      <i class="dot" aria-hidden="true"></i>
+      <span class="t-label">Linked</span>
+      <span class="t-mono-s">hermes.lab.x-muramasa.dev</span>
+    </div>
+    <button class="bar-btn" data-act="toggle-terminal" id="term-toggle" aria-label="Toggle terminal" title="Toggle terminal (⌘⌥T)"></button>
+    <button class="bar-btn" id="settings" aria-label="Settings" title="Settings"></button>
+  </header>
+  <div class="columns">
+    <aside class="side" aria-label="Sidebar">
+      <div id="side-top"></div>
+      <div id="side-list" class="side-list"></div>
+      <footer class="side-foot">
+        <div class="paired">macbook · paired</div>
+        <nav class="sections" id="nav" aria-label="Sections"></nav>
+      </footer>
+    </aside>
+    <main class="detail" id="detail"></main>
+  </div>
+</div>
+
+<!-- Markdown sources: reused as-is from the shipping app -->
+<script type="text/plain" id="md-hermes">
+I'm testing through macOS accessibility in the background, so I haven't taken over your screen. That covers structure and text. For screenshots and the typing test I need the window in front, and right now it's tucked in Stage Manager while you're in Chrome.
+
+Checked and working:
+- **#41, sections:** Chat, GitHub, News, Agents, Jobs and Commands each switch and show their list (APP // 10, NEWS // 34, JOBS // 6, COMMANDS // 1748, AGENTS).
+- **#48, chat tabs:** App 10, Telegram 4, Terminal 9, plus the More menu. The App tab shows its running badge.
+- **#49, the inbox:** the eye tab reads NEEDS CHECK // 12, grouped by repo: homelab 1, tablet-kiosk 1, trismegistus 1, trismegistus-android 3, trismegistus-mac 6. Each row has its "look at" line.
+  - The check panel has Looks good, the note field, and Not right, which stays disabled until there's a note. The explainer line is there too.
+  - homelab#1 correctly says "No on-screen notes from Hermes".
+- **#50, runs on issues:** homelab#1 shows its finished run (sonnet · 2 h · done · last progress line). Transcript jumps to Agents with that run selected. Agents rows are titled by issue with repo#N.
+
+Small defects:
+1. The chat header says "run run_ · started 13:42". The run id is cut down to just "run_".
+2. Number formatting differs: "COMMANDS // 1748" in one place, "ALL CONVERSATIONS // 1.748" in another (your locale's thousands dot).
+3. Accessibility labels: some buttons read their label twice ("Start conversation, Start conversation", "Looks good, Looks good", "Transcript, Transcript"), and four buttons in the GitHub list have no label.
+
+Not checked yet:
+- **Visual look:** colours, layout, the panel against the approved design.
+- **#49 Dispatch:** needs an open issue selected, which takes a real click.
+- **#52, composer:** typing about 10 lines to see the chat doesn't blank.
+- **#54, phone messages:** needs a second device, so that one's yours.
+
+I didn't press Looks good on anything, since it posts "Confirmed on screen by Martin" in your name. I left the app on Chat.
+
+If you give me about two minutes I'll bring the window forward and finish the visual checks. I'd type the composer test into a scratch chat, not this one, so nothing gets sent. Say when.
+
+The cua-driver daemon is still running on your Mac. `cua-driver stop` ends it.
+</script>
+
+<script type="text/plain" id="md-issue3">
+From the homelab README "Open items". Add Uptime Kuma monitors for:
+
+## Monitors
+- [ ] `https://ha.lab.x-muramasa.dev` (Home Assistant)
+- [ ] check that the Dozzle monitor points at `logs.lab`
+- [ ] `https://backup.lab.x-muramasa.dev` (Backrest)
+- [ ] `https://stats.lab.x-muramasa.dev/api/health` (Beszel)
+- [ ] `https://memory.lab.x-muramasa.dev/api/health` (Hindsight UI)
+- [ ] `https://sync.lab.x-muramasa.dev/rest/noauth/health` (Syncthing)
+- [ ] `https://news.lab.x-muramasa.dev/healthz` (news-ui) and `/api/feeds` (news-api via Caddy)
+- [ ] `http://horus-eye:8088/healthz` (Claude usage viewer)
+- [ ] `https://hermes.lab.x-muramasa.dev/healthz` (Trismegistus relay)
+
+## How
+Kuma monitors are set up in its UI (no API in use here), so this is a manual pass; Hermes can do it with browser automation if wanted.
+</script>
+
+<script type="text/plain" id="md-issue41">
+Builds the navigation agreed in #40: design `design/ui-draft/09f-sections-secondary-sidebar.png` (Penpot frame 09f). Read #40's "Agreed design" first.
+
+Today Commands, Jobs, GitHub, Agents and News are rows in the window sidebar's conversation list; each opens a view in the detail column, and Jobs and Agents put their own list on top of the selected item. After this, the window has **six sections** with their own lists.
+
+**Delegate:** Claude Code, Opus · **Owns:** `App/Trismegistus/Window/*` (`MainWindow`, `ConversationSidebar`, `ConversationActions` window parts; new files there), the window-facing views in `App/Trismegistus/{Jobs,Agents,GitHub,News,Commands}/` (split each into a sidebar list + a detail; the row views `*RowView` go), the app's menu commands for ⌘1–⌘6 (where `SidebarActions` / the View menu live), `TrismegistusUI` for a reusable `SectionBar` (+ snapshot test) if it fits there, `design/tokens.json` + `Tokens.swift` regenerated with `scripts/gen-tokens.py` (never by hand), `SPEC.md`'s window section. **Not:** the popover (`Popover/*`, its list keeps the News row from #39), the Kit's models, the relay.
+
+## Sections
+Order = icons left to right = ⌘1…⌘6; tooltip "Chat (⌘1)" etc.; SF Symbols, the ones the rows use today, a chat bubble for Chat:
+- [ ] **Chat**: sidebar = the conversations as today (pin, rename, tags, delete, ⌘K filter, new conversation); detail = the conversation + terminal pane as today. The terminal pane only for Chat (as now: nil elsewhere).
+- [ ] **GitHub**: sidebar = the board by status (groups, Done folded) with the repo / priority / list-kind pickers on top (`GITHUB // 27 OPEN`); detail = the selected issue (`GitHubIssueView`, no back button needed; empty state when none).
+- [ ] **News**: sidebar = the editions by day (day headers, one row per edition: feed name + time); detail = the edition (`EditionView` content, stories); reader-unreachable line stays in the detail.
+- [ ] **Agents**: sidebar = the runs (`AGENTS // 1 RUNNING`); detail = `AgentDetail` at full height (no list on top).
+- [ ] **Jobs**: sidebar = the jobs (`JOBS // 6`, + New job); detail = `JobDetail` at full height.
+- [ ] **Commands**: sidebar = "All conversations" then the conversations with commands (filter = search); detail = the log (failed-only toggle in its header).
+- [ ] Opening a conversation from Jobs / GitHub / Agents / a notification switches to Chat with it selected.
+- [ ] Each section keeps its own selection (`@AppStorage: window.section` plus one key per section; Chat keeps `window.selectedSession`). Keyboard: arrows move in every section's list; ⌘K focuses the current section's filter (showing the sidebar first).
+
+## Look (09f)
+- [ ] Sidebar ground secondary. New roles in `tokens.json`: `color.role.surface.sidebar` → `palette.secondary`; `color.role.text.on-sidebar` → `palette.raised` (titles); `color.role.text.on-sidebar-secondary` → `palette.on-steel` (header, meta lines, footer); `color.role.line.on-sidebar` → on-steel at a new `opacity.rule-on-sidebar` 0.24; `color.role.icon.on-sidebar` → `palette.rule`. The selected row keeps today's white card with the yellow outline and ink text; the filter field stays light.
+</script>
+
+<script type="text/plain" id="md-report">
+The three source edits for the Trismegistus tile are in, but the build never ran, so `custom.css` is stale. Every `python3` call was refused with "requires approval", so I ran no tests and haven't confirmed the build prints `11 tiles`. I also haven't confirmed that `services.yaml` parses. I left the generated `custom.css` alone rather than hand-edit it.
+
+- **`services.yaml`:** the `Trismegistus` entry is last in `Infrastructure`, as specced.
+- **`build.py`:** I added the `Trismegistus` line to `SERVICES` and set Claude Usage's wide flag to `False`, so I didn't use the flip option.
+- **`icons.json`:** I added `cellphone-link` in sorted position, before `chart-line`, and kept the file on one line.
+
+**For you to do:** run `python3 apps/homepage/theme/build.py` in the worktree, then the YAML parse, then check that the `custom.css` diff covers only the new tile, the icon variable and Claude Usage's span. The report spells this out.
+
+I haven't looked at the 1280x800 layout or the 4-row claim. The Kuma monitor stays on homelab#3, as the issue says.
+
+The report is in `/home/muramasa/.local/state/hermes-runs/homelab-issue-1-report.md`.
+</script>
+
+<script type="text/plain" id="md-prompt">
+Produce a daily AI news digest for a personal news reader (a web app, plus a short notice in Telegram), covering the last ~24 hours (since the previous edition). Use web_search and web_extract to find and verify real, dated news from reputable sources (official lab blogs, arXiv, The Verge, Ars Technica, TechCrunch, Reuters, The Information, Hugging Face, GitHub trending, etc.). Only include items published in the last ~24 hours; verify dates. Never invent items or links.
+
+Your previous edition (JSON) may be provided via continuity. Avoid repeating stories already covered unless there is a significant update, which you mark as an update (see CONTINUITY below).
+
+Keep the digest short: about 5-10 stories in total, one or two sentences each. On a quiet day fewer is fine. The old digest sections map onto the JSON sections: Top stories → `top`, Model & product releases → `release`, Open-source & local AI → `open_source`, Research highlights → `research`, Industry, funding & policy → `industry`.
+
+## OUTPUT: one JSON object (news-edition/v1)
+
+Your final answer is exactly one JSON object and nothing else: no Markdown, no code fences, no text before or after it. A reader app validates and stores it, and sends a short notice to Telegram. If there is genuinely nothing new to report, answer exactly `[SILENT]` instead (nothing else).
+
+Every text field is plain text: no Markdown, no HTML, no links inside text (links go in `sources`). Write in English.
+
+- Keep it tight: the whole edition should read in a few minutes. Skip empty sections.
+
+### Edition fields
+
+- `schema`: `"news-edition/v1"`
+- `feed`: `"ai"`
+- `edition_date`: today's date in Santiago, YYYY-MM-DD
+- `title`: e.g. `AI daily — 19 October 2026` (max 200 characters)
+- `lead`: one sentence on the biggest story (max 600)
+- `language`: `"en"`
+- `stories`: 1-40 stories, in reading order (fields below)
+- `gaps`: short lines on coverage gaps, only if something failed (failed feeds, "based on search snippets"); `[]` otherwise (max 10)
+
+### Story fields
+
+Include every field; use null or [] when there is nothing to say.
+
+- `slug`: kebab-case id (a-z, 0-9, single hyphens; max 80), unique within the edition
+- `section`: one of the sections below; `rank`: 1, 2, 3… within the section, most important first
+- `headline`: max 200 characters
+</script>
+
+<script>
+/* ── Icons: one 1.75 px square-cap family, stands in for SF Symbols ───── */
+const I = {
+  chat:'<path d="M4 5h16v12h-9l-4 3v-3H4z"/>',
+  checklist:'<path d="M4 6l1.500 1.500L8 5M4 16l1.500 1.500L8 15M11 6.500h9M11 16.500h9"/>',
+  news:'<path d="M4 5h13v14H4zM17 9h3v10h-3M7 9h7M7 12.500h7M7 16h4"/>',
+  cpu:'<path d="M7 7h10v10H7zM10 10h4v4h-4zM10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4"/>',
+  calendar:'<path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M8 14h2M14 14h2"/>',
+  terminal:'<path d="M3 5h18v14H3zM7 9l3 3-3 3M13 15h4"/>',
+  sidebar:'<path d="M3 5h18v14H3zM9 5v14"/>',
+  settings:'<path d="M3 7h10M17 7h4M3 17h4M11 17h10M13 5h4v4h-4zM7 15h4v4H7z"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  refresh:'<path d="M19 12a7 7 0 1 1-2-5M17 3v4h-4"/>',
+  pin:'<path d="M9 4h6l-1 6 3 4H7l3-4zM12 14v6"/>',
+  attach:'<path d="M18 11l-6.500 6.500a4 4 0 0 1-6-6L13 4a2.700 2.700 0 0 1 4 4l-7.500 7.500a1.300 1.300 0 0 1-2-2L14 7"/>',
+  stop:'<rect x="7" y="7" width="10" height="10" fill="currentColor" stroke="none"/>',
+  arrow:'<path d="M4 12h15M13 6l6 6-6 6"/>',
+  up:'<path d="M12 20V5M6 11l6-6 6 6"/>',
+  open:'<path d="M7 17L17 7M9 7h8v8"/>',
+  play:'<path d="M7 5l12 7-12 7z" fill="currentColor" stroke="none"/>',
+  pause:'<path d="M8 5h3v14H8zM14 5h3v14h-3z" fill="currentColor" stroke="none"/>',
+  pencil:'<path d="M4 20l1-5L16 4l4 4L9 19zM13.500 6.500l4 4"/>',
+  check:'<path d="M5 13l4 4 10-11"/>',
+  x:'<path d="M6 6l12 12M18 6L6 18"/>',
+  chevD:'<path d="M6 9l6 6 6-6"/>',
+  chevU:'<path d="M6 15l6-6 6 6"/>',
+  chevR:'<path d="M9 6l6 6-6 6"/>',
+  eye:'<path d="M2 12s4-6.500 10-6.500S22 12 22 12s-4 6.500-10 6.500S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  board:'<path d="M4 5h16v14H4zM9.300 5v14M14.700 5v14"/>',
+  warn:'<path d="M12 4l9 16H3zM12 10v5M12 17v1"/>',
+  lines:'<path d="M4 6h16M4 10h16M4 14h16M4 18h16"/>',
+  msg:'<path d="M3 4h13v9H8l-3 3v-3H3zM19 9h2v9h-2v3l-3-3h-6v-2"/>',
+  send:'<path d="M12 20V5M6 11l6-6 6 6"/>',
+  file:'<path d="M6 3h8l4 4v14H6zM14 3v4h4M12 11v6M9 14h6"/>',
+  search:'<circle cx="11" cy="11" r="6"/><path d="M16 16l5 5"/>',
+  back:'<path d="M9 7L4 12l5 5M4 12h12a4 4 0 0 1 0 8h-2"/>',
+  checkc:'<circle cx="12" cy="12" r="9"/><path d="M8 12.500l3 3 5-6"/>',
+  send2:'<path d="M4 12h15M13 6l6 6-6 6"/>',
+  more:'<path d="M5 12h.5M12 12h.5M19 12h.5"/>',
+};
+const icon = (n, s) => `<svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true" style="--od-icon-size:${s || 16}px">${I[n]}</svg>`;
+const chev = (open, s) => icon(open ? 'chevU' : 'chevD', s || 14);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const src = id => document.getElementById('md-' + id).textContent.trim();
+
+/* ── Content: real values from the shipping screenshots ───────────────── */
+const CONVS = [
+  { id:'swift', title:'Swift app', when:'now', pinned:true, sub:'Trismegistus · run run_ · started 13:52' },
+  { id:'trismegistus', title:'Trismegistus', when:'1 h', pinned:true },
+  { id:'android', title:'Android app', when:'2 h', pinned:true },
+  { id:'workflow', title:'Workflow refiner', when:'2 d', pinned:true },
+  { id:'compare', title:'Compare Open Design vs Penpot', when:'5 min' },
+  { id:'homelab1', title:'xMuramasa/homelab#1: Add the Trismegistus relay tile to Homepage', when:'1 h' },
+  { id:'homepage', title:'Homepage project', when:'2 h' },
+  { id:'briefing', title:'The briefing project', when:'yesterday' },
+  { id:'magesys', title:'MAGE-SYS', when:'2 d' },
+  { id:'infra', title:'Homelab infra research', when:'2 d' },
+];
+const CHAT_TABS = [
+  { id:'app', label:'App', count:10, icon:'chat' },
+  { id:'telegram', label:'Telegram', count:4, icon:'send2' },
+  { id:'terminal', label:'Terminal', count:9, icon:'terminal' },
+];
+
+const mk = (repo, n, p, title, x = {}) => ({ id:`${repo}#${n}`, repo, n, p, title, status:'Todo', state:'open', comments:[], ...x });
+const BOARD = [
+  mk('homelab', 3, 'P1', 'Uptime Kuma monitors for the remaining services', { body:'issue3', tags:['area: monitoring'], age:'8 d' }),
+  mk('homelab', 4, 'P1', 'Beszel alerts: memory > 85%, disk > 80%, system down'),
+  mk('homelab', 5, 'P2', 'Optional: router DHCP DNS → AdGuard (192.168.100.76), 1.1.1.1 secondary'),
+  mk('homelab', 6, 'P2', 'Syncthing: pair the phone (S21 FE) for the Obsidian vault'),
+  mk('mage-sys', 5, 'P2', 'Phase 4: blind verification, escalation and the Hermes tool'),
+  mk('mage-sys', 6, 'P2', 'Phase 5: council console UI'),
+  mk('mage-sys', 7, 'P2', 'Phase 6: evaluation and hardening'),
+  mk('mage-sys', 17, 'P2', 'Collect ~30 past decisions with known right answers (phase 6 test set)'),
+  mk('mage-sys', 18, 'P2', 'Console: two or three visual directions to choose from'),
+  mk('mage-sys', 19, 'P2', 'Learned per-seat weights from track record'),
+  mk('mage-sys', 12, 'P2', 'Usage guard: check the Claude limit before a run'),
+  mk('mage-sys', 13, 'P2', 'GPT seats via the Codex CLI (ChatGPT Plus)'),
+];
+const ck = (repo, n, p, title, x = {}) => mk(repo, n, p, title, { status:'Needs check', state:'closed', ...x });
+const INBOX = [
+  ck('homelab', 1, 'P2', 'Add the Trismegistus relay tile to Homepage', { look:[], lookNone:true }),
+  ck('tablet-kiosk', 2, 'P1', 'App: full-screen WebView with a pull-down navigation bar, self-recovery, pinned to the tablet'),
+  ck('trismegistus', 27, 'P1', "Agents helper: read runs from ~/.local/state/hermes-runs and name each run's issue"),
+  ck('trismegistus-android', 8, 'P1', "Messages sent from another device don't show in an open conversation (phone)"),
+  ck('trismegistus-android', 7, 'P1', 'Composer: attach, camera and send in one row with the text field'),
+  ck('trismegistus-android', 4, 'P1', 'Phase 2: the app: theme, navigation, pairing, Chat, approvals, settings'),
+  ck('trismegistus-mac', 54, 'P1', "Messages sent from another device don't show in an open conversation (mac)"),
+  ck('trismegistus-mac', 49, 'P1', 'GitHub view: Dispatch button and a Needs-check inbox', { lookLine:'(after trismegistus-open) GitHub → the eye tab: the rows, the panel, Dispatch', look:['(after trismegistus-open) GitHub → the eye tab: the rows, the panel, Dispatch'] }),
+  ck('trismegistus-mac', 50, 'P2', 'GitHub view: show the live run on its issue (transcript, Stop)', { lookLine:'open GitHub, issue #50 or trismegistus#27: a finished run', look:['open GitHub, issue #50 or trismegistus#27: a finished run'] }),
+  ck('trismegistus-mac', 52, 'P1', 'App: the chat goes blank while the multi-line composer grows'),
+  ck('trismegistus-mac', 48, 'P1', 'Chat tabs: App, Telegram, Terminal and a More menu'),
+  ck('trismegistus-mac', 41, 'P1', "App: six sections (Chat, GitHub, News, Agents, Jobs, Commands) with an icon bar at the sidebar's bottom on a secondary ground (#40, 09f)", {
+    body:'issue41', tags:['area: app', 'agent: opus'], agent:'opus', age:'2 d',
+    from:'from Hermes · 1 Nov 09:48',
+    lookIntro:"the report's nine checks; the main ones are:",
+    look:['the grey sidebar against 09f', '⌘1–⌘6 / the icons', "each section's list + detail", 'open-a-conversation from Jobs/Agents/GitHub/Commands landing in Chat', 'no width jitter on sidebar/terminal toggles (#28)'],
+  }),
+];
+const ISSUES = [...BOARD, ...INBOX];
+const REPO_ORDER = ['homelab', 'tablet-kiosk', 'trismegistus', 'trismegistus-android', 'trismegistus-mac'];
+
+const FEEDS = { Chile:{ key:'chile', c:'var(--red)' }, Cyber:{ key:'cyber', c:'var(--yellow)' }, AI:{ key:'ai', c:'var(--magenta)' } };
+const ed = (day, date, feed, time) => ({ id:`${feed}-${date.replace(/\W+/g, '')}`, day, date, feed, time,
+  title: feed === 'AI' ? `AI daily — ${date}` : `${feed} — ${day.split(',')[0][0] + day.split(',')[0].slice(1).toLowerCase()}, ${date}` });
+const D = { w:'WEDNESDAY, 4 NOVEMBER', tu:'TUESDAY, 3 NOVEMBER', m:'MONDAY, 2 NOVEMBER', su:'SUNDAY, 1 NOVEMBER', sa:'SATURDAY, 31 OCTOBER' };
+const EDITIONS = [
+  ed(D.w,'4 November 2026','Chile','03:12'), ed(D.w,'4 November 2026','Cyber','03:12'), ed(D.w,'4 November 2026','AI','03:04'),
+  ed(D.tu,'3 November 2026','Chile','03:11'), ed(D.tu,'3 November 2026','Cyber','03:07'), ed(D.tu,'3 November 2026','AI','03:06'),
+  ed(D.m,'2 November 2026','Cyber','03:23'), ed(D.m,'2 November 2026','Chile','03:08'), ed(D.m,'2 November 2026','AI','03:05'),
+  ed(D.su,'1 November 2026','Chile','03:11'), ed(D.su,'1 November 2026','AI','03:06'),
+  ed(D.sa,'31 October 2026','Cyber','03:19'), ed(D.sa,'31 October 2026','Chile','03:10'), ed(D.sa,'31 October 2026','AI','03:07'),
+];
+const CYBER_LEAD = "Canonical's CVSS 10.0 authentication bypass in LXD and MicroCloud (CVE-2026-112816), fixed 29 Oct with public PoC material, is the top story, and the most urgent host action is the Ubuntu brotli update for the KEV-listed CVE-2026-111497.";
+const CYBER = [
+  { head:'Patch now', stories:[
+    { h:'Brotli CVE-2026-111497: Ubuntu 26.04 packages fixed since 26 Oct; apt upgrade covers the host, while Node, Bun and Python builds still need bumps', cve:'CVE-2026-111497', s:"Ubuntu's security tracker lists the 26.04 fix as brotli, libbrotli1 and python3-brotli 1.2.0-3ubuntu0…", tag:'update' },
+    { h:'CVE-2026-97229: Alpine Linux rebuilt its GitLab after exploit attempts on 20-21 Oct; CISA lists the CVSS 10.0 flaw as exploited', cve:'CVE-2026-97229', s:'Alpine Linux says an attacker tried to exploit CVE-2026-97229, an unauthenticated code-execution flaw i…' },
+  ]},
+  { head:'Top stories', stories:[
+    { h:'CVE-2026-112816: LXD and MicroCloud authentication bypass rated CVSS 10.0 lets an attacker impersonate trusted clients; fixed 29 Oct', cve:'CVE-2026-112816', s:'Canonical fixed CVE-2026-112816 in LXD and MicroCloud, with fixed releases dated 29 Oct. The HTTPS A…' },
+    { h:'Polymarket: about $2.7M drained from roughly 700 traders via a hijacked DebugBear monitoring script on 29 Oct', s:"On 29 Oct, malicious JavaScript served through DebugBear's real-user-monitoring snippet on Polymarket…" },
+    { h:"FBI attributes the Binance theft of about $6 billion on 29 Oct to North Korea's TraderTraitor and lists hundreds of addresses to block", s:'On 31 Oct the FBI, with the USSS and IRS-CI, attributed the theft from Binance on or about 29 Oct to Trade…' },
+    { h:"Hugging Face: malicious 'Qwen2 test' models returned after takedown and run crypto miners and reverse shells when trust_remote_code is enabled", s:'Pluto Security reported 31 malicious repositories across seven Hugging Face accounts, published…', tag:'mixed' },
+  ]},
+  { head:'Your stack', stories:[
+    { h:"npm 'testmetest' worm (Miasma family) hijacked 42 GitHub repos and plants hooks for AI coding tools; its wiper fires when a stolen GitHub token is revoked", s:'JFrog reported on 26 Oct that a self-replicating npm worm, first flagged by SafeDep as a test, had…', tag:'mixed' },
+    { h:'CVE-2026-114409: Docker Desktop before 4.97.0 wrote third-party API keys and OAuth tokens into logs and diagnostics bundles', cve:'CVE-2026-114409', s:'Docker fixed CVE-2026-114409 in Docker Desktop 4.97.0, released 26 Oct. Before that version, third-part…' },
+    { h:"Fragnesia (CVE-2026-46300): Linux kernel root flaw in CISA KEV; optiplex runs 7.0.0-38-generic, past Ubuntu's 7.0.0-22.22 fix", cve:'CVE-2026-46300', s:"CISA added CVE-2026-46300 (Fragnesia), a local privilege-escalation flaw in the Linux kernel's XFRM ES…" },
+  ]},
+  { head:'Research & threat intel', stories:[
+    { h:'Kaspersky: NetamLoader framework hit one government-only Windows 10 build in Asia through a supply-chain route; no known APT attribution', s:'Kaspersky GReAT described NetamLoader, a previously undocumented .NET and XAML loader hidden in…' },
+    { h:'Unit 42 update: PHP2Shell is being used against exposed PAN-OS management interfaces, chained with a Linux kernel bug to reach root', s:'', tag:'mixed' },
+  ]},
+];
+
+const AGENTS = [
+  { id:'homelab-issue-1', title:'Add the Trismegistus relay tile to Homepage', ref:'homelab#1', ended:'ended 3 h ago', last:'11:07 item 4 build + yaml parse BLOCKED', meta:'done · homelab#1 · delegate · ended 3 h ago · 14 turns · 53 s · /home/muramasa/Projects/homelab-wt/issue-1', report:true },
+  { id:'trismegistus-mac-issue-49', title:'GitHub view: Dispatch button and a Needs-check inbox', ref:'trismegistus-mac#49', ended:'ended 1 d ago', last:'11:50 App: Dispatch button/info mark,…', meta:'done · trismegistus-mac#49 · delegate · ended 1 d ago' },
+  { id:'trismegistus-mac-issue-50', title:'GitHub view: show the live run on its issue (transcript, Stop)', ref:'trismegistus-mac#50', ended:'ended 1 d ago', last:'15:54 items 1-3 (issue view run row+ma…', meta:'done · trismegistus-mac#50 · delegate · ended 1 d ago' },
+  { id:'trismegistus-issue-27', title:'Agents helper: read runs from ~/.local/state/hermes-runs', ref:'trismegistus#27', ended:'ended 2 d ago', last:'items 1-5 done; agents tests pass (Tes…', meta:'done · trismegistus#27 · delegate · ended 2 d ago' },
+];
+const WT = '/home/muramasa/Projects/homelab-wt/issue-1/';
+const STEPS = [
+  { tool:'Grep', icon:'search', cmd:'"sync|triangle|vector-square" apps/homepage/theme/icons.json', dur:'0.1 s', ok:true, raw:'1:"sync": "\n1:"triangle": "\n1:"vector-square": "' },
+  { tool:'Edit', icon:'pencil', cmd:'apps/homepage/theme/icons.json', dur:'0.1 s', ok:true, raw:`The file ${WT}apps/homepage/theme/icons.json has been updated successfully.` },
+  { tool:'Edit', icon:'pencil', cmd:'apps/homepage/theme/build.py', dur:'0.1 s', ok:true, raw:`The file ${WT}apps/homepage/theme/build.py has been updated successfully.` },
+  { tool:'Edit', icon:'pencil', cmd:'apps/homepage/services.yaml', dur:'0.1 s', ok:true, raw:`The file ${WT}apps/homepage/services.yaml has been updated successfully.` },
+  { say:"Edits to the three source files are in. Now I'm running the build and checking the YAML and the custom.css diff." },
+  { tool:'Bash', icon:'terminal', cmd:'python3 apps/homepage/theme/build.py && python3 -c "import yaml,sys; yaml.safe_load(open(sys.argv[1]))" apps/homepage/services.yaml && echo yaml-ok; git diff --stat; git diff -U0 apps/homepage/custom.css', dur:'0.2 s', ok:false, raw:'This Bash command contains multiple operations. The following part requires approval: python3 apps/homepage/theme/build.py && python3 -c "import yaml,sys; yaml.safe_load(open(sys.argv[1]))" apps/homepage/services.yaml && echo yaml-ok; git diff --stat; git diff -U0 apps/homepage/custom.css' },
+  { say:"Compound commands need approval, so I'll run them one at a time." },
+  { tool:'Bash', icon:'terminal', cmd:'python3 apps/homepage/theme/build.py', dur:'0.1 s', ok:false, raw:'This command requires approval' },
+  { tool:'Bash', icon:'terminal', cmd:'python3 -c "import yaml,sys; yaml.safe_load(open(sys.argv[1]))" apps/homepage/services.yaml', dur:'0.1 s', ok:false, raw:'This command requires approval' },
+  { say:"The sandbox won't let me run the build or the YAML check. custom.css is generated and must not be hand-edited, so I'm leaving it alone and recording that in the progress file and report." },
+  { tool:'Bash', icon:'terminal', cmd:'date +%H:%M', dur:'0.1 s', ok:true, raw:'11:07' },
+  { tool:'Write', icon:'file', cmd:'~/.local/state/hermes-runs/homelab-issue-1-progress.md', dur:'0.1 s', ok:true, raw:'File created successfully at: /home/muramasa/.local/state/hermes-runs/homelab-issue-1-progress.md (file state is current in your context — no need to Read it back)' },
+  { tool:'Write', icon:'file', cmd:'~/.local/state/hermes-runs/homelab-issue-1-report.md', dur:'0.1 s', ok:true, raw:'File created successfully at: /home/muramasa/.local/state/hermes-runs/homelab-issue-1-report.md (file state is current in your context — no need to Read it back)' },
+];
+
+const D3 = h => [`Thu 5 Nov ${h}`, `Fri 6 Nov ${h}`, `Sat 7 Nov ${h}`];
+const JOBS = [
+  { id:'ai', name:'Daily AI news feed', cad:'Daily at 03:00', short:'daily 03:00', cron:'0 3 * * *', next:'13 h', ago:'10 h', at:'Wed 4 Nov 03:00', runs:D3('03:00'), prompt:'prompt' },
+  { id:'chile', name:'Daily Chile news feed', cad:'Daily at 03:00', short:'daily 03:00', cron:'0 3 * * *', next:'13 h', ago:'10 h', at:'Wed 4 Nov 03:00', runs:D3('03:00') },
+  { id:'cyber', name:'Daily cyber news feed', cad:'Daily at 03:00', short:'daily 03:00', cron:'0 3 * * *', next:'13 h', ago:'10 h', at:'Wed 4 Nov 03:00', runs:D3('03:00') },
+  { id:'publisher', name:'News publisher', cad:'Every 5 minutes', short:'every 5m', cron:'*/5 * * * *', next:'3 min', ago:'1 min', at:'Wed 4 Nov 14:01', runs:['Wed 4 Nov 14:05', 'Wed 4 Nov 14:10', 'Wed 4 Nov 14:15'] },
+  { id:'reminder', name:'Reminder: medical reimbursement', cad:'Once at 2026-10-29 19:00', short:'once 2026-10-29 19:00', cron:'once', ago:'5 d', at:'Thu 29 Oct 19:00', runs:[], paused:true },
+  { id:'cleanup', name:'News runs cleanup', cad:'Daily at 04:00', short:'daily 04:00', cron:'0 4 * * *', next:'14 h', ago:'10 h', at:'Wed 4 Nov 04:00', runs:D3('04:00') },
+];
+
+const CMD_CONVS = [
+  ['swift','Swift app',69], ['compare','Compare Open Design vs Penpot',66], ['homelab1','xMuramasa/homelab#1: Add the Trismegistus relay tile to Homepage',80],
+  ['trismegistus','Trismegistus',76], ['resume','Resume previous run after limit',61], ['homepage','Homepage project',105], ['android','Android app',156],
+  ['briefing','The briefing project',251], ['magesys','MAGE-SYS',67], ['workflow','Workflow refiner',106], ['infra','Homelab infra research',4],
+  ['mega','Homelab mega-thread (Telegram, Obsidian)',214], ['arch','Arch Linux Arknights Endfield UI theme',115],
+  ['services','Identify redundant services to disable',84], ['optiplex','Explore uses for OptiPlex machine',85], ['timezone','Change timezone from UTC to America/Santiago',8],
+];
+const c = (t, tool, dur, first, exit, out) => ({ t, tool, dur, first, exit: exit || 0, out: out || '' });
+const CMDS = {
+  swift: [
+    c('14:03:04','terminal',null,'cua-driver screenshot --window Trismegistus --out /tmp/tm-commands.png',0,'saved /tmp/tm-commands.png (1560×1122)'),
+    c('14:02:57','vision_analyze','0.1 s','/tmp/tm-jobs.png: does the prompt column match the approved design?',0,'Prompt column present; schedule fields in the expected order.'),
+    c('14:02:24','terminal','29.1 s','cua-driver click --window Trismegistus --label "Jobs (⌘5)" && cua-driver wait-idle',0,'clicked; idle after 29.0 s'),
+    c('14:01:30','terminal','38.7 s','cua-driver click --window Trismegistus --label "News (⌘3)" && cua-driver wait-idle',0,'clicked; idle after 38.6 s'),
+    c('14:01:30','terminal','0.1 s','cua-driver list-windows --app Trismegistus',0,'Trismegistus  1560×1122  frontmost'),
+    c('14:01:18','terminal','0.5 s','cua-driver focus --app Trismegistus --space 2',1,'error: window is tucked in Stage Manager; bring it forward first'),
+    c('14:01:07','terminal','2.7 s','cua-driver focus --app Trismegistus',0,'focused'),
+    c('14:00:57','vision_analyze','0.3 s','/tmp/tm-agents.png: is the run list readable at 1560×1122?',0,'Run rows readable; titles truncated at the right edge.'),
+    c('14:00:57','vision_analyze','0.2 s','/tmp/tm-github.png: is the status picker aligned with priority?',0,'Aligned.'),
+    c('13:59:35','vision_analyze',null,'/tmp/tm-chat.png: do the three bottom bars read as one block?',0,'No: run strip, composer and key hints read as separate bars.'),
+    c('13:59:03','terminal','26.1 s','cua-driver click --window Trismegistus --label "Agents (⌘4)" && cua-driver wait-idle',0,'clicked; idle after 26.0 s'),
+    c('13:58:34','terminal','20.3 s','cua-driver click --window Trismegistus --label "GitHub (⌘2)" && cua-driver wait-idle',0,'clicked; idle after 20.2 s'),
+    c('13:58:15','terminal','12.5 s','cua-driver type --window Trismegistus --field "Steer this run" --text "scratch"',2,'error: field not found in the frontmost window'),
+    c('13:57:38','terminal','33.0 s','cua-driver screenshot --window Trismegistus --out /tmp/tm-chat.png',0,'saved /tmp/tm-chat.png (1560×1122)'),
+    c('13:57:26','vision_analyze',null,'/tmp/tm-start.png: which section is showing?',0,'Chat, conversation Swift app.'),
+  ],
+  compare: [
+    c('13:41:12','terminal','1.8 s','git -C ~/Projects/open-design log --oneline -5',0,'5 commits listed'),
+    c('13:40:58','terminal','0.6 s','rg -n "design system" ~/Projects/open-design/README.md | head -20',0,'12 matches'),
+    c('13:39:20','web_extract','4.2 s','https://penpot.app/',0,'page extracted'),
+  ],
+  homelab1: [
+    c('11:06:48','terminal','0.1 s','python3 apps/homepage/theme/build.py',1,'This command requires approval'),
+    c('11:06:47','terminal','0.1 s','python3 -c "import yaml,sys; yaml.safe_load(open(sys.argv[1]))" apps/homepage/services.yaml',1,'This command requires approval'),
+    c('11:06:55','terminal','0.1 s','date +%H:%M',0,'11:07'),
+  ],
+  trismegistus: [
+    c('12:44:31','terminal','47.3 s','swift build --package-path ~/Projects/trismegistus-mac',0,'Build complete! (47.21s)'),
+    c('12:43:02','terminal','18.9 s','swift test --package-path ~/Projects/trismegistus-mac --filter SectionBar',1,'1 test failed: SectionBarSnapshotTests.testSelectedState'),
+    c('12:41:40','terminal','0.3 s','python3 scripts/gen-tokens.py',0,'wrote Tokens.swift'),
+  ],
+};
+const accentOf = tool => tool === 'terminal' ? 'cyan' : tool === 'vision_analyze' ? 'magenta' : 'yellow';
+Object.values(CMDS).forEach(rows => rows.sort((a, b) => a.t < b.t ? 1 : a.t > b.t ? -1 : 0));
+
+/* ── Markdown: lists, task lists, bold lead-ins, code chips ───────────── */
+const inline = t => t.split(/(\*\*[^*]+\*\*|`[^`]+`)/).map(p => {
+  if (p.length > 4 && p.startsWith('**') && p.endsWith('**')) return `<strong>${inline(p.slice(2, -2))}</strong>`;
+  if (p.length > 2 && p.startsWith('`') && p.endsWith('`')) {
+    const v = p.slice(1, -1);
+    return /^https?:\/\//.test(v)
+      ? `<a class="url" href="${esc(v)}" target="_blank" rel="noopener">${esc(v)}</a>`
+      : `<code class="code">${esc(v)}</code>`;
+  }
+  return esc(p);
+}).join('');
+const taskCount = t => (t.match(/^- \[[ x]\]/gm) || []).length;
+function md(text, group) {
+  const L = text.split('\n'), isItem = l => /^\s*(-|\d+\.)\s/.test(l), isHead = l => /^#{2,3}\s/.test(l);
+  let h = '', i = 0, task = 0;
+  const total = taskCount(text);
+  while (i < L.length) {
+    const l = L[i];
+    if (!l.trim()) { i++; continue; }
+    if (isHead(l)) { h += `<h4 class="md-h">${inline(l.replace(/^#+\s+/, ''))}</h4>`; i++; continue; }
+    if (isItem(l)) {
+      const ordered = /^\s*\d+\./.test(l), items = [];
+      while (i < L.length && isItem(L[i])) {
+        const t = L[i].trim().replace(/^(-|\d+\.)\s+/, '');
+        if (/^\s{2,}/.test(L[i]) && items.length) items[items.length - 1].kids.push(t); else items.push({ t, kids: [] });
+        i++;
+      }
+      if (/^\[[ x]\]\s/.test(items[0].t)) {
+        h += '<ul class="tasks">' + items.map(it => {
+          const key = `task:${group}:${task++}`, on = !!S.checks[key];
+          return `<li><label class="task${on ? ' done' : ''}"><input type="checkbox" data-check="${esc(key)}" data-total="${total}"${on ? ' checked' : ''}><span class="task-text">${inline(it.t.slice(4))}</span></label></li>`;
+        }).join('') + '</ul>';
+      } else {
+        const tag = ordered ? 'ol' : 'ul';
+        h += `<${tag}>` + items.map(it => `<li>${inline(it.t)}${it.kids.length ? `<ul>${it.kids.map(k => `<li>${inline(k)}</li>`).join('')}</ul>` : ''}</li>`).join('') + `</${tag}>`;
+      }
+      continue;
+    }
+    const p = [];
+    while (i < L.length && L[i].trim() && !isItem(L[i]) && !isHead(L[i])) p.push(L[i++]);
+    h += `<p>${inline(p.join(' '))}</p>`;
+  }
+  return h;
+}
+
+/* ── State ────────────────────────────────────────────────────────────── */
+const S = {
+  route:'chat', ghView:'github', conv:'swift', chatTab:'app', run:true, term:false, sidebar:true,
+  issue:'homelab#3', check:'trismegistus-mac#41', edition:'Cyber-2November2026', agent:'homelab-issue-1', job:'ai',
+  cmdConv:'all', failed:false, compact:false, todoFolded:false, editing:null, jobDraft:null,
+  filters:{}, repo:'all', pri:'any', checks:{}, open:new Set(['steps']), more:new Set(),
+  drafts:{}, notes:{}, replies:{}, extra:{},
+};
+const ROUTES = ['chat', 'github', 'github-check', 'news', 'agents', 'jobs', 'commands'];
+const SECTIONS = [
+  { id:'chat', label:'Chat', icon:'chat', key:1 }, { id:'github', label:'GitHub', icon:'checklist', key:2 }, { id:'news', label:'News', icon:'news', key:3 },
+  { id:'agents', label:'Agents', icon:'cpu', key:4 }, { id:'jobs', label:'Jobs', icon:'calendar', key:5 }, { id:'commands', label:'Commands', icon:'terminal', key:6 },
+];
+const $ = q => document.querySelector(q);
+const q = () => (S.filters[S.route] || '').trim().toLowerCase();
+const issueOf = id => ISSUES.find(i => i.id === id);
+const inboxOpen = () => INBOX.filter(i => !i.resolved);
+const openCount = () => 35;
+
+/* ── Sidebar ──────────────────────────────────────────────────────────── */
+const filterField = ph => `<input class="field" data-filter aria-label="${esc(ph)}" placeholder="${esc(ph)}" value="${esc(S.filters[S.route] || '')}">`;
+const sideHead = (label, btn = '') => `<div class="side-head"><span class="t-label">${esc(label)}</span>${btn}</div>`;
+const headBtn = (act, ic, label) => `<button class="bar-btn" data-act="${act}" aria-label="${label}" title="${label}">${icon(ic)}</button>`;
+const seg = () => `<div class="seg" role="group" aria-label="List kind">
+  <button data-act="seg" data-id="github" aria-pressed="${S.route === 'github'}" aria-label="Board" title="Board">${icon('board')}</button>
+  <button data-act="seg" data-id="github-check" aria-pressed="${S.route === 'github-check'}" aria-label="Needs check, ${inboxOpen().length}" title="Needs check">${icon('eye')}<span class="t-mono-s">${inboxOpen().length}</span></button>
+</div>`;
+const select = (attr, val, opts, label) => `<label class="sel"><select ${attr} aria-label="${esc(label)}">${opts.map(o => { const [v, t] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}"${v === val ? ' selected' : ''}>${esc(t)}</option>`; }).join('')}</select>${icon('chevD', 14)}</label>`;
+
+function sideTop() {
+  switch (S.route) {
+    case 'chat': {
+      const tab = CHAT_TABS.find(t => t.id === S.chatTab) || { label:'More', count:0 };
+      return sideHead(`${tab.label} // ${tab.count}`, headBtn('new-conv', 'plus', 'New conversation'))
+        + `<div class="side-tools"><div class="tabs" role="group" aria-label="Conversation source">${CHAT_TABS.map(t =>
+          `<button data-act="tab" data-id="${t.id}" aria-pressed="${S.chatTab === t.id}" aria-label="${t.label}, ${t.count}" title="${t.label}">${icon(t.icon)}<span class="t-mono-s">${t.count}</span>${t.id === 'app' && S.run ? '<i class="dot" title="Running"></i>' : ''}</button>`).join('')}
+          <button data-act="tab" data-id="more" aria-pressed="${S.chatTab === 'more'}" aria-label="More" title="More">${icon('more')}${icon('chevD', 14)}</button>
+        </div>${filterField('Filter conversations')}</div>`;
+    }
+    case 'github': return sideHead(`GitHub // ${openCount()} open`, headBtn('refresh', 'refresh', 'Refresh'))
+      + `<div class="side-tools">${filterField('Filter issues')}<div class="selects">${select('data-change="repo"', S.repo, [['all', 'All repos'], 'homelab', 'mage-sys'], 'Repository')}${select('data-change="pri"', S.pri, [['any', 'Any priority'], 'P1', 'P2'], 'Priority')}</div>${seg()}</div>`;
+    case 'github-check': return sideHead(`Needs check // ${inboxOpen().length}`, headBtn('refresh', 'refresh', 'Refresh'))
+      + `<div class="side-tools">${filterField('Filter issues')}<div class="selects">${select('data-change="repo"', S.repo, [['all', 'All repos'], ...REPO_ORDER], 'Repository')}</div>${seg()}</div>`;
+    case 'news': return sideHead('News // 34') + `<div class="side-tools">${filterField('Filter editions')}</div>`;
+    case 'agents': return sideHead('Agents // 0 running') + `<div class="side-tools">${filterField('Filter agents')}</div>`;
+    case 'jobs': return sideHead(`Jobs // ${JOBS.length}`, headBtn('new-job', 'plus', 'New job')) + `<div class="side-tools">${filterField('Filter jobs')}</div>`;
+    case 'commands': return sideHead('Commands // 1741') + `<div class="side-tools">${filterField('Search commands and output')}</div>`;
+  }
+  return '';
+}
+const noMatch = () => `<p class="side-note">No matches. Clear the filter to see the full list.</p>`;
+const convRow = c => {
+  const sel = c.id === S.conv, running = c.id === 'swift' && S.run;
+  return `<div class="row-wrap${sel ? ' sel' : ''}">
+    <button class="row${sel ? ' sel' : ''}" data-act="conv" data-id="${c.id}" aria-current="${sel}">
+      <span class="row-main"><span class="row-title od-truncate">${esc(c.title)}</span><span class="row-meta"><i class="src" aria-hidden="true">T</i><span>${esc(c.when)}</span></span></span>
+      ${running ? `<span class="row-side"><span class="row-state run">Run</span><span class="t-mono-s">00:36</span></span>` : ''}
+    </button>
+    <button class="row-pin${c.pinned ? ' on' : ''}" data-act="pin" data-id="${c.id}" aria-label="${c.pinned ? 'Unpin' : 'Pin'} ${esc(c.title)}" title="${c.pinned ? 'Unpin' : 'Pin'}">${icon('pin', 14)}</button>
+  </div>`;
+};
+const issueRow = (it, act, cur, short) => {
+  const sel = it.id === cur;
+  return `<div class="row-wrap"><button class="row${sel ? ' sel' : ''}" data-act="${act}" data-id="${esc(it.id)}" aria-current="${sel}"><span class="row-main">
+    <span class="row-meta"><span class="od-nowrap">${esc(short ? `#${it.n}` : `xMuramasa/${it.id}`)}</span><span class="pri">${it.p}</span>${short ? `<span class="row-state">${it.state}</span>` : ''}</span>
+    <span class="row-title od-clamp-2">${esc(it.title)}</span>
+    ${it.lookLine ? `<span class="row-look od-truncate">${esc(it.lookLine)}</span>` : ''}
+  </span></button></div>`;
+};
+function sideList() {
+  const f = q();
+  const has = (...t) => !f || t.join(' ').toLowerCase().includes(f);
+  switch (S.route) {
+    case 'chat': {
+      if (S.chatTab !== 'app') return `<p class="side-note">Nothing loaded for this tab yet.</p>`;
+      const rows = CONVS.filter(c => has(c.title));
+      if (!rows.length) return noMatch();
+      const pin = rows.filter(c => c.pinned), rest = rows.filter(c => !c.pinned);
+      return (pin.length ? `<div class="group-head t-label">Pinned</div>${pin.map(convRow).join('')}` : '') + (rest.length ? `<div class="group-head t-label">Conversations</div>${rest.map(convRow).join('')}` : '');
+    }
+    case 'github': {
+      const rows = BOARD.filter(i => has(i.title, i.id) && (S.repo === 'all' || i.repo === S.repo) && (S.pri === 'any' || i.p === S.pri));
+      if (!rows.length) return noMatch();
+      const open = !S.todoFolded;
+      return `<button class="group-head t-label" data-act="todo-fold" data-id="todo" aria-expanded="${open}"><span>Todo</span><span class="count">29</span>${chev(open)}</button>${open ? rows.map(i => issueRow(i, 'issue', S.issue)).join('') : ''}`;
+    }
+    case 'github-check': {
+      const rows = inboxOpen().filter(i => has(i.title, i.id, i.lookLine || '') && (S.repo === 'all' || i.repo === S.repo));
+      if (!rows.length) return f ? noMatch() : `<p class="side-note">Nothing needs your check.</p>`;
+      return REPO_ORDER.map(r => {
+        const g = rows.filter(i => i.repo === r);
+        return g.length ? `<div class="group-head t-label"><span>${r}</span><span class="count">${g.length}</span></div>${g.map(i => issueRow(i, 'check-sel', S.check, true)).join('')}` : '';
+      }).join('');
+    }
+    case 'news': {
+      const rows = EDITIONS.filter(e => has(e.title, e.feed));
+      if (!rows.length) return noMatch();
+      let day = '', h = '';
+      rows.forEach(e => {
+        if (e.day !== day) { day = e.day; h += `<div class="group-head t-label">${e.day}</div>`; }
+        const sel = e.id === S.edition;
+        h += `<div class="row-wrap"><button class="row compact${sel ? ' sel' : ''}" data-act="edition" data-id="${e.id}" aria-current="${sel}" aria-label="${esc(e.title)}, ${e.time}">
+          <i class="sq line" style="background:${FEEDS[e.feed].c}" aria-hidden="true"></i>
+          <span class="row-main"><span class="row-title od-truncate">${e.feed}</span></span>
+          <span class="row-side"><span class="t-mono-s">${e.time}</span></span>
+        </button></div>`;
+      });
+      return h + `<p class="side-note mono">20 older editions</p>`;
+    }
+    case 'agents': {
+      const rows = AGENTS.filter(a => has(a.title, a.ref, a.last));
+      if (!rows.length) return noMatch();
+      return rows.map(a => { const sel = a.id === S.agent; return `<div class="row-wrap"><button class="row${sel ? ' sel' : ''}" data-act="agent" data-id="${a.id}" aria-current="${sel}"><span class="row-main">
+        <span class="od-row"><span class="row-title od-truncate od-fill">${esc(a.title)}</span><span class="row-state od-fixed">Done</span></span>
+        <span class="row-line od-truncate">${esc(a.ref)} · delegate · ${esc(a.ended)}</span>
+        <span class="row-line od-truncate">${esc(a.last)}</span>
+      </span></button></div>`; }).join('');
+    }
+    case 'jobs': {
+      const rows = JOBS.filter(j => has(j.name, j.short));
+      if (!rows.length) return noMatch();
+      return rows.map(j => { const sel = j.id === S.job;
+        const meta = [j.short, j.next && !j.paused ? `next ${j.next}` : '', j.ago ? `ok ${j.ago}` : 'no runs yet'].filter(Boolean).join(' · ');
+        return `<div class="row-wrap"><button class="row${sel ? ' sel' : ''}" data-act="job" data-id="${j.id}" aria-current="${sel}"><span class="row-main">
+        <span class="od-row"><span class="row-title od-truncate od-fill">${esc(j.name)}</span>${j.paused ? '<span class="row-state od-fixed">Paused</span>' : ''}</span>
+        <span class="row-line od-truncate">${esc(meta)}</span>
+      </span></button></div>`; }).join('');
+    }
+    case 'commands': {
+      const row = (id, title, n) => { const sel = S.cmdConv === id; return `<div class="row-wrap"><button class="row${sel ? ' sel' : ''}" data-act="cmd-conv" data-id="${id}" aria-current="${sel}"><span class="row-main"><span class="row-title od-truncate">${esc(title)}</span><span class="row-line">${n} calls</span></span></button></div>`; };
+      return row('all', 'All conversations', 1741) + CMD_CONVS.map(([id, t, n]) => row(id, t, n)).join('');
+    }
+  }
+  return '';
+}
+
+/* ── Detail helpers ───────────────────────────────────────────────────── */
+const band = (title, sub, actions = '') => `<header class="band"><div class="band-titles"><h1 class="band-title t-title">${title}</h1><span class="band-sub">${sub}</span></div><div class="band-actions">${actions}</div></header><div class="title-rule" aria-hidden="true"><i></i><i></i><i></i></div>`;
+const wrap = body => `<div class="body-wrap"><svg class="ground" id="ground" aria-hidden="true"></svg><div class="scroll" id="scroll">${body}</div></div>`;
+const empty = (label, text) => `<div class="empty"><span class="t-label">${esc(label)}</span><span class="t-callout">${esc(text)}</span></div>`;
+const statusCell = (ok, label) => `<span class="st ${ok ? 'ok' : 'fail'}">${icon(ok ? 'check' : 'x', 12)}${label}</span>`;
+
+const cmdCard = (r, id) => {
+  const o = S.open.has(id);
+  return `<article class="card" data-accent="${accentOf(r.tool)}">
+    <button class="card-head" data-act="fold" data-id="${esc(id)}" aria-expanded="${o}">
+      <span class="t">${r.t}</span><span class="tool">${r.tool}</span><span class="first od-truncate">${esc(r.first)}</span>${r.exit ? `<span class="exit">exit ${r.exit}</span>` : ''}${r.dur ? `<span class="dur">${r.dur}</span>` : ''}${chev(o)}
+    </button>
+    ${o ? `<div class="card-body"><div class="raw-cmd">${esc(r.first)}</div><pre class="raw${r.exit ? ' fail' : ''}">${esc(r.out)}</pre></div>` : ''}
+    <i class="accent" aria-hidden="true"></i>
+  </article>`;
+};
+const cmdRow = (r, id) => {
+  const o = S.open.has(id);
+  return `<button class="tool-row commands" data-act="fold" data-id="${esc(id)}" aria-expanded="${o}">
+    <span class="t-mono-s">${r.t}</span><span class="t-mono-s">${r.tool}</span><span class="t-mono-s od-truncate">${esc(r.first)}</span><span class="t-mono-s dur">${r.dur || ''}</span>
+    ${r.exit ? `<span class="st fail">exit ${r.exit}</span>` : statusCell(true, 'ok')}${chev(o)}
+  </button>${o ? `<pre class="raw${r.exit ? ' fail' : ''}">${esc(r.first)}\n${esc(r.out)}</pre>` : ''}`;
+};
+
+/* ── Chat ─────────────────────────────────────────────────────────────── */
+const WORK = [
+  c('13:52:06', 'terminal', '6.2 s', 'cua-driver focus --app Trismegistus', 0, 'focused'),
+  c('13:52:13', 'vision_analyze', '0.5 s', '/tmp/tm-start.png: which section is showing?', 0, 'Chat, conversation Swift app.'),
+];
+const youMsg = (t, text) => `<article class="msg"><div class="msg-label t-label">You // ${t}</div><div class="you-box">${esc(text)}</div></article>`;
+function viewChat() {
+  const cv = CONVS.find(x => x.id === S.conv) || CONVS[0], main = cv.id === 'swift', running = main && S.run;
+  const sub = main ? (S.run ? cv.sub : 'Trismegistus · run stopped') : (cv.sub || `last active ${cv.when}`);
+  const meter = Array.from({ length: 12 }, (_, i) => `<i${i < 4 ? ' class="on"' : ''}></i>`).join('');
+  const head = band(`<span>${esc(cv.title)}</span>${cv.pinned ? icon('pin', 14) : ''}`, esc(sub),
+    `<span class="band-read" title="Context used">≈ 350K / 1M · 35%</span><span class="meter" role="img" aria-label="35 percent of context used">${meter}</span>
+     <label class="sel steel"><select aria-label="Model" data-change="model"><option>claude-opus-5-5</option><option>claude-sonnet-5-5</option><option>claude-haiku-5-5</option></select>${icon('chevD', 14)}</label>
+     <button class="icon-btn steel" aria-label="More" title="Conversation actions">${icon('more')}</button>`);
+  const extra = (S.extra[cv.id] || []).map(m => youMsg(m.t, m.text)).join('');
+  const open = S.open.has('work');
+  const body = main
+    ? `<div class="col-700">${youMsg('13:42', 'i already ran open, could you use cuadriver on my mac to test the ui?')}
+      <article class="msg"><div class="msg-label t-label">Hermes // 13:49</div><div class="hermes md">${md(src('hermes'), 'hermes')}</div></article>
+      ${youMsg('13:52', 'go ahead i set it up a second screen for me to work while you check')}${extra}
+      <div class="work">
+        <div class="work-line">
+          <button class="cmd-chip" data-act="fold" data-id="work" aria-expanded="${open}"><span class="prompt">&gt;_</span><span>2 commands · 6.7 s</span>${chev(open, 12)}</button>
+          <span class="t-label">${S.run ? 'Working' : 'Stopped'}</span><span class="readings t-mono-s">00:15 · 2 tools</span>
+        </div>
+        ${S.run ? '<div class="track" aria-hidden="true"><i></i></div>' : ''}
+        ${open ? `<div class="cards">${WORK.map((r, i) => cmdCard(r, 'work:' + i)).join('')}</div>` : ''}
+      </div></div>`
+    : `<div class="col-700">${extra || empty('No messages cached', 'History loads from the relay when this conversation has been opened on this Mac.')}</div>`;
+  const hint = (k, t) => `<span class="hint"><span class="kbd">${k}</span><span class="t-caption">${t}</span></span>`;
+  const composer = `<section class="composer" aria-label="Composer"><div class="col-700">
+    <div class="run-line">
+      <span class="state t-label">${running ? '<i class="sq" style="background:var(--green)" aria-hidden="true"></i>Run active' : 'Ready'}</span>
+      ${running ? '<span class="clock t-mono-s">00:36</span>' : ''}
+      <span class="hints">${running ? hint('⌘↩', 'steer') + hint('⌘.', 'stop') : hint('⌘↩', 'send')}${hint('⌘⌥T', 'terminal')}${hint('⌘K', 'conversations')}</span>
+    </div>
+    <div class="input-line">
+      <button class="icon-btn bare" aria-label="Attach file" title="Attach file">${icon('attach')}</button>
+      <textarea id="composer" rows="1" data-draft aria-label="${running ? 'Steer this run' : 'Message Hermes'}" placeholder="${running ? 'Steer this run' : 'Message Hermes'}">${esc(S.drafts[cv.id] || '')}</textarea>
+      ${running ? `<button class="icon-btn danger" data-act="stop" aria-label="Stop run" title="Stop run (⌘.)">${icon('stop')}</button>` : ''}
+      <button class="btn primary" data-act="steer">${running ? 'Steer' : 'Send'}${icon('arrow')}</button>
+    </div>
+  </div></section>`;
+  const term = S.term ? `<section class="terminal" aria-label="Terminal"><span class="p">muramasa@macbook %</span> cua-driver status\ndaemon running · window Trismegistus · 1560×1122\n<span class="p">muramasa@macbook %</span> </section>` : '';
+  return head + wrap(body) + composer + term;
+}
+
+/* ── GitHub ───────────────────────────────────────────────────────────── */
+function checkPanel(it) {
+  if (it.resolved) {
+    const good = it.resolved === 'good';
+    return `<section class="panel check" aria-label="Check result"><div class="check-head"><i class="sq" style="background:${good ? 'var(--green)' : 'var(--red)'}" aria-hidden="true"></i><span class="t-label">${good ? 'Confirmed on screen' : 'Sent back'}</span></div>
+      <p class="t-callout c-secondary">${good ? 'Comment posted, Status Done.' : 'Note posted as a comment, issue reopened, Status Todo.'}</p></section>`;
+  }
+  const look = it.look || [], group = `look:${it.id}`;
+  const done = look.filter((_, i) => S.checks[`${group}:${i}`]).length;
+  return `<section class="panel check" aria-label="Needs your check">
+    <div class="check-head"><i class="sq" style="background:var(--magenta)" aria-hidden="true"></i><span class="t-label">Needs your check</span>
+      ${look.length ? `<span class="t-mono-s c-secondary" data-readout="${esc(group)}">${done}/${look.length}</span>` : ''}
+      <span class="from t-mono-s">${esc(it.from || 'from Hermes')}</span></div>
+    ${it.lookIntro ? `<p class="check-intro">${esc(it.lookIntro)}</p>` : ''}
+    ${look.length ? `<ol class="looks">${look.map((t, i) => { const k = `${group}:${i}`, on = !!S.checks[k];
+      return `<li><label class="look${on ? ' done' : ''}"><span class="n">${i + 1}</span><input type="checkbox" data-check="${esc(k)}" data-total="${look.length}"${on ? ' checked' : ''}><span class="look-text">${esc(t)}</span></label></li>`; }).join('')}</ol>`
+      : `<p class="check-intro c-secondary">No on-screen notes from Hermes</p>`}
+    <div class="check-actions">
+      <button class="btn primary" data-act="looks-good" data-id="${esc(it.id)}">Looks good${icon('check')}</button>
+      <input class="field" id="note" data-note="${esc(it.id)}" aria-label="What's not right? (posted as a comment)" placeholder="What's not right? (posted as a comment)" value="${esc(S.notes[it.id] || '')}">
+      <button class="btn danger" id="not-right" data-act="not-right" data-id="${esc(it.id)}"${(S.notes[it.id] || '').trim() ? '' : ' disabled'}>Not right${icon('x')}</button>
+    </div>
+    <p class="t-caption c-secondary">Looks good: comments "Confirmed on screen by Martin.", Status Done. Not right: comments your note, reopens the issue if closed, Status Todo.</p>
+  </section>`;
+}
+function viewIssue(it, check) {
+  const text = it.body ? src(it.body) : '', total = taskCount(text), group = `task:${it.id}`;
+  const done = Object.keys(S.checks).filter(k => S.checks[k] && k.startsWith(group + ':')).length;
+  const url = `https://github.com/xMuramasa/${it.repo}/issues/${it.n}`;
+  const actions = `${total ? `<span class="band-read" title="Checklist done / total">${icon('check', 14)}<span data-readout="${esc(group)}">${done}/${total}</span></span>` : ''}
+    <a class="icon-btn steel" href="${url}" target="_blank" rel="noopener" aria-label="Open in browser" title="Open in browser">${icon('open')}</a>
+    <button class="btn steel" data-act="start-conv" data-id="${esc(it.id)}">Start conversation${icon('msg')}</button>
+    ${check ? '' : `<button class="btn primary" data-act="dispatch" data-id="${esc(it.id)}"${it.dispatched ? ' disabled' : ''}>${it.dispatched ? 'Dispatched' + icon('check') : 'Dispatch' + icon('play')}</button>`}`;
+  const head = band(esc(it.title), `xMuramasa/${esc(it.id)} · ${it.state}${it.age ? ` · ${it.age}` : ''}`, actions);
+  const tags = (it.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join(' ') || '<span class="tag">none</span>';
+  const readout = `<div class="readout" role="group" aria-label="Issue readout">
+    <div class="read"><span class="t-label">Status</span>${select(`data-change="status" data-id="${esc(it.id)}"`, it.status, ['Todo', 'In progress', 'Needs check', 'Done'], 'Status')}</div>
+    <div class="read"><span class="t-label">Priority</span>${select(`data-change="priority" data-id="${esc(it.id)}"`, it.p, ['P1', 'P2'], 'Priority')}</div>
+    <div class="read"><span class="t-label">Tags</span>${tags}</div>
+    <div class="read"><span class="t-label">Agent</span><span class="tag">${esc(it.agent || 'none')}</span></div>
+    <button class="btn" style="margin-left:auto" data-act="close-issue" data-id="${esc(it.id)}">${it.state === 'closed' ? 'Reopen issue' + icon('back') : 'Close issue' + icon('checkc')}</button>
+  </div>`;
+  const comments = it.comments.map(cm => `<section class="panel"><div class="who"><span class="t-label">${esc(cm.who)}</span><span class="t-mono-s">${esc(cm.when)}</span></div><p style="white-space:pre-wrap">${esc(cm.text)}</p></section>`).join('');
+  const body = `<div class="col-720 stack-16">
+    ${check ? checkPanel(it) : ''}
+    <section class="panel"><div class="who"><span class="t-label">xMuramasa</span><span class="t-mono-s">${it.age || ''}</span></div>
+      ${text ? `<div class="md">${md(text, it.id)}</div>` : empty('No description cached', 'The issue body loads from GitHub on the next refresh.')}</section>
+    ${comments}
+    <div class="reply">
+      <textarea data-reply="${esc(it.id)}" aria-label="Comment on GitHub" placeholder="Comment on GitHub">${esc(S.replies[it.id] || '')}</textarea>
+      <button class="btn" id="comment-btn" data-act="comment" data-id="${esc(it.id)}"${(S.replies[it.id] || '').trim() ? '' : ' disabled'}>Comment${icon('up')}</button>
+    </div>
+  </div>`;
+  return head + readout + wrap(body);
+}
+
+/* ── News ─────────────────────────────────────────────────────────────── */
+function viewNews() {
+  const e = EDITIONS.find(x => x.id === S.edition) || EDITIONS[0], loaded = e.id === 'Cyber-2November2026';
+  const count = CYBER.reduce((n, s) => n + s.stories.length, 0);
+  const sub = `${e.feed.toLowerCase()} · ${e.time}${loaded ? ` · ${count} stories` : ''}`;
+  if (!loaded) return band(esc(e.title), esc(sub)) + wrap(`<div class="col-720">${empty('Edition not loaded', 'Stories load from the news reader when the edition has been opened on this Mac.')}</div>`);
+  const body = `<article class="col-720 panel">
+    <p class="lead">${esc(CYBER_LEAD)}</p>
+    ${CYBER.map((sec, si) => `<section class="news-sec"><h2 class="sec-head"><span class="t-heading">${esc(sec.head)}</span><span class="t-mono-s c-secondary">${sec.stories.length}</span></h2>
+      ${sec.stories.map((st, i) => { const id = `story:${si}:${i}`, o = S.open.has(id);
+        return `<article class="story"><button class="story-head" data-act="fold" data-id="${id}" aria-expanded="${o}">${chev(o)}
+          <span class="story-main"><span class="t-headline">${esc(st.h)}</span>
+            ${st.cve ? `<span><span class="tag">${st.cve}</span></span>` : ''}
+            ${st.s ? `<span class="summary t-callout${o ? '' : ' od-truncate'}">${esc(st.s)}</span>` : ''}</span>
+          ${st.tag ? `<span class="chip ${st.tag === 'update' ? 'update' : 'neutral'}">${st.tag}</span>` : '<span></span>'}
+        </button></article>`; }).join('')}
+    </section>`).join('')}
+  </article>`;
+  return band(esc(e.title), esc(sub)) + wrap(body);
+}
+
+/* ── Agents ───────────────────────────────────────────────────────────── */
+function viewAgents() {
+  const a = AGENTS.find(x => x.id === S.agent) || AGENTS[0];
+  if (!a.report) return band(esc(a.id), esc(a.meta)) + wrap(`<div class="col-960">${empty('Transcript not loaded', 'Steps load from the run log when this run has been opened on this Mac.')}</div>`);
+  const tools = STEPS.filter(s => s.tool), failed = tools.filter(s => !s.ok).length, open = S.open.has('steps');
+  let n = 0;
+  const rows = STEPS.map(s => {
+    if (s.say) return `<p class="say">${esc(s.say)}</p>`;
+    const id = `step:${n++}`, o = S.open.has(id);
+    return `<button class="tool-row" data-act="fold" data-id="${id}" aria-expanded="${o}">
+      ${icon(s.icon, 14)}<span class="t-mono-s">${s.tool}</span><span class="t-mono-s od-truncate" title="${esc(s.cmd)}">${esc(s.cmd)}</span><span class="t-mono-s dur">${s.dur}</span>
+      ${statusCell(s.ok, s.ok ? 'ok' : 'failed')}${chev(o)}
+    </button>${o ? `<pre class="raw${s.ok ? '' : ' fail'}">${esc(s.raw)}</pre>` : ''}`;
+  }).join('');
+  const body = `<div class="col-960 stack-24">
+    <section class="panel" aria-label="Final report">
+      <div class="check-head"><span class="t-label">Result</span><span class="chip warn">Build blocked</span><span class="from t-mono-s">14 turns · 53 s · ended 3 h ago</span></div>
+      <div class="md">${md(src('report'), 'report')}</div>
+    </section>
+    <article class="card" data-accent="cyan">
+      <button class="card-head" data-act="fold" data-id="steps" aria-expanded="${open}"><span class="first od-truncate">${tools.length} steps · ${failed} failed</span>${chev(open)}</button>
+      ${open ? `<div class="card-body">${rows}</div>` : ''}
+      <i class="accent" aria-hidden="true"></i>
+    </article>
+  </div>`;
+  return band(esc(a.id), esc(a.meta)) + wrap(body);
+}
+
+/* ── Jobs ─────────────────────────────────────────────────────────────── */
+const jobPrompt = j => j.promptText !== undefined ? j.promptText : (j.prompt ? src(j.prompt) : '');
+function viewJobs() {
+  const j = JOBS.find(x => x.id === S.job) || JOBS[0];
+  const subs = [j.paused ? 'paused' : 'scheduled', j.next && !j.paused ? `next in ${j.next}` : '', j.ago ? `last ok ${j.ago}` : 'no runs yet'].filter(Boolean).join(' · ');
+  if (S.editing === j.id) {
+    const d = S.jobDraft;
+    return band(esc(j.name), 'editing',
+      `<button class="btn steel" data-act="edit-cancel">Cancel${icon('x')}</button><button class="btn primary" id="job-save" data-act="edit-save"${d.name.trim() ? '' : ' disabled'}>Save${icon('check')}</button>`)
+    + wrap(`<div class="col-720 panel form">
+      <label><span class="t-label">Name</span><input data-edit="name" value="${esc(d.name)}"></label>
+      <div class="pair">
+        <label><span class="t-label">Schedule</span><span class="sel"><select data-edit="kind">${['Daily', 'Every 5 minutes', 'Once'].map(o => `<option${o === d.kind ? ' selected' : ''}>${o}</option>`).join('')}</select>${icon('chevD', 14)}</span></label>
+        <label><span class="t-label">Time</span><input type="time" data-edit="time" value="${esc(d.time)}"></label>
+        <label><span class="t-label">Cron</span><input class="mono" data-edit="cron" value="${esc(d.cron)}"></label>
+      </div>
+      <label><span class="t-label">Prompt</span><textarea data-edit="prompt">${esc(d.prompt)}</textarea></label>
+    </div>`);
+  }
+  const actions = `<button class="btn steel" data-act="pause">${j.paused ? 'Resume' + icon('play') : 'Pause' + icon('pause')}</button>
+    <button class="btn primary" data-act="run-now"${j.running ? ' disabled' : ''}>${j.running ? 'Running' : 'Run now' + icon('play')}</button>
+    <button class="btn steel" data-act="edit">Edit${icon('pencil')}</button>`;
+  const text = jobPrompt(j), o = S.open.has('prompt:' + j.id);
+  const last = j.running
+    ? `<div class="val t-mono"><span>running</span></div>`
+    : j.ago ? `<div class="val"><span class="t-headline" style="color:var(--terminal-green)">ok</span></div><div class="t-mono-s">${esc(j.at)}</div><div class="t-mono-s c-secondary">${esc(j.ago === 'now' ? 'just now' : j.ago + ' ago')}</div>`
+    : `<div class="t-mono-s c-secondary">no runs yet</div>`;
+  const body = `<div class="col-720 stack-16">
+    <section class="stats" aria-label="Schedule">
+      <div class="stat"><span class="t-label">Cadence</span><div class="t-headline">${esc(j.cad)}</div><div><span class="tag">${esc(j.cron)}</span></div></div>
+      <div class="stat"><span class="t-label">Next 3 runs</span>${j.paused || !j.runs.length ? `<div class="t-mono-s c-secondary">${j.paused ? 'paused' : 'none scheduled'}</div>` : j.runs.map(r => `<div class="t-mono-s">${esc(r)}</div>`).join('')}</div>
+      <div class="stat"><span class="t-label">Last result</span>${last}</div>
+    </section>
+    <section class="panel" aria-label="Prompt">
+      <div class="prompt-head"><span class="t-label">Prompt</span></div>
+      ${text ? `<div class="md prompt-md${o ? '' : ' folded'}">${md(text, 'prompt:' + j.id)}</div>
+      <button class="text-btn" style="margin-top:8px" data-act="fold" data-id="prompt:${j.id}" aria-expanded="${o}">${o ? 'Show less' : 'Show all'}${chev(o)}</button>`
+      : empty('Prompt not loaded', 'Open Edit to write the prompt for this job.')}
+    </section>
+  </div>`;
+  return band(esc(j.name), esc(subs), actions) + wrap(body);
+}
+
+/* ── Commands ─────────────────────────────────────────────────────────── */
+function viewCommands() {
+  const f = q(), one = S.cmdConv !== 'all';
+  const groups = CMD_CONVS.filter(([id]) => !one || id === S.cmdConv).map(([id, title, n]) => {
+    const all = CMDS[id] || [];
+    const rows = all.filter(r => (!S.failed || r.exit) && (!f || `${r.tool} ${r.first} ${r.out}`.toLowerCase().includes(f)));
+    return { id, title, n, all, rows, fails: all.filter(r => r.exit).length };
+  }).filter(g => (!S.failed && !f) || g.rows.length);
+  const allFails = CMD_CONVS.filter(([id]) => !one || id === S.cmdConv).reduce((t, [id]) => t + (CMDS[id] || []).filter(r => r.exit).length, 0);
+  const cur = CMD_CONVS.find(([id]) => id === S.cmdConv);
+  const head = band(esc(one ? cur[1] : 'All conversations'), `${one ? cur[2] : 1741} calls · ${allFails} failed`,
+    `<button class="btn steel" data-act="toggle-compact" aria-pressed="${S.compact}">One line${icon('lines')}</button>
+     <button class="btn steel" data-act="toggle-failed" aria-pressed="${S.failed}">Failed${icon('warn')}</button>`);
+  const body = groups.map(g => {
+    const k = 'grp:' + g.id, has = g.all.length > 0, open = has ? !S.open.has(k) : S.open.has(k);
+    const limited = !S.more.has(g.id) && !S.failed && !f ? g.rows.slice(0, 6) : g.rows;
+    const list = limited.map(r => {
+      const id = `cmd:${g.id}:${g.all.indexOf(r)}`;
+      return S.compact ? cmdRow(r, id) : cmdCard(r, id);
+    }).join('');
+    return `<section class="cmd-group">
+      <div class="cmd-head">
+        <button class="to t-headline" data-act="open-conv" data-id="${g.id}" title="Open in Chat">${esc(g.title)}${icon('chevR', 14)}</button>
+        <span class="t-mono-s c-secondary">${g.n} calls</span>
+        ${g.fails ? `<span class="fails t-mono-s">${g.fails} failed</span>` : ''}
+        <button class="fold" data-act="fold" data-id="${k}" aria-expanded="${open}" aria-label="${open ? 'Fold' : 'Unfold'} ${esc(g.title)}" title="${open ? 'Fold' : 'Unfold'}">${chev(open)}</button>
+      </div>
+      ${open ? (has ? `${S.compact ? `<div class="tool-list">${list}</div>` : `<div class="cards">${list}</div>`}
+        <div class="cmd-foot"><span class="t-mono-s">showing ${limited.length} of ${g.n}</span>${limited.length < g.rows.length ? `<button class="text-btn" data-act="more" data-id="${g.id}">Show more${chev(false)}</button>` : ''}</div>`
+        : `<p class="t-callout c-secondary">No calls loaded for this conversation yet.</p>`) : ''}
+    </section>`;
+  }).join('') || empty('No matching commands', S.failed ? 'No failed calls match. Turn off Failed to see all calls.' : 'Nothing matches the search.');
+  return head + wrap(body);
+}
+
+/* ── Render ───────────────────────────────────────────────────────────── */
+const views = { chat:viewChat, github:() => viewIssue(issueOf(S.issue), false), 'github-check':() => viewIssue(issueOf(S.check), true), news:viewNews, agents:viewAgents, jobs:viewJobs, commands:viewCommands };
+const viewKey = () => [S.route, S.conv, S.issue, S.check, S.edition, S.agent, S.job, S.cmdConv].join('|');
+let lastKey = '', lastRoute = '';
+
+function drawGround() {
+  const el = $('#ground');
+  if (!el) return;
+  const w = el.parentNode.clientWidth, h = el.parentNode.clientHeight;
+  el.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  const clear = S.route === 'chat' ? [w / 2 - 374, w / 2 + 374] : null;
+  let plus = '';
+  for (let y = 32; y < h; y += 64) for (let x = 32; x < w; x += 96) {
+    if (clear && x > clear[0] && x < clear[1]) continue;
+    plus += `M${x - 5} ${y}h10M${x} ${y - 5}v10`;
+  }
+  const cx = w * .78, cy = h * .72, base = Math.min(w, h) * .045;
+  let lines = '';
+  for (let k = 1; k <= 18; k++) {
+    let d = '';
+    for (let i = 0; i <= 180; i++) {
+      const t = i / 180 * Math.PI * 2;
+      const r = k * base * (1 + .05 * Math.sin(3 * t + k * .7) + .03 * Math.sin(5 * t + 1.3 + k * .3) + .02 * Math.sin(7 * t + k));
+      d += `${i ? 'L' : 'M'}${(cx + 1.35 * r * Math.cos(t)).toFixed(1)} ${(cy + r * Math.sin(t)).toFixed(1)}`;
+    }
+    lines += `<path d="${d}Z" fill="none" stroke="#D9D9D9" stroke-width="1" opacity="${k % 5 ? .55 : .9}"/>`;
+  }
+  el.innerHTML = lines + `<path d="${plus}" fill="none" stroke="#D9D9D9" stroke-width="1"/>`;
+}
+
+function render(opts = {}) {
+  const a = document.activeElement, focusSel = a && a.dataset && a.dataset.act ? `[data-act="${a.dataset.act}"]${a.dataset.id !== undefined ? `[data-id="${a.dataset.id}"]` : ''}` : null;
+  const sc = $('#scroll'), keepTop = sc ? sc.scrollTop : 0, sideEl = $('#side-list'), sideTopPos = sideEl.scrollTop;
+  const key = viewKey(), same = key === lastKey, routeSame = S.route === lastRoute;
+  $('#window').classList.toggle('no-sidebar', !S.sidebar);
+  const tt = $('#term-toggle');
+  tt.disabled = S.route !== 'chat';
+  tt.title = S.route === 'chat' ? 'Toggle terminal (⌘⌥T)' : 'The terminal pane is Chat only';
+  tt.setAttribute('aria-pressed', S.term && S.route === 'chat');
+  $('#sb-toggle').setAttribute('aria-pressed', S.sidebar);
+  const section = S.route === 'github-check' ? 'github' : S.route;
+  $('#nav').innerHTML = SECTIONS.map(s => `<button data-act="nav" data-id="${s.id}" aria-label="${s.label} (⌘${s.key})" title="${s.label} (⌘${s.key})"${s.id === section ? ' aria-current="page"' : ''}>${icon(s.icon, 20)}</button>`).join('');
+  $('#side-top').innerHTML = sideTop();
+  sideEl.innerHTML = sideList();
+  $('#detail').innerHTML = views[S.route]();
+  drawGround();
+  const nsc = $('#scroll');
+  if (nsc) nsc.scrollTop = opts.bottom || (!same && S.route === 'chat') ? nsc.scrollHeight : same ? keepTop : 0;
+  if (routeSame) sideEl.scrollTop = sideTopPos;
+  else { sideEl.scrollTop = 0; const r = sideEl.querySelector('.row.sel'); if (r) r.scrollIntoView({ block:'nearest' }); }
+  lastKey = key; lastRoute = S.route;
+  if (focusSel) { const n = document.querySelector(focusSel); if (n) n.focus(); }
+  const ta = $('#composer');
+  if (ta) sizeComposer(ta);
+}
+function sizeComposer(ta) { ta.style.height = '30px'; ta.style.height = Math.min(120, ta.scrollHeight + 2) + 'px'; }
+function go(route) {
+  S.route = route;
+  if (route === 'github' || route === 'github-check') S.ghView = route;
+  try { history.replaceState(null, '', '#' + route); } catch (e) { /* sandboxed preview */ }
+  render();
+}
+function readHash() { const h = location.hash.slice(1); return ROUTES.includes(h) ? h : 'chat'; }
+function ensureConv(id, title) {
+  if (!CONVS.some(x => x.id === id)) CONVS.splice(CONVS.filter(x => x.pinned).length, 0, { id, title, when:'now' });
+  S.conv = id; S.chatTab = 'app'; S.filters.chat = '';
+}
+function sendComposer() {
+  const id = S.conv, text = (S.drafts[id] || '').trim();
+  if (!text) { $('#composer').focus(); return; }
+  (S.extra[id] = S.extra[id] || []).push({ t:'13:53', text });
+  S.drafts[id] = '';
+  render({ bottom:true });
+  $('#composer').focus();
+}
+function stopRun() { S.run = false; render(); const t = $('#composer'); if (t) t.focus(); }
+
+/* ── Actions ──────────────────────────────────────────────────────────── */
+const A = {
+  nav: id => go(id === 'github' ? S.ghView : id),
+  seg: go,
+  'toggle-sidebar': () => { S.sidebar = !S.sidebar; render(); },
+  'toggle-terminal': () => { if (S.route === 'chat') { S.term = !S.term; render(); } },
+  tab: id => { S.chatTab = id; render(); },
+  conv: id => { S.conv = id; render(); },
+  pin: id => { const x = CONVS.find(c => c.id === id); x.pinned = !x.pinned; render(); },
+  'new-conv': () => { const id = 'new' + Date.now(); CONVS.splice(CONVS.filter(x => x.pinned).length, 0, { id, title:'New conversation', when:'now' }); ensureConv(id); render(); },
+  stop: stopRun,
+  steer: sendComposer,
+  refresh: (id, t) => { t.setAttribute('aria-busy', 'true'); setTimeout(() => t.removeAttribute('aria-busy'), 400); },
+  issue: id => { S.issue = id; render(); },
+  'check-sel': id => { S.check = id; render(); },
+  'todo-fold': () => { S.todoFolded = !S.todoFolded; render(); },
+  fold: id => { S.open.has(id) ? S.open.delete(id) : S.open.add(id); render(); },
+  more: id => { S.more.add(id); render(); },
+  dispatch: id => { const it = issueOf(id); it.dispatched = true; it.status = 'In progress'; it.agent = 'hermes'; render(); },
+  'start-conv': id => { const it = issueOf(id); ensureConv('issue-' + it.n + it.repo, `xMuramasa/${it.id}: ${it.title}`); go('chat'); },
+  'close-issue': id => { const it = issueOf(id); if (it.state === 'closed') { it.state = 'open'; if (it.status === 'Done') it.status = 'Todo'; } else { it.state = 'closed'; it.status = 'Done'; } render(); },
+  comment: id => { const it = issueOf(id), v = (S.replies[id] || '').trim(); if (!v) return; it.comments.push({ who:'xMuramasa', when:'now', text:v }); S.replies[id] = ''; render({ bottom:true }); },
+  'looks-good': id => { const it = issueOf(id); it.comments.push({ who:'xMuramasa', when:'now', text:'Confirmed on screen by Martin.' }); it.status = 'Done'; it.resolved = 'good'; render(); },
+  'not-right': id => { const it = issueOf(id), v = (S.notes[id] || '').trim(); if (!v) return; it.comments.push({ who:'xMuramasa', when:'now', text:v }); if (it.state === 'closed') it.state = 'open'; it.status = 'Todo'; it.resolved = 'not'; render(); },
+  edition: id => { S.edition = id; render(); },
+  agent: id => { S.agent = id; render(); },
+  job: id => { S.job = id; S.editing = null; render(); },
+  pause: () => { const j = JOBS.find(x => x.id === S.job); j.paused = !j.paused; render(); },
+  'run-now': () => { const j = JOBS.find(x => x.id === S.job); j.running = true; render(); setTimeout(() => { j.running = false; j.ago = 'now'; j.at = 'Wed 4 Nov 14:05'; render(); }, 1200); },
+  edit: () => { const j = JOBS.find(x => x.id === S.job); S.editing = j.id; S.jobDraft = { name:j.name, kind:j.cad.startsWith('Daily') ? 'Daily' : j.cad.startsWith('Every') ? 'Every 5 minutes' : 'Once', time:(j.cad.match(/\d\d:\d\d/) || ['03:00'])[0], cron:j.cron, prompt:jobPrompt(j) }; render(); },
+  'edit-cancel': () => { S.editing = null; render(); },
+  'edit-save': () => {
+    const j = JOBS.find(x => x.id === S.job), d = S.jobDraft, cronEdited = d.cron !== j.cron;
+    if (!d.name.trim()) return;
+    Object.assign(j, { name:d.name.trim(), cron:d.cron, promptText:d.prompt });
+    if (d.kind === 'Daily') { const [hh, mm] = d.time.split(':'); Object.assign(j, { cad:`Daily at ${d.time}`, short:`daily ${d.time}`, runs:D3(d.time) }); if (!cronEdited) j.cron = `${+mm} ${+hh} * * *`; }
+    else if (d.kind === 'Every 5 minutes') Object.assign(j, { cad:'Every 5 minutes', short:'every 5m' });
+    S.editing = null; render();
+  },
+  'new-job': () => { const id = 'job' + Date.now(); JOBS.push({ id, name:'New job', cad:'Daily at 03:00', short:'daily 03:00', cron:'0 3 * * *', next:'13 h', runs:D3('03:00'), promptText:'' }); S.job = id; render(); A.edit(); },
+  'cmd-conv': id => { S.cmdConv = id; render(); },
+  'toggle-failed': () => { S.failed = !S.failed; render(); },
+  'toggle-compact': () => { S.compact = !S.compact; render(); },
+  'open-conv': id => { const g = CMD_CONVS.find(x => x[0] === id); ensureConv(id, g[1]); go('chat'); },
+};
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]');
+  if (!t || t.disabled) return;
+  const fn = A[t.dataset.act];
+  if (fn) fn(t.dataset.id, t, e);
+});
+document.addEventListener('input', e => {
+  const t = e.target, d = t.dataset;
+  if ('filter' in d) { S.filters[S.route] = t.value; $('#side-list').innerHTML = sideList(); if (S.route === 'commands') { const f = t.selectionStart; $('#detail').innerHTML = viewCommands(); drawGround(); t.setSelectionRange(f, f); } }
+  else if ('draft' in d) { S.drafts[S.conv] = t.value; sizeComposer(t); }
+  else if (d.note) { S.notes[d.note] = t.value; const b = $('#not-right'); if (b) b.disabled = !t.value.trim(); }
+  else if (d.reply) { S.replies[d.reply] = t.value; const b = $('#comment-btn'); if (b) b.disabled = !t.value.trim(); }
+  else if (d.edit) { S.jobDraft[d.edit] = t.value; const b = $('#job-save'); if (b) b.disabled = !S.jobDraft.name.trim(); }
+});
+document.addEventListener('change', e => {
+  const t = e.target, d = t.dataset;
+  if (d.check) {
+    S.checks[d.check] = t.checked;
+    const row = t.closest('.task, .look');
+    if (row) row.classList.toggle('done', t.checked);
+    const group = d.check.slice(0, d.check.lastIndexOf(':'));
+    const n = Object.keys(S.checks).filter(k => S.checks[k] && k.startsWith(group + ':')).length;
+    document.querySelectorAll('[data-readout]').forEach(el => { if (el.dataset.readout === group) el.textContent = `${n}/${d.total}`; });
+  } else if (d.change === 'repo') { S.repo = t.value; $('#side-list').innerHTML = sideList(); }
+  else if (d.change === 'pri') { S.pri = t.value; $('#side-list').innerHTML = sideList(); }
+  else if (d.change === 'status') { issueOf(d.id).status = t.value; }
+  else if (d.change === 'priority') { issueOf(d.id).p = t.value; render(); }
+});
+document.addEventListener('keydown', e => {
+  if (!e.metaKey) return;
+  const n = +e.key;
+  if (n >= 1 && n <= 6) { e.preventDefault(); A.nav(SECTIONS[n - 1].id); }
+  else if (e.key === 'k') { e.preventDefault(); if (!S.sidebar) { S.sidebar = true; render(); } const f = document.querySelector('[data-filter]'); if (f) f.focus(); }
+  else if (e.key === '.' && S.route === 'chat' && S.run) { e.preventDefault(); stopRun(); }
+  else if (e.key === 'Enter' && S.route === 'chat') { e.preventDefault(); sendComposer(); }
+  else if (e.altKey && e.code === 'KeyT') { e.preventDefault(); A['toggle-terminal'](); }
+});
+window.addEventListener('hashchange', () => { const r = readHash(); if (r !== S.route) { S.route = r; if (r.startsWith('github')) S.ghView = r; render(); } });
+
+/* Fixed chrome icons */
+$('#sb-toggle').innerHTML = icon('sidebar');
+$('#term-toggle').innerHTML = icon('terminal');
+$('#settings').innerHTML = icon('settings');
+
+S.route = readHash();
+if (S.route.startsWith('github')) S.ghView = S.route;
+render();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { const s = $('#scroll'); if (s && S.route === 'chat') s.scrollTop = s.scrollHeight; });
+</script>
+</body>
+</html>
