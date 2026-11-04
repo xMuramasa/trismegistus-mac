@@ -19,9 +19,10 @@ public enum ChatImage: Sendable, Equatable, Hashable {
 
 /// One row of the chat.
 public enum ChatItem: Sendable, Equatable, Identifiable {
-    /// From the history; `text` may be empty when the message is only images.
-    case user(id: String, text: String, time: Date?, images: [ChatImage] = [])
-    /// A prompt from the outbox: pending, sent (time of its run's first event) or failed.
+    /// From the history; `text` may be empty when the message is only images. `steer`: sent into a running turn
+    /// (Hermes' stored steer, without its wrapper).
+    case user(id: String, text: String, time: Date?, images: [ChatImage] = [], steer: Bool = false)
+    /// A prompt from the outbox: pending, sent (time of its run's first event) or failed; or a steer just sent.
     case prompt(OutgoingPrompt, time: Date?)
     case answer(id: String, text: String, time: Date?)
     case tool(id: String, ToolRow)
@@ -32,7 +33,7 @@ public enum ChatItem: Sendable, Equatable, Identifiable {
 
     public var id: String {
         switch self {
-        case .user(let id, _, _, _), .answer(let id, _, _), .tool(let id, _), .subagent(let id, _, _, _),
+        case .user(let id, _, _, _, _), .answer(let id, _, _), .tool(let id, _), .subagent(let id, _, _, _),
             .marker(let id, _), .note(let id, _, _):
             id
         case .prompt(let p, _): "o-\(p.id)"
@@ -41,7 +42,7 @@ public enum ChatItem: Sendable, Equatable, Identifiable {
 }
 
 /// Builds the chat from a session's state: REST history, then the live events grouped by run (each run after the
-/// prompt that started it), then the prompts still waiting. `compact` (popover) shows tool and subagent rows inline;
+/// prompt that started it, its steers after the event they were sent after), then the prompts still waiting. `compact` (popover) shows tool and subagent rows inline;
 /// otherwise (window) each run gets one marker.
 public enum ChatTimeline {
     public static func items(_ s: SessionState, compact: Bool) -> [ChatItem] {
@@ -55,11 +56,13 @@ public enum ChatTimeline {
         var placed: Set<String> = []
         for runID in order {
             let events = runs[runID] ?? []
-            if let p = s.outbox.first(where: { $0.status == .sent(runID: runID) }) {
+            if let p = s.outbox.first(where: { !$0.isSteer && $0.status == .sent(runID: runID) }) {
                 items.append(.prompt(p, time: date(ms: events.first?.ts)))
                 placed.insert(p.id)
             }
-            items += run(events, compact: compact)
+            let steers = s.outbox.filter { $0.isSteer && $0.status == .sent(runID: runID) }
+            placed.formUnion(steers.map(\.id))
+            items += run(events, steers: steers, compact: compact)
         }
         items += s.outbox.filter { !placed.contains($0.id) }.map { .prompt($0, time: nil) }
         return items
@@ -81,7 +84,7 @@ public enum ChatTimeline {
             switch m.role {
             case .user:
                 let (text, images) = userMessage(m.content, attachments: m.attachments)
-                items.append(.user(id: "h-\(m.id)", text: text, time: time, images: images))
+                items.append(.user(id: "h-\(m.id)", text: text, time: time, images: images, steer: m.isSteer))
             case .assistant:
                 if !m.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     items.append(.answer(id: "h-\(m.id)", text: m.content, time: time))
@@ -141,7 +144,7 @@ public enum ChatTimeline {
         return row
     }
 
-    private static func run(_ events: [Event], compact: Bool) -> [ChatItem] {
+    private static func run(_ events: [Event], steers: [OutgoingPrompt] = [], compact: Bool) -> [ChatItem] {
         let entries = TerminalTranscript.entries(from: events)
         let entryAt = Dictionary(entries.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         var subagentEnd: [String: (seq: Int, data: SubagentCompleted)] = [:]
@@ -150,7 +153,12 @@ public enum ChatTimeline {
         }
         var items: [ChatItem] = []
         var markerPlaced = false
+        var waiting = steers[...]
         for e in events {
+            while let p = waiting.first, p.afterSeq < e.seq {
+                items.append(.prompt(p, time: nil))
+                waiting = waiting.dropFirst()
+            }
             let id = "e-\(e.seq)"
             switch e.payload {
             case .toolStarted, .toolCompleted:
@@ -194,6 +202,7 @@ public enum ChatTimeline {
                 break
             }
         }
+        items += waiting.map { .prompt($0, time: nil) }
         return items
     }
 

@@ -96,4 +96,17 @@ import Testing
         #expect(ChatTimeline.items(s, compact: true) == ChatTimeline.items(state([], history: Self.toolHistory), compact: true))
         #expect(ChatTimeline.items(s, compact: false).map(\.id) == ["h-1", "h-4"])
     }
+
+    /// #54: a steer sits after the event it was sent after; a stored one is marked, without Hermes' wrapper.
+    @Test func steersSitAmongTheirRunsEvents() {
+        let prompt = OutgoingPrompt(id: "c1", text: "Draw the menu", status: .sent(runID: "run_1"))
+        let steer = OutgoingPrompt(id: "st", text: "with the camera", status: .sent(runID: "run_1"), isSteer: true, afterSeq: 1)
+        let events = [event("s1", 1, .answer(Answer(text: "Looking."))), event("s1", 2, .answer(Answer(text: "Drawn.")))]
+        let items = ChatTimeline.items(state(events, outbox: [prompt, steer]), compact: true)
+        #expect(items.map(\.id) == ["o-c1", "e-1", "o-st", "e-2"])
+        let early = ChatTimeline.items(state([], outbox: [OutgoingPrompt(id: "st", text: "x", status: .sent(runID: "run_1"), isSteer: true)]), compact: false)
+        #expect(early.map(\.id) == ["o-st"])
+        let stored = state([], history: history(#"[{"id":9,"role":"user","display_kind":"steer","content":"with the camera"}]"#))
+        #expect(ChatTimeline.items(stored, compact: false) == [.user(id: "h-9", text: "with the camera", time: nil, steer: true)])
+    }
 }

@@ -96,7 +96,7 @@ public final class SessionStore {
             let at = now()
             for id in overview.keys { overview[id]?.apply(message, at: at) }
         }
-        for (id, s) in sessions where !s.historyLoaded && s.historyError == nil && !loading.contains(id) {
+        for (id, s) in sessions where (!s.historyLoaded || s.historyStale) && s.historyError == nil && !loading.contains(id) {
             await loadHistory(id)
         }
     }
@@ -165,6 +165,16 @@ public final class SessionStore {
         } catch {
             failed(nil, "Not connected to the relay.")
         }
+        return id
+    }
+
+    /// Steers `runID` with `text` and keeps it in the session's outbox until the history has it (steers are text
+    /// only). Throws when the client can't send it (not connected): nothing is added then.
+    @discardableResult
+    public func sendSteer(_ text: String, runID: String, in sessionID: String) async throws -> String {
+        try await client.send(.steer(runID: runID, text: text))
+        let id = UUID().uuidString.lowercased()
+        sessions[sessionID]?.steerSent(id: id, runID: runID, text: text)
         return id
     }
 

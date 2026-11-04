@@ -12,7 +12,9 @@ public struct PendingApproval: Sendable, Equatable, Identifiable {
     public var id: String { request.requestID }
 }
 
-/// A prompt the app sent, shown until the history has it.
+/// A prompt the app sent, shown until the history has it. A steer (`isSteer`) is `.sent` from the start (the relay
+/// doesn't acknowledge steers) and stays until the history has its text or its run ends; `afterSeq` is the session's
+/// seq when it was sent, so the chat places it among the run's events.
 public struct OutgoingPrompt: Sendable, Equatable, Identifiable {
     public enum Status: Sendable, Equatable {
         case pending
@@ -27,6 +29,8 @@ public struct OutgoingPrompt: Sendable, Equatable, Identifiable {
     public var status: Status
     /// Its images, with the bytes kept so a retry can upload them again.
     public var images: [ImageUpload] = []
+    public var isSteer = false
+    public var afterSeq = 0
 }
 
 /// One open session: REST history plus the live events the history doesn't have yet. A pure value; SessionStore
@@ -45,17 +49,40 @@ public struct SessionState: Sendable, Equatable {
     public var run: ActiveRun?
     public var approvals: [PendingApproval] = []
     public var outbox: [OutgoingPrompt] = []
+    /// The history misses something another device sent or a run just finished: SessionStore reloads it, keeping the
+    /// chat on screen meanwhile (unlike `historyLoaded` false). The relay's stream carries no event for a prompt or a
+    /// steer, so a run this device didn't start is the only sign of one (trismegistus-mac #54).
+    public var historyStale = false
+    /// The run this device didn't start whose first event already asked for a reload (Hermes stores its prompt a few
+    /// ms after the relay announces the run).
+    public var rechecked: String?
 
     public static let maxEvents = 1000
 
     public init(id: String) { self.id = id }
+
+    /// This device's prompt started `runID` (its ack named it).
+    public func isOwnRun(_ runID: String) -> Bool {
+        outbox.contains { !$0.isSteer && $0.status == .sent(runID: runID) }
+    }
+
+    /// A steer sent into the running turn: shown at once, until the history has it.
+    public mutating func steerSent(id: String, runID: String, text: String) {
+        outbox.append(OutgoingPrompt(id: id, text: text, status: .sent(runID: runID), isSteer: true, afterSeq: lastSeq))
+    }
 
     public mutating func apply(_ message: ServerMessage) {
         switch message {
         case .event(let e) where e.sessionID == id:
             apply(e)
         case .run(let runID, let sessionID, let status) where sessionID == id:
-            if status.isTerminal { end(runID) } else { run = ActiveRun(id: runID, status: status) }
+            if status.isTerminal {
+                end(runID)
+            } else {
+                // A run that appears without our ack: another device's prompt, which only the history has.
+                if run?.id != runID && !isOwnRun(runID) { historyStale = true }
+                run = ActiveRun(id: runID, status: status)
+            }
         case .ack(let clientMsgID, let runID, let replayed):
             guard let i = outbox.firstIndex(where: { $0.id == clientMsgID }) else { return }
             outbox[i].status = .sent(runID: runID)
@@ -92,16 +119,25 @@ public struct SessionState: Sendable, Equatable {
             if run?.id == e.runID { run?.status = .running }
         case .runCompleted, .runFailed, .runCancelled:
             end(e.runID)
+            return
         case .toolStarted, .toolCompleted, .subagentStarted, .subagentCompleted, .steerQueued:
             if run?.id != e.runID { run = ActiveRun(id: e.runID, status: .running) }
         case .answer, .reconnected, .unknown:
             break
         }
+        // The first event of a run this device didn't start asks for the history once more: the reload its
+        // announcement caused may have come before Hermes stored the prompt.
+        if rechecked != e.runID && !isOwnRun(e.runID) {
+            rechecked = e.runID
+            historyStale = true
+        }
     }
 
+    /// A run ended: the history has the finished turn (and any prompt or steer this device didn't see).
     private mutating func end(_ runID: String) {
         if run?.id == runID { run = nil }
         approvals.removeAll { $0.runID == runID }
+        historyStale = true
     }
 
     /// trismegistus #11: history that arrives after live events already holds every finished turn. Keep only the
@@ -110,7 +146,15 @@ public struct SessionState: Sendable, Equatable {
         history = messages
         historyLoaded = true
         historyError = nil
+        historyStale = false
         events.removeAll { $0.runID != run?.id }
-        outbox.removeAll { if case .sent = $0.status { true } else { false } }
+        let steers = Set(messages.filter(\.isSteer).map { $0.content.trimmingCharacters(in: .whitespacesAndNewlines) })
+        let running = run?.id
+        outbox.removeAll { p in
+            guard case .sent(let runID) = p.status else { return false }
+            // A steer is stored when Hermes takes it (its next step), not when sent: keep it until then.
+            guard p.isSteer else { return true }
+            return runID != running || steers.contains(p.text.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
     }
 }

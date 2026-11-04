@@ -231,7 +231,8 @@ struct OverviewTests {
         c0.push(.event(event("s1", 4, .steerQueued)), .event(event("s3", 9, .steerQueued)),
                 .error(code: .replayGap, message: "reload the history", ref: "s3"))
         #expect(await subscriptions(c0, 6).last == .subscribe(sessionID: "s3"))
-        await http.requests.wait { $0.filter { $0.url?.path == "/api/sessions/s3/messages" }.count == 2 }
+        // 2: the first event of a run this device didn't start (#54); 3: the replay_gap.
+        await http.requests.wait { $0.filter { $0.url?.path == "/api/sessions/s3/messages" }.count == 3 }
         await until { store.sessions["s3"]?.historyLoaded == true }
         #expect(store.overview["s3"]?.lastSeq == 0 && store.overview["s1"]?.lastSeq == 4)
         c0.drop()

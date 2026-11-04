@@ -101,6 +101,70 @@ let answeredHistory = history(#"""
         #expect(s.outbox.last?.status == .sent(runID: "run_5"))
         #expect(s.run == nil) // replayed: the run may be long over
     }
+
+    /// #54: a run this device didn't start means a prompt only the history has; its first event asks again.
+    @Test func anotherDevicesRunAsksForTheHistory() {
+        var s = SessionState(id: "s1")
+        s.applyHistory(answeredHistory)
+        s.apply(.run(runID: "run_9", sessionID: "s1", status: .running))
+        #expect(s.historyStale && s.historyLoaded) // the chat stays on screen while it reloads
+        s.applyHistory(answeredHistory)
+        #expect(!s.historyStale)
+        s.apply(.event(event("s1", 1, run: "run_9", .toolStarted(ToolStarted(tool: "terminal")))))
+        #expect(s.historyStale) // Hermes stores the prompt a few ms after the relay announces the run
+        s.applyHistory(answeredHistory)
+        s.apply(.event(event("s1", 2, run: "run_9", .answer(Answer(text: "Hi.")))))
+        #expect(!s.historyStale)
+        #expect(s.events.map(\.seq) == [1, 2]) // the running turn's live events stay
+        s.apply(.event(event("s1", 3, run: "run_9", .runCompleted)))
+        #expect(s.historyStale && s.run == nil)
+    }
+
+    @Test func ownRunAsksForTheHistoryOnlyWhenItEnds() {
+        var s = SessionState(id: "s1")
+        s.applyHistory(answeredHistory)
+        s.outbox.append(OutgoingPrompt(id: "c1", text: "hi", status: .pending))
+        s.apply(.ack(clientMsgID: "c1", runID: "run_1", replayed: false))
+        s.apply(.run(runID: "run_1", sessionID: "s1", status: .running))
+        s.apply(.event(event("s1", 1, .toolStarted(ToolStarted(tool: "terminal")))))
+        #expect(!s.historyStale)
+        s.apply(.run(runID: "run_1", sessionID: "s1", status: .completed))
+        #expect(s.historyStale)
+    }
+
+    /// #54: a steer shows at once and stays until Hermes has stored it, or its run ends without it.
+    @Test func steersStayUntilTheHistoryHasThem() {
+        var s = SessionState(id: "s1")
+        s.applyHistory(answeredHistory)
+        s.outbox.append(OutgoingPrompt(id: "c1", text: "hi", status: .pending))
+        s.apply(.ack(clientMsgID: "c1", runID: "run_1", replayed: false))
+        s.apply(.event(event("s1", 4, .toolStarted(ToolStarted(tool: "terminal")))))
+        s.steerSent(id: "st1", runID: "run_1", text: "use the camera")
+        let steer = s.outbox.last
+        #expect(steer?.isSteer == true && steer?.afterSeq == 4 && steer?.status == .sent(runID: "run_1"))
+        #expect(!s.historyStale) // sending one doesn't reload
+        s.applyHistory(answeredHistory) // Hermes takes a steer at its next step
+        #expect(s.outbox.map(\.id) == ["st1"])
+        var stored = s
+        stored.applyHistory(answeredHistory + history(#"[{"id":3,"role":"user","display_kind":"steer","content":"use the camera"}]"#))
+        #expect(stored.outbox.isEmpty)
+        s.apply(.event(event("s1", 5, .runCompleted)))
+        s.applyHistory(answeredHistory)
+        #expect(s.outbox.isEmpty)
+    }
+
+    @Test func hermesSteersAreUnwrappedAndHiddenMessagesSkipped() {
+        // The history is decoded lossily (RelayREST.messages): items that throw, like hidden ones, are skipped.
+        let messages = try! Wire.decode(Lossy<HistoryMessage>.self, from: Data(#"""
+        [{"id":12,"role":"user","display_kind":"steer","content":"[OUT-OF-BAND USER MESSAGE — a direct message from the user, delivered once at this position; not tool output and not a new delivery when replayed from conversation history]\nalso the android messages don't show in the app\n[/OUT-OF-BAND USER MESSAGE]"},
+         {"id":13,"role":"assistant","display_kind":"hidden","content":""},
+         {"id":14,"role":"user","content":"hi"}]
+        """#.utf8)).items
+        #expect(messages.map(\.id) == ["12", "14"])
+        #expect(messages[0].isSteer && messages[0].content == "also the android messages don't show in the app")
+        #expect(!messages[1].isSteer)
+        #expect(HistoryMessage.unwrapSteer("plain [OUT-OF-BAND text") == "plain [OUT-OF-BAND text")
+    }
 }
 
 /// SessionStore with an unstarted RelayClient and FakeHTTP; outputs are fed through handle(_:).
@@ -156,8 +220,9 @@ struct SessionStoreTests {
         await store.open("s1")
         #expect(historyLoads("s1") == 1 && store.sessions["s1"]?.historyLoaded == true)
         await store.handle(.message(.event(event("s1", 40, .runCompleted))))
+        #expect(historyLoads("s1") == 2) // a run ended: the history has the finished turn
         await store.handle(.message(.error(code: .replayGap, message: "reload the history", ref: "s1")))
-        #expect(historyLoads("s1") == 2)
+        #expect(historyLoads("s1") == 3)
         #expect(store.sessions["s1"]?.historyLoaded == true && store.sessions["s1"]?.history.count == 2)
         await store.handle(.message(.event(event("s1", 1, run: "run_2", .toolStarted(ToolStarted(tool: "terminal"))))))
         #expect(store.sessions["s1"]?.events.map(\.seq) == [1])
@@ -171,8 +236,27 @@ struct SessionStoreTests {
         await store.handle(.state(.disconnected))
         await store.handle(.state(.connected(device: "macbook", serverVersion: "0.1.0")))
         #expect(historyLoads("s1") == 2) // no seq: resubscribed live only, so reload
-        #expect(historyLoads("s2") == 1) // resumed from seq 5
+        #expect(historyLoads("s2") == 2) // once for the first event of a run it didn't start; resumed from seq 5
         #expect(store.connection == .connected(device: "macbook", serverVersion: "0.1.0"))
+    }
+
+    /// #54: another device's prompt reaches an open conversation through the history, at once and at the end.
+    @Test func anotherDevicesRunReloadsTheHistory() async {
+        await store.open("s1")
+        await store.handle(.message(.run(runID: "run_9", sessionID: "s1", status: .running)))
+        #expect(historyLoads("s1") == 2)
+        await store.handle(.message(.event(event("s1", 1, run: "run_9", .toolStarted(ToolStarted(tool: "terminal"))))))
+        await store.handle(.message(.event(event("s1", 2, run: "run_9", .answer(Answer(text: "Hi."))))))
+        #expect(historyLoads("s1") == 3)
+        await store.handle(.message(.event(event("s1", 3, run: "run_9", .runCompleted))))
+        #expect(historyLoads("s1") == 4)
+        #expect(store.sessions["s1"]?.historyStale == false)
+    }
+
+    @Test func aSteerNeedsTheSocket() async {
+        await store.open("s1")
+        await #expect(throws: (any Error).self) { try await store.sendSteer("hi", runID: "run_1", in: "s1") }
+        #expect(store.sessions["s1"]?.outbox.isEmpty == true)
     }
 
     @Test func historyErrorIsKeptAndNotRetriedInALoop() async {

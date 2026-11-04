@@ -243,7 +243,7 @@ struct ChatView: View {
             draft = ""
             act {
                 do {
-                    try await model.steer(runID: run.id, text: text)
+                    try await model.steer(runID: run.id, text: text, in: id)
                 } catch {
                     if draft.isEmpty { draft = text }
                     throw error
@@ -262,7 +262,7 @@ struct ChatView: View {
     private func retry(_ prompt: OutgoingPrompt) {
         if case .failed(.busy, _) = prompt.status, let run, prompt.images.isEmpty {
             hidden.insert(prompt.id)
-            act { try await model.steer(runID: run.id, text: prompt.text) }
+            act { try await model.steer(runID: run.id, text: prompt.text, in: id) }
         } else {
             Task { await model.store?.retryPrompt(prompt.id, in: id) }
         }
@@ -293,12 +293,15 @@ struct ChatTranscript: View {
     var body: some View {
         ForEach(items) { item in
             switch item {
-            case .user(_, let text, let time, let images):
-                UserMessage(text: text, label: "You" + stamp(time), sessionID: sessionID, images: images.map(MessageImage.chat))
+            case .user(_, let text, let time, let images, let steer):
+                UserMessage(
+                    text: text, label: (steer ? "You // steer" : "You") + stamp(time), sessionID: sessionID,
+                    images: images.map(MessageImage.chat))
             case .prompt(let p, let time):
                 VStack(alignment: .leading, spacing: Space.xs) {
                     UserMessage(
-                        text: p.text, label: "You" + (time != nil ? stamp(time) : p.status == .pending ? " // sending" : ""),
+                        text: p.text,
+                        label: (p.isSteer ? "You // steer" : "You") + (time != nil ? stamp(time) : p.status == .pending ? " // sending" : ""),
                         sessionID: sessionID, images: p.images.map(MessageImage.upload))
                     if case .failed(let code, let message) = p.status {
                         HStack(spacing: Space.s) {

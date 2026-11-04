@@ -90,12 +90,34 @@ public struct HistoryMessage: Decodable, Sendable, Equatable {
     public var timestamp: Double?
     /// The relay's images on a user message its run sent with them (Hermes keeps only a `[screenshot]` line).
     public var attachments: [AttachmentRef]
+    /// Hermes' `display_kind`: `steer` for a message sent into a running turn; nil for a plain one.
+    public var displayKind: String?
 
+    /// A steer: `content` is the text that was sent, without Hermes' out-of-band wrapper.
+    public var isSteer: Bool { displayKind == Self.steer }
+
+    public static let steer = "steer"
+
+    /// The text a steer was sent with: Hermes stores it as `[OUT-OF-BAND USER MESSAGE — ...]`, a newline, the text, a
+    /// newline and `[/OUT-OF-BAND USER MESSAGE]`. Anything else comes back unchanged.
+    public static func unwrapSteer(_ content: String) -> String {
+        guard content.hasPrefix("[OUT-OF-BAND USER MESSAGE"), let start = content.firstIndex(of: "\n") else { return content }
+        let body = content[content.index(after: start)...]
+        let end = body.range(of: "[/OUT-OF-BAND USER MESSAGE]", options: .backwards)?.lowerBound ?? body.endIndex
+        return body[..<end].trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Hermes' `hidden` messages throw, so the lossy history skips them like system messages.
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: AnyKey.self)
+        displayKind = try? c.decodeIfPresent(String.self, forKey: "display_kind")
+        if displayKind == "hidden" {
+            throw DecodingError.dataCorruptedError(forKey: "display_kind", in: c, debugDescription: "hidden message")
+        }
         if let n = try? c.decode(Int.self, forKey: "id") { id = String(n) } else { id = try c.decode(String.self, forKey: "id") }
         role = try c.decode(Role.self, forKey: "role")
-        content = try c.decodeIfPresent(String.self, forKey: "content") ?? ""
+        let content = try c.decodeIfPresent(String.self, forKey: "content") ?? ""
+        self.content = displayKind == Self.steer ? Self.unwrapSteer(content) : content
         toolCalls = (try? c.decodeIfPresent(Lossy<ToolCall>.self, forKey: "tool_calls"))??.items ?? []
         toolCallID = try c.decodeIfPresent(String.self, forKey: "tool_call_id")
         toolName = try c.decodeIfPresent(String.self, forKey: "tool_name")

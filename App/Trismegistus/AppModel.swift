@@ -107,8 +107,10 @@ final class AppModel {
         try await relay().send(.approve(runID: approval.runID, requestID: approval.id, choice: choice))
     }
 
-    func steer(runID: String, text: String) async throws {
-        try await relay().send(.steer(runID: runID, text: text))
+    /// Kept in the conversation's outbox until the history has it (trismegistus-mac #54).
+    func steer(runID: String, text: String, in sessionID: String) async throws {
+        guard let store else { throw RelayClient.SendError.notConnected }
+        try await store.sendSteer(text, runID: runID, in: sessionID)
     }
 
     func stop(runID: String) async throws {
