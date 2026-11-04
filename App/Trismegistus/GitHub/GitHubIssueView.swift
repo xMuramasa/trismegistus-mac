@@ -26,14 +26,19 @@ struct GitHubIssueView: View {
     // An answered inbox item selects the next one in the sidebar.
     @AppStorage(WindowSection.github.selectionKey) private var selectedIssue = ""
     @State private var checkNote = ""
+    /// What the answer posted: the check panel's folded line until the status has moved on.
+    @State private var answered: CheckPanel.Result?
 
     /// The run working on this issue, from the agents list the board polls.
     private var run: Agent? { model.agents?.run(on: repo, issue: number) }
 
+    private var issueID: String { "\(repo)#\(number)" }
+
     var body: some View {
         VStack(spacing: 0) {
             header
-            if issue != nil || run != nil || actionError != nil { boardPanel }
+            if let issue { readout(issue) }
+            if run != nil || actionError != nil { runPanel }
             if let issue {
                 ScrollView {
                     VStack(alignment: .leading, spacing: Space.l) {
@@ -46,7 +51,7 @@ struct GitHubIssueView: View {
                         ForEach(issue.comments, id: \.url) { post(author: $0.author, date: $0.createdAt, text: $0.body) }
                         if github.isManager { composer }
                     }
-                    .frame(maxWidth: Size.chatColumn, alignment: .leading)
+                    .frame(maxWidth: Size.issueColumn, alignment: .leading)
                     .padding(Space.l)
                     .frame(maxWidth: .infinity)
                 }
@@ -70,23 +75,15 @@ struct GitHubIssueView: View {
         DetailHeader {
             Text(issue?.title ?? "").lineLimit(2).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
         } subtitle: {
-            HStack(spacing: Space.s) {
-                Text(verbatim: "\(repo)#\(number)")
-                if let issue {
-                    Text(issue.isOpen ? "open" : "closed").typeRole(.label)
-                    if !issue.priority.isEmpty { PriorityMark(priority: issue.priority) }
-                    TagChips(tags: issue.labels.withoutPriority(issue.priority), limit: 4)
-                }
-            }
+            Text(verbatim: issue.map { "\(issueID) · \($0.isOpen ? "open" : "closed") · \(Self.age($0.createdAt))" } ?? issueID)
         } trailing: {
             if let run, run.alive {
                 TimelineView(.periodic(from: .now, by: 30)) { context in
-                    // Raised: both marks draw in ink, which doesn't read on steel.
                     RunningMark(detail: [run.model, PopoverFormat.ago(run.started, now: context.date)].compactMap { $0 }.joined(separator: " · "))
-                        .background(Ink.surface.raised)
                 }
             }
             if let issue {
+                if let tasks = issue.taskReading { TaskReading(tasks) }
                 // One yellow: Looks good while the check panel shows, else Dispatch, else Start conversation.
                 let option = GitHubDispatch.option(labels: issue.labels, isOpen: issue.isOpen, canManage: github.isManager,
                                                    hasLiveRun: run?.alive == true)
@@ -99,17 +96,16 @@ struct GitHubIssueView: View {
                 case .button:
                     EndfieldButton("Dispatch", symbol: "play.fill", kind: checking ? .secondary : .primary) { dispatch(issue) }
                         .disabled(busy || model.store == nil)
-                case .hidden(let tooltip): DispatchHiddenMark(reason: tooltip).background(Ink.surface.raised)
+                case .hidden(let tooltip): DispatchHiddenMark(reason: tooltip)
                 case .none: EmptyView()
                 }
             }
         }
     }
 
-    /// The board fields, the run and the last refusal, under the band.
-    private var boardPanel: some View {
+    /// The run and the last refusal, under the readout.
+    private var runPanel: some View {
         VStack(alignment: .leading, spacing: Space.s) {
-            if let issue { actions(issue) }
             if let run, let board = model.agents { runRow(run, board: board) }
             ActionError(message: actionError)
         }
@@ -117,27 +113,47 @@ struct GitHubIssueView: View {
         .background(Ink.surface.raised)
     }
 
+    /// The row with as many tags as fit: asked inside the row's own layout, its spacer would take half their room.
+    private func readout(_ issue: GitHubIssue) -> some View {
+        let tags = issue.labels.withoutPriority(issue.priority)
+        return ViewThatFits(in: .horizontal) {
+            ForEach((0...tags.count).reversed(), id: \.self) { readout(issue, tags: tags, shown: $0) }
+        }
+    }
+
     /// Status and Priority by option name, close/reopen: managers. Viewers see the fields as text.
-    @ViewBuilder private func actions(_ issue: GitHubIssue) -> some View {
-        let board = github.board
-        HStack(spacing: Space.s) {
-            if github.isManager, let board {
-                field("Status", value: issue.status, options: board.statusOptions) { set(issue, status: $0) }
-                field("Priority", value: issue.priority, options: board.priorityOptions) { set(issue, priority: $0) }
-                Spacer(minLength: Space.s)
+    private func readout(_ issue: GitHubIssue, tags: [String], shown: Int) -> some View {
+        let board = github.isManager ? github.board : nil
+        return ReadoutRow {
+            ReadoutCell("Status") {
+                if let board {
+                    field("Status", value: issue.status, options: board.statusOptions) { set(issue, status: $0) }
+                } else {
+                    reading(issue.onBoard ? issue.status : "Not on the Work board")
+                }
+            }
+            ReadoutCell("Priority") {
+                if let board {
+                    field("Priority", value: issue.priority, options: board.priorityOptions, width: nil) { set(issue, priority: $0) }
+                } else {
+                    reading(issue.priority)
+                }
+            }
+            ReadoutCell("Tags") { ReadoutTags(tags, shown: shown) }
+            ReadoutCell("Agent") { ReadoutTag(issue.labels.agentValue ?? "none") }
+        } trailing: {
+            if github.isManager {
                 if issue.isOpen {
                     EndfieldButton("Close issue", symbol: "checkmark.circle") { setOpen(issue, false) }.disabled(busy)
                 } else {
                     EndfieldButton("Reopen issue", symbol: "arrow.uturn.backward") { setOpen(issue, true) }.disabled(busy)
                 }
-            } else {
-                Text(issue.onBoard
-                     ? "Status: \(issue.status.isEmpty ? "none" : issue.status) · Priority: \(issue.priority.isEmpty ? "none" : issue.priority)"
-                     : "Not on the Work board")
-                    .typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
-                Spacer(minLength: 0)
             }
         }
+    }
+
+    private func reading(_ value: String) -> some View {
+        Text(verbatim: value.isEmpty ? "none" : value).typeRole(.callout).lineLimit(1)
     }
 
     /// The run in the Agents list's style; Stop (a manager's, while it runs) asks first, as in Agents.
@@ -162,22 +178,17 @@ struct GitHubIssueView: View {
         }
     }
 
-    /// A menu of the board's options; picking one sets it. The unset value is shown but can't be picked.
-    private func field(_ label: String, value: String, options: [String], set: @escaping (String) -> Void) -> some View {
-        Picker(label, selection: Binding(get: { value }, set: { if !$0.isEmpty && $0 != value { set($0) } })) {
-            Text(verbatim: "No \(label.lowercased())").tag("")
-            ForEach(options, id: \.self) { Text($0).tag($0) }
-        }
-        .pickerStyle(.menu)
-        .fixedSize()
-        .disabled(busy)
+    /// A board field's menu (`ReadoutMenu`), off while a write is in flight.
+    private func field(_ label: String, value: String, options: [String], width: CGFloat? = Size.readoutPicker,
+                       set: @escaping (String) -> Void) -> some View {
+        ReadoutMenu(label, value: value, options: options, width: width, set: set).disabled(busy)
     }
 
     private func post(author: String, date: String, text: String) -> some View {
         VStack(alignment: .leading, spacing: Space.s) {
-            HStack(spacing: Space.s) {
+            HStack(alignment: .firstTextBaseline, spacing: Space.s) {
                 Text(author).typeRole(.label).foregroundStyle(Ink.text.primary)
-                Text(Self.age(date)).typeRole(.monoSmall).foregroundStyle(Ink.text.muted)
+                Text(Self.age(date)).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
             }
             GitHubMarkdown(text: text)
         }
@@ -296,19 +307,20 @@ struct GitHubIssueView: View {
     private func checkPanel(_ issue: GitHubIssue) -> some View {
         let note = GitHubInbox.note(in: issue.comments)
         return CheckPanel(lines: note?.lines ?? [], source: note.map { "from Hermes · " + Self.stamp($0.date) } ?? "",
-                          canAct: github.isManager, busy: busy, note: $checkNote,
-                          looksGood: { answer { try await GitHubInbox.confirm(github.rest, repo: issue.repo, number: issue.number) } },
+                          canAct: github.isManager, busy: busy, note: $checkNote, ticked: github.ticks.ticked(issueID), result: answered,
+                          tick: { github.ticks.toggle($0, issue: issueID) },
+                          looksGood: { answer(.confirmed) { try await GitHubInbox.confirm(github.rest, repo: issue.repo, number: issue.number) } },
                           notRight: {
                               let text = checkNote
-                              answer {
+                              answer(.notePosted) {
                                   try await GitHubInbox.reject(github.rest, repo: issue.repo, number: issue.number, note: text, isOpen: issue.isOpen)
                                   checkNote = ""
                               }
                           })
     }
 
-    /// Writes, reads the board again and, from the inbox, selects the item after this one that is still there.
-    private func answer(_ write: @escaping () async throws -> Void) {
+    /// Writes, folds the panel, reads the board again and, from the inbox, selects the item after this one that is still there.
+    private func answer(_ result: CheckPanel.Result, _ write: @escaping () async throws -> Void) {
         busy = true
         Task {
             defer { busy = false }
@@ -317,13 +329,13 @@ struct GitHubIssueView: View {
             do {
                 try await write()
                 actionError = nil
+                answered = result
                 done = true
             } catch {
                 actionError = GitHubError.describe(error)
             }
             await github.refresh()
-            let current = "\(repo)#\(number)"
-            if done, github.inboxShown, let at = before.firstIndex(of: current) {
+            if done, github.inboxShown, let at = before.firstIndex(of: issueID) {
                 let left = Set(github.board?.needsCheck().flatMap(\.items).map(\.id) ?? [])
                 if let next = (before[(at + 1)...] + before[..<at]).first(where: left.contains) {
                     selectedIssue = next
@@ -331,6 +343,8 @@ struct GitHubIssueView: View {
                 }
             }
             await load()
+            // A failed read keeps the fold: the answer went out, the panel must not offer it again.
+            if let issue, !GitHubInbox.isNeedsCheck(issue.status) { answered = nil }
         }
     }
 

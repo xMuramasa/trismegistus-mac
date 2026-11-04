@@ -34,28 +34,21 @@ struct SetupNote: View {
     }
 }
 
-/// Markdown as the chat renders an answer: prose with inline styles (line breaks kept as written), fenced code as
-/// `CodeBlockView`, pipe tables as `MarkdownTableView`. HTML in the prose and the cells is dropped (`stripHTML`).
+/// Markdown as the chat renders an answer (`MarkdownView`: headings, read-only task boxes, URLs as links), pipe tables
+/// as `MarkdownTableView`. HTML in the text and the cells is dropped (`stripHTML`).
 struct GitHubMarkdown: View {
     let text: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.s) {
-            ForEach(Array(MarkdownBlocks.parse(text).enumerated()), id: \.offset) { _, block in
-                switch block {
-                case .prose(let s):
-                    let s = MarkdownBlocks.stripHTML(s)
-                    Text((try? AttributedString(markdown: s, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(s))
-                        .typeRole(.body).foregroundStyle(Ink.text.primary).textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                case .code(let language, let code):
-                    CodeBlockView(language: language, code: code)
-                case .table(let header, let rows, let alignments):
-                    MarkdownTableView(header: header, rows: rows, alignments: alignments, clean: MarkdownBlocks.stripHTML)
-                case .image(let path):
-                    // Hermes' image line; an issue body has no session to fetch it from.
-                    Text("MEDIA:" + path).typeRole(.body).foregroundStyle(Ink.text.primary).textSelection(.enabled)
-                }
+        MarkdownView(MarkdownPart.parse(text, clean: MarkdownBlocks.stripHTML)) { block in
+            switch block {
+            case .table(let header, let rows, let alignments):
+                MarkdownTableView(header: header, rows: rows, alignments: alignments, clean: MarkdownBlocks.stripHTML)
+            case .image(let path):
+                // Hermes' image line; an issue body has no session to fetch it from.
+                Text("MEDIA:" + path).typeRole(.body).foregroundStyle(Ink.text.primary).textSelection(.enabled)
+            case .prose, .code:
+                EmptyView() // `parse` makes parts of these
             }
         }
         .fixedSize(horizontal: false, vertical: true)

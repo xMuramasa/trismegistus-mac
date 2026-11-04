@@ -114,6 +114,11 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   with light text (`text.on-sidebar`, `text.on-sidebar-secondary`, ≈4.7:1, nothing dimmer); the selected row is a
   white card with a yellow outline and ink text; the filter fields stay light. The daily feed runs are ordinary read-only
   cron conversations, listed like every other cron run (the news itself is read at news.lab.x-muramasa.dev).
+  The GitHub issue (#59): the steel header with `done/total` of the body's task list, a readout row (Status and
+  Priority menus for a manager, Tags, Agent, Close/Reopen), then body and comments through the Markdown renderer in a
+  720 pt column with read-only task boxes. An issue in Needs check opens with Hermes' "look at" lines as a numbered
+  tick list (ticks are a local aid, kept per issue while the app runs, never sent and never required) above Looks
+  good / Not right; after either it folds to one line until the issue leaves Needs check.
   **Chat kind tabs** (#48): under the header, which names the tab (`TELEGRAM // 4`), above the filter, a row of bare
   icon tabs in the section bar's look: APP `macwindow`, TELEGRAM `paperplane`, TERMINAL `terminal`, MORE
   `ellipsis.circle` ▾, each with its count in mono; the selected one with the yellow bar (ink in the popover); a

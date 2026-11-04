@@ -28,6 +28,45 @@ import Testing
 
     func body(_ r: URLRequest) -> JSONValue? { r.httpBody.flatMap { try? Wire.decode(JSONValue.self, from: $0) } }
 
+    // MARK: Header and readout
+
+    func issue(body: String) throws -> GitHubIssue {
+        let json = #"{"repo":"o/r","number":3,"title":"t","body":\#(String(data: try JSONEncoder().encode(body), encoding: .utf8)!),"state":"open","author":"a","labels":[],"created_at":"2026-11-02T00:48:00Z","updated_at":"2026-11-02T00:48:00Z","url":"u","on_board":true,"status":"Todo","priority":"","comments_total":0,"comments":[]}"#
+        return try JSONDecoder().decode(GitHubIssue.self, from: Data(json.utf8))
+    }
+
+    @Test func taskReadingCountsTheBody() throws {
+        #expect(try issue(body: "## Monitors\n- [ ] a\n- [x] b\n  - [X] nested\n\nThen:\n- [ ] c").taskReading == "2/4")
+        #expect(try issue(body: "- [ ] a\n- [ ] b\n- [ ] c\n- [ ] d\n- [ ] e\n- [ ] f\n- [ ] g\n- [ ] h\n- [ ] i").taskReading == "0/9")
+    }
+
+    @Test func noTaskListHidesTheReading() throws {
+        #expect(try issue(body: "Prose with a\n- bullet\n1. and a number").taskReading == nil)
+        #expect(try issue(body: "").taskReading == nil)
+        #expect(try issue(body: "```\n- [ ] in code\n```").taskReading == nil)
+    }
+
+    @Test func agentIsTheLabelsValue() {
+        #expect(["area: app", "agent: opus"].agentValue == "opus")
+        #expect(["Agent:sonnet"].agentValue == "sonnet")
+        #expect(["agent:", "agent: opus"].agentValue == "opus")
+        #expect(["area: app", "agents", "reagent: x"].agentValue == nil)
+        #expect([String]().agentValue == nil)
+    }
+
+    // MARK: Ticks
+
+    @Test func ticksArePerIssue() {
+        var ticks = GitHubInbox.Ticks()
+        ticks.toggle("the sidebar", issue: "o/r#1")
+        ticks.toggle("the icons", issue: "o/r#1")
+        ticks.toggle("the sidebar", issue: "o/r#2")
+        ticks.toggle("the icons", issue: "o/r#1")
+        #expect(ticks.ticked("o/r#1") == ["the sidebar"])
+        #expect(ticks.ticked("o/r#2") == ["the sidebar"])
+        #expect(ticks.ticked("o/r#3").isEmpty)
+    }
+
     // MARK: Dispatch
 
     @Test func promptIsTheWholeMessage() {

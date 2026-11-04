@@ -27,6 +27,19 @@ final class SnapshotTests: XCTestCase {
         XCTAssertGreaterThan(image.width, 0)
     }
 
+    /// Through AppKit, at 1x: for what `ImageRenderer` leaves out (native menus and fields, `Text` backgrounds).
+    private func snapHosted<V: View>(_ name: String, @ViewBuilder _ content: () -> V) throws {
+        let host = NSHostingView(rootView: content())
+        host.appearance = NSAppearance(named: .aqua)
+        host.frame.size = host.fittingSize
+        host.layoutSubtreeIfNeeded()
+        let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: rep)
+        let png = try XCTUnwrap(rep.representation(using: .png, properties: [:]))
+        try FileManager.default.createDirectory(at: Self.directory, withIntermediateDirectories: true)
+        try png.write(to: Self.directory.appendingPathComponent("\(name).png"))
+    }
+
     func testPaletteMatchesDraft() {
         let ns = NSColor(Palette.yellow).usingColorSpace(.sRGB)!
         XCTAssertEqual(ns.redComponent, 1, accuracy: 0.001)
@@ -307,16 +320,7 @@ final class SnapshotTests: XCTestCase {
             .code(language: "bash", text: "scripts/mac-build.sh"),
         ]
         // Hosted: `ImageRenderer` leaves out `Text`'s background attribute, so the code chips.
-        let host = NSHostingView(
-            rootView: MarkdownView(parts) { _ in EmptyView() }.padding(16).frame(width: 512).background(Palette.paper))
-        host.appearance = NSAppearance(named: .aqua)
-        host.frame.size = host.fittingSize
-        host.layoutSubtreeIfNeeded()
-        let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-        host.cacheDisplay(in: host.bounds, to: rep)
-        let png = try XCTUnwrap(rep.representation(using: .png, properties: [:]))
-        try FileManager.default.createDirectory(at: Self.directory, withIntermediateDirectories: true)
-        try png.write(to: Self.directory.appendingPathComponent("MarkdownView.png"))
+        try snapHosted("MarkdownView") { MarkdownView(parts) { _ in EmptyView() }.padding(16).frame(width: 512).background(Palette.paper) }
     }
 
     func testRunLineAndWorkLine() throws {
@@ -450,20 +454,124 @@ final class SnapshotTests: XCTestCase {
         }
     }
 
-    /// The check panel with lines and a note typed, without lines, and as a viewer sees it; the header's right side
-    /// with Dispatch yellow (Start conversation plain) and with the info mark (Start conversation yellow).
-    func testCheckPanelAndDispatch() throws {
-        let lines = ["the grey sidebar against 09f", "⌘1–⌘6 and the six icons switch sections", "each section's list + detail"]
-        try snap("CheckPanel", width: 700) {
+    /// The check panel with a tick and a note typed, without lines, as a viewer sees it, and folded after each answer.
+    func testCheckPanel() throws {
+        let lines = ["the grey sidebar against 09f", "⌘1–⌘6 / the icons", "each section's list + detail",
+                     "open-a-conversation from Jobs/Agents/GitHub/Commands landing in Chat, on a line long enough to wrap under its own text at this width"]
+        let source = "from Hermes · 1 Nov 09:48"
+        try snapHosted("CheckPanel") {
             VStack(alignment: .leading, spacing: 16) {
-                CheckPanel(lines: lines, source: "from Hermes · 2 Nov 00:48", canAct: true, busy: false,
-                           note: .constant("The sidebar is still white."), looksGood: {}, notRight: {})
-                CheckPanel(lines: [], source: "from Hermes · 2 Nov 00:48", canAct: true, busy: false, note: .constant(""),
-                           looksGood: {}, notRight: {})
-                CheckPanel(lines: lines, source: "from Hermes · 2 Nov 00:48", canAct: false, busy: false, note: .constant(""),
-                           looksGood: {}, notRight: {})
+                CheckPanel(lines: lines, source: source, canAct: true, busy: false, note: .constant("The sidebar is still white."),
+                           ticked: [lines[1]], tick: { _ in }, looksGood: {}, notRight: {})
+                CheckPanel(lines: lines, source: source, canAct: true, busy: false, note: .constant(""), ticked: [],
+                           tick: { _ in }, looksGood: {}, notRight: {})
+                CheckPanel(lines: [], source: source, canAct: true, busy: false, note: .constant(""), ticked: [],
+                           tick: { _ in }, looksGood: {}, notRight: {})
+                CheckPanel(lines: lines, source: source, canAct: false, busy: false, note: .constant(""), ticked: [],
+                           tick: { _ in }, looksGood: {}, notRight: {})
+                CheckPanel(lines: lines, source: source, canAct: true, busy: false, note: .constant(""), ticked: [], result: .confirmed,
+                           tick: { _ in }, looksGood: {}, notRight: {})
+                CheckPanel(lines: lines, source: source, canAct: true, busy: false, note: .constant(""), ticked: [], result: .notePosted,
+                           tick: { _ in }, looksGood: {}, notRight: {})
+            }
+            .padding(16).frame(width: 752).background(Palette.paper)
+        }
+    }
+
+    func testCheckPanelReadings() {
+        func panel(_ lines: [String], ticked: Set<String>) -> CheckPanel {
+            CheckPanel(lines: lines, source: "", canAct: true, busy: false, note: .constant(""), ticked: ticked,
+                       tick: { _ in }, looksGood: {}, notRight: {})
+        }
+        XCTAssertEqual(panel(["a", "b", "c"], ticked: []).reading, "0/3")
+        XCTAssertEqual(panel(["a", "b", "c"], ticked: ["b", "c"]).reading, "2/3")
+        // A tick from an older note doesn't count.
+        XCTAssertEqual(panel(["a", "b"], ticked: ["a", "gone"]).reading, "1/2")
+        XCTAssertEqual(CheckPanel.Result.confirmed.line, "Confirmed on screen · Status Done")
+        XCTAssertEqual(CheckPanel.Result.notePosted.line, "Note posted · Status Todo")
+    }
+
+    /// The issue header (`.band`): the reading before the actions, Dispatch yellow; the check view's header with a run
+    /// and the info mark on steel; no task list.
+    func testIssueHeader() throws {
+        let open = "arrow.up.right", start = "bubble.left.and.text.bubble.right"
+        try snap("IssueHeader", width: 980) {
+            VStack(spacing: 16) {
+                DetailHeader {
+                    Text(verbatim: "Uptime Kuma monitors for the remaining services")
+                } subtitle: {
+                    Text(verbatim: "xMuramasa/homelab#3 · open · 8 d")
+                } trailing: {
+                    TaskReading("0/9")
+                    EndfieldButton("Open in browser", symbol: open, kind: .quiet, iconOnly: true) {}
+                    EndfieldButton("Start conversation", symbol: start) {}
+                    EndfieldButton("Dispatch", symbol: "play.fill", kind: .primary) {}
+                }
+                DetailHeader {
+                    Text(verbatim: "App: six sections")
+                } subtitle: {
+                    Text(verbatim: "xMuramasa/trismegistus-mac#41 · closed · 2 d")
+                } trailing: {
+                    RunningMark(detail: "sonnet · 5 min")
+                    TaskReading("3/9")
+                    EndfieldButton("Open in browser", symbol: open, kind: .quiet, iconOnly: true) {}
+                    EndfieldButton("Start conversation", symbol: start) {}
+                    DispatchHiddenMark(reason: "Dispatch hidden: needs-design (design not agreed)")
+                }
+                DetailHeader {
+                    Text(verbatim: "Beszel alerts")
+                } subtitle: {
+                    Text(verbatim: "xMuramasa/homelab#4 · open · 1 h")
+                } trailing: {
+                    EndfieldButton("Open in browser", symbol: open, kind: .quiet, iconOnly: true) {}
+                    EndfieldButton("Start conversation", symbol: start, kind: .primary) {}
+                }
             }
         }
+    }
+
+    /// The readout row as a manager sees it (native menus), as a viewer sees it, with no labels, and narrow.
+    func testIssueReadout() throws {
+        func menu(_ label: String, _ value: String) -> some View {
+            label == "Status"
+                ? ReadoutMenu(label, value: value, options: ["Todo", "Ready", "In progress", "Needs check", "Done"]) { _ in }
+                : ReadoutMenu(label, value: value, options: ["P0", "P1", "P2"], width: nil) { _ in }
+        }
+        func row(_ tags: [String], shown: Int, agent: String, trailing: String?, manager: Bool = true) -> some View {
+            ReadoutRow {
+                ReadoutCell("Status") { if manager { menu("Status", "Needs check") } else { Text(verbatim: "Needs check").typeRole(.callout) } }
+                ReadoutCell("Priority") { if manager { menu("Priority", "P1") } else { Text(verbatim: "P1").typeRole(.callout) } }
+                ReadoutCell("Tags") { ReadoutTags(tags, shown: shown) }
+                ReadoutCell("Agent") { ReadoutTag(agent) }
+            } trailing: {
+                if let trailing { EndfieldButton(trailing, symbol: "checkmark.circle") {} }
+            }
+        }
+        // As `GitHubIssueView.readout`: the row with as many tags as fit.
+        func fitted(_ tags: [String], agent: String, trailing: String?, manager: Bool = true) -> some View {
+            ViewThatFits(in: .horizontal) {
+                ForEach((0...tags.count).reversed(), id: \.self) { row(tags, shown: $0, agent: agent, trailing: trailing, manager: manager) }
+            }
+        }
+        let two = ["area: app", "agent: opus"], four = two + ["polish", "needs-design"]
+        try snapHosted("IssueReadout") {
+            VStack(alignment: .leading, spacing: 16) {
+                fitted(["area: monitoring"], agent: "none", trailing: "Close issue")
+                fitted(two, agent: "opus", trailing: "Reopen issue", manager: false)
+                fitted([], agent: "none", trailing: nil)
+                fitted(four, agent: "opus", trailing: "Close issue").frame(width: 760)
+            }
+            .padding(16).frame(width: 1012, alignment: .leading).background(Palette.paper)
+        }
+        func idealWidth(_ tags: [String], shown: Int) -> CGFloat {
+            NSHostingView(rootView: row(tags, shown: shown, agent: "opus", trailing: "Close issue")).fittingSize.width
+        }
+        XCTAssertLessThan(idealWidth(two, shown: 2), 980, "the prototype's two tags fit a 980 pt detail")
+        XCTAssertGreaterThan(idealWidth(four, shown: 4), idealWidth(four, shown: 1), "fewer tags make a narrower row")
+    }
+
+    /// The marks in ink, off the band.
+    func testDispatchMarks() throws {
         try snap("DispatchHeader", width: 700) {
             VStack(alignment: .trailing, spacing: 12) {
                 HStack {

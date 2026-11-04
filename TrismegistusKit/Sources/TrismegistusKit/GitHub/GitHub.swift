@@ -92,6 +92,12 @@ public struct GitHubIssue: Decodable, Sendable, Equatable {
 
     public var isOpen: Bool { state == "open" }
 
+    /// `done/total` of the body's task list, nil when it has none.
+    public var taskReading: String? {
+        let tasks = MarkdownBlocks.taskProgress(MarkdownBlocks.document(body))
+        return tasks.total > 0 ? "\(tasks.done)/\(tasks.total)" : nil
+    }
+
     enum CodingKeys: String, CodingKey {
         case repo, number, title, body, state, author, labels, createdAt = "created_at", updatedAt = "updated_at", url
         case onBoard = "on_board", status, priority, commentsTotal = "comments_total", comments
@@ -160,6 +166,13 @@ public extension [String] {
     /// The labels except one that repeats `priority` (the repos label issues `P0`/`P1`/`P2` too), case-insensitively.
     func withoutPriority(_ priority: String) -> [String] {
         priority.isEmpty ? self : filter { $0.caseInsensitiveCompare(priority) != .orderedSame }
+    }
+
+    /// The value of the `agent:` label (`agent: opus`), nil without one.
+    var agentValue: String? {
+        filter { $0.lowercased().hasPrefix("agent:") }
+            .map { $0.dropFirst("agent:".count).trimmingCharacters(in: .whitespaces) }
+            .first { !$0.isEmpty }
     }
 }
 

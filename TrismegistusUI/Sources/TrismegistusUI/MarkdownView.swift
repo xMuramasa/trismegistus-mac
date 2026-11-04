@@ -193,7 +193,8 @@ private struct MarkdownList: View {
 }
 
 /// Read-only: a task is ticked on GitHub, not here.
-private struct TaskBox: View {
+/// A read-only task box: the Markdown task lists and the Needs check list.
+struct TaskBox: View {
     let done: Bool
 
     var body: some View {

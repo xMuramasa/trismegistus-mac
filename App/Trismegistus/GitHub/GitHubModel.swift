@@ -17,6 +17,8 @@ final class GitHubModel {
     var inboxShown = false
     /// The "look at" notes of the inbox's items by `owner/repo#n`, with the `updated_at` they were read at (nil: no marker comment).
     private(set) var notes: [String: (updatedAt: String, note: GitHubInbox.Note?)] = [:]
+    /// The check panel's ticks; here so they outlive the issue view.
+    var ticks = GitHubInbox.Ticks()
 
     /// Write controls only for a `manager` device; a viewer, a relay without roles or a failed `/api/me` gets none.
     var isManager: Bool { device.canManage }

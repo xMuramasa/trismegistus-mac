@@ -12,9 +12,40 @@ public struct ReadoutCell<Value: View>: View {
 
     public var body: some View {
         HStack(spacing: Space.s) {
-            Text(label).typeRole(.label).foregroundStyle(Ink.text.secondary)
+            // Never wraps: a squeezed row drops tags (`ReadoutTags`), not letters of its labels.
+            Text(label).typeRole(.label).foregroundStyle(Ink.text.secondary).lineLimit(1).fixedSize()
             value.foregroundStyle(Ink.text.primary)
         }
+    }
+}
+
+/// A readout cell's menu of a board field's options; picking one calls `set`. The unset value shows as "None" but
+/// can't be picked ("None", not "No priority": a menu is as wide as its widest item, and the cell names the field).
+/// `width` keeps a field from jumping as its value changes (Status); nil takes the menu's own width (Priority).
+public struct ReadoutMenu: View {
+    let label: String
+    let value: String
+    let options: [String]
+    let width: CGFloat?
+    let set: (String) -> Void
+
+    public init(_ label: String, value: String, options: [String], width: CGFloat? = Size.readoutPicker,
+                set: @escaping (String) -> Void) {
+        self.label = label
+        self.value = value
+        self.options = options
+        self.width = width
+        self.set = set
+    }
+
+    public var body: some View {
+        Picker(label, selection: Binding(get: { value }, set: { if !$0.isEmpty && $0 != value { set($0) } })) {
+            Text(verbatim: "None").tag("")
+            ForEach(options, id: \.self) { Text(verbatim: $0).tag($0) }
+        }
+        .labelsHidden().pickerStyle(.menu)
+        .frame(width: width)
+        .fixedSize(horizontal: width == nil, vertical: false)
     }
 }
 

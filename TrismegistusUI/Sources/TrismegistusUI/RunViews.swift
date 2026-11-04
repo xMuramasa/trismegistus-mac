@@ -5,6 +5,8 @@ import SwiftUI
 public struct RunningMark: View {
     let detail: String
 
+    @Environment(\.onSteel) private var onSteel
+
     public init(detail: String) {
         self.detail = detail
     }
@@ -16,9 +18,9 @@ public struct RunningMark: View {
             Text("Running").typeRole(.label)
             if !detail.isEmpty { Text(detail).typeRole(.monoSmall) }
         }
-        .foregroundStyle(Ink.text.primary)
+        .foregroundStyle(onSteel ? Ink.text.onDark : Ink.text.primary)
         .padding(.horizontal, Space.s).padding(.vertical, Space.xs)
-        .overlay(Rectangle().strokeBorder(Ink.line.strong, lineWidth: Stroke.hairline))
+        .overlay(Rectangle().strokeBorder(onSteel ? Ink.line.outlineOnDark : Ink.line.strong, lineWidth: Stroke.hairline))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(detail.isEmpty ? "Running" : "Running, \(detail)")
     }

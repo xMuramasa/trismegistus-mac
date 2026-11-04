@@ -56,6 +56,20 @@ public enum GitHubInbox {
         return nil
     }
 
+    /// The check panel's ticks, a personal aid: per issue (`owner/repo#n`), in memory, never sent. By line text, so a
+    /// newer note starts unticked.
+    public struct Ticks: Sendable {
+        private var byIssue: [String: Set<String>] = [:]
+
+        public init() {}
+
+        public func ticked(_ issue: String) -> Set<String> { byIssue[issue] ?? [] }
+
+        public mutating func toggle(_ line: String, issue: String) {
+            if byIssue[issue, default: []].remove(line) == nil { byIssue[issue, default: []].insert(line) }
+        }
+    }
+
     static func lookAt(_ body: String) -> [String]? {
         let lines = body.split(separator: "\n", omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespaces) }
         guard let start = lines.firstIndex(where: { markerRemainder($0) != nil }) else { return nil }

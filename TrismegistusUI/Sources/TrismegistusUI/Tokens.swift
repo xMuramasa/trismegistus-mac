@@ -170,6 +170,10 @@ public enum Size {
     public static let cardHeader: CGFloat = 24
     public static let cardMaxRows: CGFloat = 8
     public static let chatColumn: CGFloat = 700
+    /// an issue's panels, body and comments
+    public static let issueColumn: CGFloat = 720
+    /// a menu in a readout row
+    public static let readoutPicker: CGFloat = 116
     public struct Popover: Sendable {
         public let width: CGFloat = 380
         public let height: CGFloat = 560
