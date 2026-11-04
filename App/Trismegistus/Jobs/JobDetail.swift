@@ -50,7 +50,7 @@ struct JobDetail: View {
             Button("Delete", role: .destructive) { write { try await board.delete(job) } }
             Button("Cancel", role: .cancel) {}
         } message: { job in
-            Text("“\(job.title)” is deleted from Hermes and won't run again. Its past runs stay in the conversation list.")
+            Text(verbatim: "“\(job.title)” is deleted from Hermes and won't run again. Its past runs stay in the conversation list.")
         }
     }
 
@@ -61,7 +61,7 @@ struct JobDetail: View {
             VStack(alignment: .leading, spacing: Space.xs) {
                 Text(statusLine(job, now: context.date)).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
                 if job.lastRunFailed {
-                    Text("Last run failed: \(job.lastErrorLine ?? "no error line")").typeRole(.monoSmall)
+                    Text(verbatim: "Last run failed: \(job.lastErrorLine ?? "no error line")").typeRole(.monoSmall)
                         .foregroundStyle(Ink.text.error).textSelection(.enabled)
                 }
             }
@@ -182,9 +182,9 @@ struct JobDetail: View {
         let text: String
         if let cron = CronExpression(draft.schedule) {
             let runs = cron.next(3, after: .now)
-            text = runs.isEmpty ? "never runs" : "next " + runs.map { $0.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute()) }.joined(separator: " · ")
+            text = runs.isEmpty ? "never runs" : "next " + runs.map { $0.formatted(.clock.weekday(.abbreviated).day().month(.abbreviated).hour().minute()) }.joined(separator: " · ")
         } else if let job, draft.schedule.trimmingCharacters(in: .whitespaces) == JobDraft(job: job).schedule {
-            text = job.scheduleWords + (job.nextRun.map { " · next " + $0.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute()) } ?? "")
+            text = job.scheduleWords + (job.nextRun.map { " · next " + $0.formatted(.clock.weekday(.abbreviated).day().month(.abbreviated).hour().minute()) } ?? "")
         } else {
             text = "Hermes reads this schedule when the job is saved."
         }
@@ -320,7 +320,7 @@ struct JobDetail: View {
     /// Opens its conversation, read-only like every cron session (by its `cron_` id, listed or not); a news run opens News.
     private func run(_ run: JobRun) -> some View {
         let target = model.news?.sessionIDs.contains(run.id) == true ? NewsRowView.id : run.id
-        let when = run.startedAt.map { Date(timeIntervalSince1970: $0).formatted(.dateTime.day().month(.abbreviated).hour().minute()) } ?? "—"
+        let when = run.startedAt.map { Date(timeIntervalSince1970: $0).formatted(.clock.day().month(.abbreviated).hour().minute()) } ?? "—"
         return Button { onOpen(target) } label: {
             HStack(spacing: Space.s) {
                 Text(when).typeRole(.monoSmall)

@@ -64,8 +64,8 @@ struct OlderParts: View {
         if let started = store.sessionList.first(where: { $0.id == newer })?.startedAt {
             let date = Date(timeIntervalSince1970: started)
             parts[0] += " " + (Calendar.current.isDateInToday(date)
-                ? date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
-                : date.formatted(.dateTime.day().month(.abbreviated).hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)))
+                ? date.formatted(.clock.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
+                : date.formatted(.clock.day().month(.abbreviated).hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)))
         }
         if let count = store.sessionList.first(where: { $0.id == part })?.messageCount {
             parts.append("\(count) \(count == 1 ? "message" : "messages")")

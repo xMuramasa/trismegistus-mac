@@ -95,7 +95,7 @@ public struct KindTabs: View {
             Image(systemName: chip.symbol).font(.system(size: Icon.l))
                 .foregroundStyle(icon)
                 .overlay(alignment: .topTrailing) { dot(chip.mark).offset(x: Space.xs, y: -Space.xxs) }
-            if !(menu && !isOn) { Text("\(chip.count)").typeRole(.monoSmall).foregroundStyle(count) }
+            if !(menu && !isOn) { Text(verbatim: "\(chip.count)").typeRole(.monoSmall).foregroundStyle(count) }
             if menu { Image(systemName: Symbol.chevronDown).font(.system(size: Icon.xxs, weight: .bold)).foregroundStyle(count) }
         }
         .lineLimit(1).fixedSize()

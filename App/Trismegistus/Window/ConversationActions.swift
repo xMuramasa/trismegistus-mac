@@ -246,7 +246,7 @@ struct TagChips: View {
             HStack(spacing: Space.xs) {
                 ForEach(tags.prefix(limit), id: \.self) { TagChip(tag: $0) }
                 if tags.count > limit {
-                    Text("+\(tags.count - limit)").typeRole(.monoSmall)
+                    Text(verbatim: "+\(tags.count - limit)").typeRole(.monoSmall)
                         .foregroundStyle(onSidebar ? Ink.text.onSidebarSecondary : Ink.text.secondary)
                 }
             }
@@ -275,7 +275,7 @@ struct TagEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s) {
             HStack {
-                Text("Tags // \(tags.count)/\(TagRules.maxTags)").typeRole(.label).foregroundStyle(Ink.text.secondary)
+                Text(verbatim: "Tags // \(tags.count)/\(TagRules.maxTags)").typeRole(.label).foregroundStyle(Ink.text.secondary)
                 Spacer()
                 EndfieldButton("Done", symbol: Symbol.check, kind: .quiet, iconOnly: true, action: onDone)
             }

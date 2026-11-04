@@ -208,7 +208,7 @@ struct ChatView: View {
             }
             .disabled(isReadOnly)
             if isReadOnly {
-                Text("Read-only: this conversation comes from \(info?.source ?? (id.hasPrefix("cron_") ? "cron" : "another app")); reply there.")
+                Text(verbatim: "Read-only: this conversation comes from \(info?.source ?? (id.hasPrefix("cron_") ? "cron" : "another app")); reply there.")
                     .typeRole(.caption).foregroundStyle(Ink.text.secondary).lineLimit(1)
             }
             if let actionError {
@@ -336,7 +336,7 @@ struct ChatTranscript: View {
     }
 
     private func stamp(_ time: Date?) -> String {
-        time.map { " // " + $0.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)) } ?? ""
+        time.map { " // " + $0.formatted(.clock.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)) } ?? ""
     }
 }
 

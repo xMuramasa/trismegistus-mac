@@ -58,7 +58,7 @@ struct TerminalPane: View {
         HStack(spacing: Space.s) {
             Text("Terminal").typeRole(.label).lineLimit(1)
             if let run = (state?.run?.id ?? entries.last?.runID), !run.isEmpty {
-                Text("run \(run.prefix(4))").typeRole(.monoSmall).opacity(Opacity.secondaryOnDark).lineLimit(1)
+                Text(verbatim: "run \(RunID.short(run))").typeRole(.monoSmall).opacity(Opacity.secondaryOnDark).lineLimit(1)
             }
             Spacer(minLength: 0)
         }
@@ -136,7 +136,7 @@ struct EntryRow: View {
     /// `14:02:11`, with the day before it when it isn't today (history reaches back days).
     private static func time(_ ms: Int) -> String {
         let date = Date(timeIntervalSince1970: Double(ms) / 1000)
-        let clock = date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute().second())
-        return Calendar.current.isDateInToday(date) ? clock : date.formatted(.dateTime.day().month(.abbreviated)) + " " + clock
+        let clock = date.formatted(.clock.hour(.twoDigits(amPM: .omitted)).minute().second())
+        return Calendar.current.isDateInToday(date) ? clock : date.formatted(.clock.day().month(.abbreviated)) + " " + clock
     }
 }

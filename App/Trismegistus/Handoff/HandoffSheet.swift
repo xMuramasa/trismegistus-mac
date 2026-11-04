@@ -21,7 +21,7 @@ struct HandoffSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.l) {
             TitleRule("Hand off")
-            Text("Continue “\(PopoverFormat.title(old))” in a new conversation that starts from a digest of this one: your messages, the replies and one line per tool call. Both show as one thread.")
+            Text(verbatim: "Continue “\(PopoverFormat.title(old))” in a new conversation that starts from a digest of this one: your messages, the replies and one line per tool call. Both show as one thread.")
                 .typeRole(.callout).foregroundStyle(Ink.text.secondary).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: Space.s) {
                 Text("Digest").typeRole(.label).foregroundStyle(Ink.text.secondary)

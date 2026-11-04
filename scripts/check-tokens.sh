@@ -7,6 +7,10 @@
 #       the files and folders listed in scripts/token-allowlist.txt (one per line, from the repo root).
 #   (c) any Swift source (tests included) still says `Theme.`: the old compatibility names are gone (#37).
 #   (d) a Swift source outside Tokens.swift and the tests says `Palette.`: views use the `Ink` roles (#38).
+#   (e) a view formats a time with `.dateTime` or a system time style (`time: .shortened`, `style: .time`): times
+#       start from TrismegistusKit's `.clock`, the 24-hour clock in every region (a 12-hour region read 13:42 as 01:42).
+#   (f) a view interpolates into a localized `Text("…\(…)")`: its numbers come out grouped by region (1.748 beside
+#       1748 elsewhere); interpolated text is `Text(verbatim:)`.
 #
 #   scripts/check-tokens.sh            both checks
 #   scripts/check-tokens.sh --all      (b) only, ignoring the allow-list: every literal left (the App/ inventory)
@@ -76,6 +80,30 @@ for top in ("TrismegistusUI/Sources", "App/Trismegistus"):  # raw palette colour
             if re.search(r"\bPalette\.", line.split("//")[0]):
                 print(f"{path}:{n}: raw palette colour, use an Ink role: {line.strip()}")
                 found += 1
+def code_part(line):
+    """The line without its `//` comment; a `//` inside a string literal (`" // "`) stays."""
+    quoted = False
+    for i, c in enumerate(line):
+        if c == '"' and (i == 0 or line[i - 1] != "\\"):
+            quoted = not quoted
+        elif not quoted and line.startswith("//", i):
+            return line[:i]
+    return line
+
+
+formats = [  # (e) times on the app's clock, (f) interpolated text verbatim
+    (re.compile(r"\.dateTime\b|\btime:\s*\.(?:shortened|standard|complete)\b|\bstyle:\s*\.time\b"),
+     "time off the 24-hour clock, start from `.clock`"),
+    (re.compile(r'\bText\("[^"]*\\\('), "localized Text with interpolation (numbers by region), use Text(verbatim:)"),
+]
+for top in ("TrismegistusUI/Sources", "App/Trismegistus"):
+    for path in sorted(pathlib.Path(top).rglob("*.swift")):
+        for n, line in enumerate(path.read_text().splitlines(), 1):
+            code = code_part(line)
+            for rx, why in formats:
+                if rx.search(code):
+                    print(f"{path}:{n}: {why}: {line.strip()}")
+                    found += 1
 for top in ("TrismegistusUI/Sources", "App/Trismegistus"):
     for path in sorted(pathlib.Path(top).rglob("*.swift")):
         p = str(path)
@@ -96,7 +124,7 @@ for top in ("TrismegistusUI/Sources", "App/Trismegistus"):
                         print(f"{p}:{n}: {kind} {v}: {line.strip()}")
                         found += 1
 if found:
-    print(f"{found} raw literals: use the tokens in Tokens.swift (design/tokens.json)")
+    print(f"{found} found: each line says why (raw literals: use the tokens in Tokens.swift, design/tokens.json)")
     sys.exit(1)
 EOF
 exit $status

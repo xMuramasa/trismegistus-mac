@@ -40,7 +40,7 @@ struct GitHubIssueView: View {
                         if GitHubInbox.isNeedsCheck(issue.status) { checkPanel(issue) }
                         post(author: issue.author, date: issue.createdAt, text: issue.body.isEmpty ? "*No description.*" : issue.body)
                         if issue.commentsTotal > issue.comments.count {
-                            Text("\(issue.commentsTotal - issue.comments.count) older comments are on GitHub")
+                            Text(verbatim: "\(issue.commentsTotal - issue.comments.count) older comments are on GitHub")
                                 .typeRole(.caption).foregroundStyle(Ink.text.muted)
                         }
                         ForEach(issue.comments, id: \.url) { post(author: $0.author, date: $0.createdAt, text: $0.body) }
@@ -71,7 +71,7 @@ struct GitHubIssueView: View {
             HStack(alignment: .top, spacing: Space.m) {
                 VStack(alignment: .leading, spacing: Space.xxs) {
                     HStack(spacing: Space.s) {
-                        Text("\(repo)#\(number)").typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
+                        Text(verbatim: "\(repo)#\(number)").typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
                         if let issue {
                             Text(issue.isOpen ? "open" : "closed").typeRole(.label).foregroundStyle(Ink.text.secondary)
                             if !issue.priority.isEmpty { PriorityMark(priority: issue.priority) }
@@ -161,7 +161,7 @@ struct GitHubIssueView: View {
     /// A menu of the board's options; picking one sets it. The unset value is shown but can't be picked.
     private func field(_ label: String, value: String, options: [String], set: @escaping (String) -> Void) -> some View {
         Picker(label, selection: Binding(get: { value }, set: { if !$0.isEmpty && $0 != value { set($0) } })) {
-            Text("No \(label.lowercased())").tag("")
+            Text(verbatim: "No \(label.lowercased())").tag("")
             ForEach(options, id: \.self) { Text($0).tag($0) }
         }
         .pickerStyle(.menu)
@@ -333,7 +333,7 @@ struct GitHubIssueView: View {
     /// `2 Nov 00:48` in the Mac's zone.
     static func stamp(_ text: String) -> String {
         let date = (try? Date.ISO8601FormatStyle(includingFractionalSeconds: true).parse(text)) ?? (try? Date.ISO8601FormatStyle().parse(text))
-        return date?.formatted(.dateTime.day().month(.abbreviated).hour(.twoDigits(amPM: .omitted)).minute()) ?? text
+        return date?.formatted(.clock.day().month(.abbreviated).hour(.twoDigits(amPM: .omitted)).minute()) ?? text
     }
 
     static func age(_ text: String) -> String {

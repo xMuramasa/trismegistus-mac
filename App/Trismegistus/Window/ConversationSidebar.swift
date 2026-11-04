@@ -114,7 +114,7 @@ struct ConversationSidebar: View {
         if let elsewhere {
             Button { storedKind = elsewhere.kind } label: {
                 HStack(spacing: Space.s) {
-                    Text("\(elsewhere.count) more in \(elsewhere.kind.name.uppercased())").typeRole(.caption)
+                    Text(verbatim: "\(elsewhere.count) more in \(elsewhere.kind.name.uppercased())").typeRole(.caption)
                     Image(systemName: Symbol.chevronRight).font(.system(size: Icon.xxs, weight: .bold))
                     Spacer(minLength: 0)
                 }
@@ -150,7 +150,7 @@ struct ConversationSidebar: View {
     private func header(kind: ConversationKind, count: Int, summary: ConversationKind.Summary) -> some View {
         VStack(spacing: Space.m) {
             HStack(spacing: Space.s) {
-                Text("\(kind.name) // \(count)").typeRole(.label).foregroundStyle(Ink.text.onSidebarSecondary).lineLimit(1)
+                Text(verbatim: "\(kind.name) // \(count)").typeRole(.label).foregroundStyle(Ink.text.onSidebarSecondary).lineLimit(1)
                 Spacer(minLength: Space.s)
                 EndfieldButton("New conversation", symbol: Symbol.plus, kind: .quiet, iconOnly: true) { create() }
             }

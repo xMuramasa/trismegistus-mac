@@ -53,9 +53,9 @@ extension PopoverFormat {
         var parts = [sourceName(info?.source)]
         let overviewRun = store?.overview[id]?.run
         if let runID = store?.sessions[id]?.run?.id ?? overviewRun?.id {
-            parts.append("run \(runID.prefix(4))")
+            parts.append("run \(RunID.short(runID))")
             if let started = overviewRun?.startedAt {
-                parts.append("started " + started.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)))
+                parts.append("started " + started.formatted(.clock.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)))
             }
         } else if let count = info?.messageCount {
             parts.append("\(count) \(count == 1 ? "message" : "messages")")

@@ -78,7 +78,7 @@ struct SessionList: View {
     private var list: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("\(kind.name) // \(rows.count)").typeRole(.label).foregroundStyle(Ink.text.secondary)
+                Text(verbatim: "\(kind.name) // \(rows.count)").typeRole(.label).foregroundStyle(Ink.text.secondary)
                 Spacer()
                 EndfieldButton("New session", symbol: Symbol.plus, kind: .quiet, iconOnly: true, shortcut: newShortcut) {
                     onNew()

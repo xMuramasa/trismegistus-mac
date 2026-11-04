@@ -240,7 +240,7 @@ public struct TerminalEntryView: View {
                 if let preview {
                     Button { expanded = true } label: {
                         HStack(spacing: Space.xs) {
-                            Text("\(preview.hidden) more \(preview.hidden == 1 ? "line" : "lines")")
+                            Text(verbatim: "\(preview.hidden) more \(preview.hidden == 1 ? "line" : "lines")")
                             Image(systemName: Symbol.chevronDown).font(.system(size: Icon.xs))
                         }
                         .typeRole(.monoSmall).foregroundStyle(Ink.text.link)
@@ -254,7 +254,7 @@ public struct TerminalEntryView: View {
                 Rectangle().fill(Ink.text.primary).frame(width: Size.cursor.width, height: Size.cursor.height)
                     .accessibilityLabel("Running")
             } else if let exitCode {
-                Text("exit \(exitCode)").typeRole(.monoSmall)
+                Text(verbatim: "exit \(exitCode)").typeRole(.monoSmall)
                     .foregroundStyle(exitCode == 0 ? Ink.status.ok : Ink.status.error)
             }
         }

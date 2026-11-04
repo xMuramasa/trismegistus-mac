@@ -127,7 +127,7 @@ private struct AgentTranscriptPane: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Space.s) {
                 if transcript.dropped > 0 {
-                    Text("\(transcript.dropped) earlier steps are not shown.").typeRole(.caption).foregroundStyle(Ink.text.muted)
+                    Text(verbatim: "\(transcript.dropped) earlier steps are not shown.").typeRole(.caption).foregroundStyle(Ink.text.muted)
                 }
                 ForEach(transcript.steps) { AgentStepRow(step: $0) }
                 if let error = transcript.error {

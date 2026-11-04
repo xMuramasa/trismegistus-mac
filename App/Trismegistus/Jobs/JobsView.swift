@@ -120,7 +120,7 @@ private struct JobRow: View {
                 }
                 HStack(spacing: Space.s) {
                     Text(job.scheduleWords)
-                    if !job.isPaused, let next = job.nextRun { Text("· next \(JobDetail.relative(next, now: context.date))") }
+                    if !job.isPaused, let next = job.nextRun { Text(verbatim: "· next \(JobDetail.relative(next, now: context.date))") }
                     lastRun(now: context.date, ink: ink)
                 }
                 .typeRole(.monoSmall).foregroundStyle(ink.meta).lineLimit(1)
@@ -136,9 +136,9 @@ private struct JobRow: View {
     @ViewBuilder private func lastRun(now: Date, ink: RowInk) -> some View {
         if let last = job.lastRun {
             if job.lastRunFailed {
-                Text("· failed \(PopoverFormat.ago(last, now: now)): \(job.lastErrorLine ?? "no error line")").foregroundStyle(ink.error)
+                Text(verbatim: "· failed \(PopoverFormat.ago(last, now: now)): \(job.lastErrorLine ?? "no error line")").foregroundStyle(ink.error)
             } else {
-                Text("· ok \(PopoverFormat.ago(last, now: now))")
+                Text(verbatim: "· ok \(PopoverFormat.ago(last, now: now))")
             }
         }
     }

@@ -26,7 +26,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: Space.xxs) {
                 TitleRule("Settings")
-                Text("trismegistus-mac \(version)").typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
+                Text(verbatim: "trismegistus-mac \(version)").typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
             }
             .padding(.horizontal, Space.l).padding(.vertical, Space.l)
             ScrollView {

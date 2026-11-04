@@ -116,7 +116,7 @@ struct CommandsView: View {
 
     private func header(count: Int) -> some View {
         HStack(spacing: Space.s) {
-            Text("\(conversation.isEmpty ? "All conversations" : titles[conversation] ?? conversation) // \(count)")
+            Text(verbatim: "\(conversation.isEmpty ? "All conversations" : titles[conversation] ?? conversation) // \(count)")
                 .typeRole(.label).foregroundStyle(Ink.text.secondary).lineLimit(1)
             if listFailed && log?.all.isEmpty == false {
                 Text("can't reach the relay").typeRole(.caption).foregroundStyle(Ink.text.error)

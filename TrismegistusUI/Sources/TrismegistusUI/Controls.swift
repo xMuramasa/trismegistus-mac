@@ -45,7 +45,9 @@ public struct EndfieldButtonStyle: ButtonStyle {
             let p = palette
             HStack(spacing: Space.s) {
                 if !style.iconOnly { configuration.label.textCase(.uppercase).lineLimit(1) }
-                if let symbol = style.symbol { Image(systemName: symbol) }
+                // Beside the word the symbol is decoration: as its own element it read the label twice to VoiceOver
+                // ("Looks good, Looks good"). Alone it carries the label and the tooltip.
+                if let symbol = style.symbol { Image(systemName: symbol).accessibilityHidden(!style.iconOnly) }
             }
             // A button never wraps its word: in a tight row it keeps its size and the row has to make room.
             .fixedSize()

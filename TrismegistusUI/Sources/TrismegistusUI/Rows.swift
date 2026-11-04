@@ -277,7 +277,7 @@ public struct ToolRowView: View {
                     Text(summary).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary).lineLimit(1)
                     Spacer(minLength: Space.s)
                     if failed, let exitCode {
-                        Text("Exit \(exitCode)").typeRole(.label).foregroundStyle(Ink.text.error)
+                        Text(verbatim: "Exit \(exitCode)").typeRole(.label).foregroundStyle(Ink.text.error)
                     }
                     Text(duration).typeRole(.monoSmall).foregroundStyle(Ink.text.muted)
                 }
@@ -318,7 +318,7 @@ public struct SubagentRowView: View {
         HStack(spacing: Space.s) {
             Text("Subagent").typeRole(.label).foregroundStyle(Ink.text.link)
             Text(name).typeRole(.mono)
-            Text("\(toolCount) tools").typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
+            Text(verbatim: "\(toolCount) tools").typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
             Spacer(minLength: Space.s)
             Text(duration).typeRole(.monoSmall).foregroundStyle(Ink.text.muted)
         }
@@ -348,8 +348,8 @@ public struct RunMarker: View {
     private var text: some View {
         HStack(spacing: Space.s) {
             Text(">_").typeRole(.monoSmall, weight: .bold)
-            Text("\(commands) \(commands == 1 ? "command" : "commands") · \(duration)").typeRole(.label)
-            if failed > 0 { Text("· \(failed) failed").typeRole(.label).foregroundStyle(Ink.text.error) }
+            Text(verbatim: "\(commands) \(commands == 1 ? "command" : "commands") · \(duration)").typeRole(.label)
+            if failed > 0 { Text(verbatim: "· \(failed) failed").typeRole(.label).foregroundStyle(Ink.text.error) }
         }
         .foregroundStyle(Ink.text.primary)
         .padding(.horizontal, Space.s).padding(.vertical, Space.xs)

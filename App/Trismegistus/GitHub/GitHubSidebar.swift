@@ -139,7 +139,7 @@ struct GitHubSidebar: View {
         ForEach(groups, id: \.repo) { group in
             HStack(spacing: Space.s) {
                 Text(GitHubInbox.shortName(group.repo)).typeRole(.label)
-                Text("\(group.items.count)").typeRole(.monoSmall)
+                Text(verbatim: "\(group.items.count)").typeRole(.monoSmall)
                 Spacer(minLength: 0)
             }
             .foregroundStyle(Ink.text.onSidebarSecondary)
@@ -166,7 +166,7 @@ struct GitHubSidebar: View {
                     Image(systemName: folded ? Symbol.chevronRight : Symbol.chevronDown)
                         .font(.system(size: Icon.xxs, weight: .bold)).frame(width: Icon.xxs)
                     Text(group.status.isEmpty ? "No status" : group.status).typeRole(.label)
-                    Text("\(group.items.count)").typeRole(.monoSmall)
+                    Text(verbatim: "\(group.items.count)").typeRole(.monoSmall)
                     Spacer(minLength: 0)
                 }
                 .foregroundStyle(Ink.text.onSidebarSecondary)
@@ -286,7 +286,7 @@ private struct TabChip: View {
         Button(action: action) {
             HStack(spacing: Space.s) {
                 Image(systemName: symbol)
-                if let count { Text("\(count)").typeRole(.monoSmall) }
+                if let count { Text(verbatim: "\(count)").typeRole(.monoSmall) }
             }
             .typeRole(.button)
             .padding(.horizontal, Space.m).padding(.vertical, Space.s)

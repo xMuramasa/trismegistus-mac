@@ -70,7 +70,7 @@ struct NewsSidebar: View {
                 ForEach(NewsView.days(items), id: \.date) { day in
                     SectionLabel(title: NewsView.dayTitle(day.date)).sidebarRow()
                     ForEach(day.items) { item in
-                        let time = item.publishedAt?.formatted(date: .omitted, time: .shortened)
+                        let time = item.publishedAt?.formatted(.clock.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
                         SidebarRow(title: item.edition.title, meta: [item.edition.tag, time].compactMap(\.self).joined(separator: " · "),
                                    isSelected: selection == item.id)
                             .tag(item.id).sidebarRow()
@@ -200,7 +200,7 @@ struct NewsPage: View {
                 VStack(alignment: .leading, spacing: Space.xxs) {
                     TitleRule("News").lineLimit(1)
                     let count = model.news?.items.count ?? 0
-                    Text("\(model.news?.reader == nil ? "Cron" : "Reader") · \(count) \(count == 1 ? "edition" : "editions") · read-only")
+                    Text(verbatim: "\(model.news?.reader == nil ? "Cron" : "Reader") · \(count) \(count == 1 ? "edition" : "editions") · read-only")
                         .typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
                 }
                 Spacer(minLength: 0)
@@ -237,7 +237,8 @@ struct EditionView: View {
                     .padding(.horizontal, Space.s).padding(.vertical, Space.xxs).background(Ink.surface.inverse)
                 Spacer(minLength: Space.s)
                 if let at = item.publishedAt {
-                    Text(at.formatted(date: .omitted, time: .shortened)).typeRole(.monoSmall).foregroundStyle(Ink.text.muted)
+                    Text(at.formatted(.clock.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)))
+                        .typeRole(.monoSmall).foregroundStyle(Ink.text.muted)
                 }
             }
             Text(edition.title).typeRole(.title).foregroundStyle(Ink.text.primary)
@@ -246,7 +247,7 @@ struct EditionView: View {
             }
             if full == nil {
                 let count = item.edition.storyCount
-                Text("\(count) \(count == 1 ? "story" : "stories") · loading").typeRole(.monoSmall).foregroundStyle(Ink.text.muted)
+                Text(verbatim: "\(count) \(count == 1 ? "story" : "stories") · loading").typeRole(.monoSmall).foregroundStyle(Ink.text.muted)
             }
             if !edition.markets.isEmpty { markets }
             ForEach(sections, id: \.id) { section in
