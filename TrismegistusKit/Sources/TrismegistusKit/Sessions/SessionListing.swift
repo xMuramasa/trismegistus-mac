@@ -2,9 +2,9 @@ import Foundation
 
 /// How the lists order and filter conversations: pinned first, tags with their counts.
 public enum SessionListing {
-    /// Pinned items first, each group keeping its order.
-    public static func pinnedFirst<T>(_ items: [T], isPinned: (T) -> Bool) -> [T] {
-        items.filter(isPinned) + items.filter { !isPinned($0) }
+    /// The pinned items and the rest, each group keeping its order.
+    public static func pinnedApart<T>(_ items: [T], isPinned: (T) -> Bool) -> (pinned: [T], rest: [T]) {
+        (items.filter(isPinned), items.filter { !isPinned($0) })
     }
 
     /// The tags of the given sessions with how many of them carry each, most used first, then by name. Tags are
@@ -36,25 +36,6 @@ public enum SessionListing {
         guard !links.isEmpty else { return items }
         let hidden = HandoffChain.continued(listed: Set(items.map(id)), links: links)
         return items.filter { !hidden.contains(id($0)) }
-    }
-
-    /// `items` (newest activity first) with the feed runs in `news` replaced by one `nil`, the News row: where the first
-    /// run was, or, when no run is listed (the cleanup job deletes them), where an edition at `newsAt` falls among the
-    /// activity times. No row when there are neither runs nor `newsAt`.
-    public static func foldingNews<T>(_ items: [T], id: (T) -> String, activity: (T) -> Date?, news: Set<String>, newsAt: Date?) -> [T?] {
-        var shown = false
-        var rows: [T?] = []
-        for item in items {
-            if !news.contains(id(item)) {
-                rows.append(item)
-            } else if !shown {
-                shown = true
-                rows.append(nil)
-            }
-        }
-        guard !shown, let newsAt else { return rows }
-        rows.insert(nil, at: rows.firstIndex { ($0.flatMap(activity) ?? .distantPast) < newsAt } ?? rows.endIndex)
-        return rows
     }
 
     public static func hasTag(_ tag: String, in tags: [String]) -> Bool {

@@ -49,10 +49,12 @@ final class BackdropHitTests: XCTestCase {
         defer { window.close() }
         spin(0.6)  // the paper renders once the size has held for `Motion.settle`
 
-        var opened = 0
+        // Both only touched on the main queue.
+        nonisolated(unsafe) var opened = 0
         let observer = NotificationCenter.default.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main) { note in
             opened += 1
-            guard let menu = note.object as? NSMenu else { return }
+            guard let tracked = note.object as? NSMenu else { return }
+            nonisolated(unsafe) let menu = tracked
             RunLoop.main.add(Timer(timeInterval: 0.2, repeats: false) { _ in menu.cancelTracking() }, forMode: .common)
         }
         defer { NotificationCenter.default.removeObserver(observer) }

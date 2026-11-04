@@ -3,7 +3,7 @@ import Observation
 import TrismegistusKit
 
 /// The Work board behind the sidebar's GitHub row and the GitHub view; the shared `DeviceProfile` says whether this
-/// device may act on GitHub. One per connection, like `NewsFeed`. The relay caches GitHub reads for 30 s and drops the cache on every write.
+/// device may act on GitHub. One per connection. The relay caches GitHub reads for 30 s and drops the cache on every write.
 @MainActor @Observable
 final class GitHubModel {
     let rest: RelayREST

@@ -3,7 +3,7 @@ import TrismegistusKit
 import TrismegistusUI
 
 /// The Chat section's sidebar: `CONVERSATIONS // n`, icon-only new, the kind tabs (APP · TELEGRAM · TERMINAL · MORE, #48),
-/// filter field, tag chips, one row per conversation of the tab (the daily feed runs are in News). On `SidebarSplit`'s grey ground: no row separators, rows without their own fill.
+/// filter field, tag chips, one row per conversation of the tab. On `SidebarSplit`'s grey ground: no row separators, rows without their own fill.
 struct ConversationSidebar: View {
     @Binding var selection: String?
     /// The Filter field's focus (⌘K).
@@ -24,15 +24,13 @@ struct ConversationSidebar: View {
     /// Tags of the listed conversations with how many carry each; tag ids the app doesn't list are ignored.
     private var tagCounts: [(tag: String, count: Int)] { SessionListing.tagCounts(ids: threads.map(\.id), tags: tags) }
 
-    /// Pinned first, then most recent first, without the daily feed runs (the News section has them). Every kind, unfiltered.
+    /// Pinned first, then most recent first. Every kind, unfiltered.
     private var listing: (pinned: [SessionOverview], rest: [SessionOverview]) {
         guard let store = model.store else { return ([], []) }
         let overviews = threads
             .compactMap { store.overview[$0.id] }
             .sorted { ($0.lastActivity ?? .distantPast) > ($1.lastActivity ?? .distantPast) }
-        let listing = ConversationListRow.listing(overviews, news: model.news?.sessionIDs ?? [], newsAt: model.news?.rowTime,
-                                                  activity: \.lastActivity, isPinned: { $0.info?.isPinned == true })
-        return (listing.pinned, listing.rest.compactMap { if case .item(let overview) = $0 { overview } else { nil } })
+        return SessionListing.pinnedApart(overviews) { $0.info?.isPinned == true }
     }
 
     /// The listing in the tab, after the filter field and the tag filter; `elsewhere` when the filter finds nothing in

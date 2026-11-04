@@ -164,6 +164,109 @@ final class SnapshotTests: XCTestCase {
         try snap("KindTabsPopover", width: 380) { strips(sidebar: false) }
     }
 
+    func testFoldChevron() {
+        XCTAssertEqual(Symbol.fold(isOpen: false), "chevron.down")
+        XCTAssertEqual(Symbol.fold(isOpen: true), "chevron.up")
+    }
+
+    func testDetailHeader() throws {
+        try snap("DetailHeader", width: 780) {
+            VStack(spacing: 16) {
+                DetailHeader {
+                    SourceIcon(.trismegistus)
+                } title: {
+                    Text(verbatim: "Swift app")
+                } subtitle: {
+                    Text(verbatim: "Trismegistus · run 7f3a · started 13:52")
+                } trailing: {
+                    Text(verbatim: "≈ 350K / 1M · 35%").typeRole(.mono)
+                    EndfieldButton("Actions", symbol: "ellipsis", kind: .quiet, iconOnly: true) {}
+                }
+                DetailHeader {
+                    Text(verbatim: "Uptime Kuma monitors for the remaining services")
+                } subtitle: {
+                    Text(verbatim: "xMuramasa/homelab#3 · open · 8 d")
+                } trailing: {
+                    EndfieldButton("Open in browser", symbol: "arrow.up.right", kind: .quiet, iconOnly: true) {}
+                    EndfieldButton("Start conversation", symbol: "bubble.left.and.text.bubble.right") {}
+                    EndfieldButton("Dispatch", symbol: "play.fill", kind: .primary) {}
+                    EndfieldButton("Disabled", symbol: Symbol.check) {}.disabled(true)
+                }
+                DetailHeader {
+                    Text(verbatim: "New job")
+                } subtitle: {
+                    EmptyView()
+                } trailing: {
+                    EmptyView()
+                }
+            }
+        }
+    }
+
+    func testReadoutRow() throws {
+        try snap("ReadoutRow", width: 780) {
+            VStack(spacing: 16) {
+                ReadoutRow {
+                    ReadoutCell("Status") { Text(verbatim: "Todo").typeRole(.callout) }
+                    ReadoutCell("Priority") { Text(verbatim: "P1").typeRole(.callout) }
+                    ReadoutCell("Tags") { Text(verbatim: "area: monitoring").typeRole(.monoSmall) }
+                    ReadoutCell("Agent") { Text(verbatim: "none").typeRole(.monoSmall) }
+                } trailing: {
+                    EndfieldButton("Close issue", symbol: "checkmark.circle") {}
+                }
+                ReadoutRow {
+                    ReadoutCell("Cadence") { Text(verbatim: "daily 03:00").typeRole(.monoSmall) }
+                    ReadoutCell("Last") { StatusChip("ok", kind: .ok) }
+                }
+            }
+        }
+    }
+
+    func testChips() throws {
+        try snap("Chips") {
+            HStack(spacing: 8) {
+                StatusChip("Done", kind: .ok)
+                StatusChip("Build blocked", kind: .warn)
+                StatusChip("Failed", kind: .err)
+                StatusChip("Mixed", kind: .neutral)
+                StatusChip("Update", kind: .update)
+            }
+        }
+        try snap("ExitChip") {
+            HStack(spacing: 8) {
+                ExitChip(1)
+                ExitChip(127)
+                Text(verbatim: "on a card header").typeRole(.monoSmall).padding(8).background(Ink.card.header)
+                    .overlay(alignment: .trailing) { ExitChip(2).padding(.trailing, 4) }
+            }
+        }
+    }
+
+    func testToolCallRow() throws {
+        var hovered = ToolCallRow(symbol: Symbol.terminal, tool: "Bash", command: "date +%H:%M", duration: "0.1 s", failed: false, isOpen: .constant(false))
+        hovered.forceHovered = true
+        try snap("ToolCallRow", width: 780) {
+            VStack(spacing: 0) {
+                ToolCallRow(symbol: "magnifyingglass", tool: "Grep", command: "\"sync|triangle\" apps/homepage/theme/icons.json", duration: "0.1 s",
+                            failed: false, output: "12: sync", isOpen: .constant(false))
+                ToolCallRow(symbol: "pencil", tool: "Edit", command: "apps/homepage/theme/build.py", duration: "0.1 s", failed: false,
+                            output: "1 replacement", isOpen: .constant(true))
+                ToolNarration("Edits to the three source files are in. Now I'm running the build and checking the YAML and the custom.css diff.")
+                ToolCallRow(symbol: Symbol.terminal, tool: "Bash",
+                            command: "python3 apps/homepage/theme/build.py && python3 -c \"import yaml,sys; yaml.safe_load(open(sys.argv[1]))\" apps/homepage/services.yaml\nsecond line",
+                            duration: "0.2 s", failed: true, output: "Command requires approval\nexit 1", isOpen: .constant(true))
+                hovered
+                ToolCallRow(symbol: Symbol.terminal, tool: "Bash", command: "sleep 30", isOpen: .constant(false))
+            }
+        }
+    }
+
+    func testToolCallFirstLine() {
+        XCTAssertEqual(ToolCallRow.firstLine("ls -la"), "ls -la")
+        XCTAssertEqual(ToolCallRow.firstLine("\n  cd /tmp\nls\n"), "cd /tmp")
+        XCTAssertEqual(ToolCallRow.firstLine(""), "")
+    }
+
     func testToolRows() throws {
         try snap("ToolRowView", width: 320) {
             VStack(spacing: 8) {

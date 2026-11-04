@@ -33,7 +33,7 @@ struct GitHubIssueView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            SegmentRule((Size.titleRule.magenta, Size.titleRule.yellow, Size.titleRule.green), height: Size.titleRule.height, stretches: true)
+            if issue != nil || run != nil || actionError != nil { boardPanel }
             if let issue {
                 ScrollView {
                     VStack(alignment: .leading, spacing: Space.l) {
@@ -67,44 +67,48 @@ struct GitHubIssueView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: Space.s) {
-            HStack(alignment: .top, spacing: Space.m) {
-                VStack(alignment: .leading, spacing: Space.xxs) {
-                    HStack(spacing: Space.s) {
-                        Text(verbatim: "\(repo)#\(number)").typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
-                        if let issue {
-                            Text(issue.isOpen ? "open" : "closed").typeRole(.label).foregroundStyle(Ink.text.secondary)
-                            if !issue.priority.isEmpty { PriorityMark(priority: issue.priority) }
-                            TagChips(tags: issue.labels.withoutPriority(issue.priority), limit: 4)
-                        }
-                    }
-                    Text(issue?.title ?? "").typeRole(.title).foregroundStyle(Ink.text.primary)
-                        .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
-                }
-                Spacer(minLength: 0)
-                if let run, run.alive {
-                    TimelineView(.periodic(from: .now, by: 30)) { context in
-                        RunningMark(detail: [run.model, PopoverFormat.ago(run.started, now: context.date)].compactMap { $0 }.joined(separator: " · "))
-                    }
-                }
+        DetailHeader {
+            Text(issue?.title ?? "").lineLimit(2).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+        } subtitle: {
+            HStack(spacing: Space.s) {
+                Text(verbatim: "\(repo)#\(number)")
                 if let issue {
-                    // One yellow: Looks good while the check panel shows, else Dispatch, else Start conversation.
-                    let option = GitHubDispatch.option(labels: issue.labels, isOpen: issue.isOpen, canManage: github.isManager,
-                                                       hasLiveRun: run?.alive == true)
-                    let checking = GitHubInbox.isNeedsCheck(issue.status)
-                    EndfieldButton("Open in browser", symbol: "arrow.up.right", kind: .quiet, iconOnly: true) { openInBrowser(issue) }
-                    EndfieldButton("Start conversation", symbol: "bubble.left.and.text.bubble.right",
-                                   kind: option == .button || checking ? .secondary : .primary) { startConversation(issue) }
-                        .disabled(busy || model.store == nil)
-                    switch option {
-                    case .button:
-                        EndfieldButton("Dispatch", symbol: "play.fill", kind: checking ? .secondary : .primary) { dispatch(issue) }
-                            .disabled(busy || model.store == nil)
-                    case .hidden(let tooltip): DispatchHiddenMark(reason: tooltip)
-                    case .none: EmptyView()
-                    }
+                    Text(issue.isOpen ? "open" : "closed").typeRole(.label)
+                    if !issue.priority.isEmpty { PriorityMark(priority: issue.priority) }
+                    TagChips(tags: issue.labels.withoutPriority(issue.priority), limit: 4)
                 }
             }
+        } trailing: {
+            if let run, run.alive {
+                TimelineView(.periodic(from: .now, by: 30)) { context in
+                    // Raised: both marks draw in ink, which doesn't read on steel.
+                    RunningMark(detail: [run.model, PopoverFormat.ago(run.started, now: context.date)].compactMap { $0 }.joined(separator: " · "))
+                        .background(Ink.surface.raised)
+                }
+            }
+            if let issue {
+                // One yellow: Looks good while the check panel shows, else Dispatch, else Start conversation.
+                let option = GitHubDispatch.option(labels: issue.labels, isOpen: issue.isOpen, canManage: github.isManager,
+                                                   hasLiveRun: run?.alive == true)
+                let checking = GitHubInbox.isNeedsCheck(issue.status)
+                EndfieldButton("Open in browser", symbol: "arrow.up.right", kind: .quiet, iconOnly: true) { openInBrowser(issue) }
+                EndfieldButton("Start conversation", symbol: "bubble.left.and.text.bubble.right",
+                               kind: option == .button || checking ? .secondary : .primary) { startConversation(issue) }
+                    .disabled(busy || model.store == nil)
+                switch option {
+                case .button:
+                    EndfieldButton("Dispatch", symbol: "play.fill", kind: checking ? .secondary : .primary) { dispatch(issue) }
+                        .disabled(busy || model.store == nil)
+                case .hidden(let tooltip): DispatchHiddenMark(reason: tooltip).background(Ink.surface.raised)
+                case .none: EmptyView()
+                }
+            }
+        }
+    }
+
+    /// The board fields, the run and the last refusal, under the band.
+    private var boardPanel: some View {
+        VStack(alignment: .leading, spacing: Space.s) {
             if let issue { actions(issue) }
             if let run, let board = model.agents { runRow(run, board: board) }
             ActionError(message: actionError)

@@ -3,8 +3,7 @@ import TrismegistusKit
 import TrismegistusUI
 
 /// Above the open conversation in the window: source, title, pin, tags, the subtitle (source · run · started) and the
-/// same actions menu as its row. Its top row continues the toolbar's steel strip (#30); the tag editor and errors open
-/// below it on white; the title rule ends it.
+/// same actions menu as its row, in the `DetailHeader`; the tag editor and errors open under its rule on white.
 struct ConversationHeader: View {
     let sessionID: String
 
@@ -19,25 +18,22 @@ struct ConversationHeader: View {
         if let info {
             let tags = model.store?.tags[info.id] ?? []
             VStack(spacing: 0) {
-                HStack(spacing: Space.m) {
+                DetailHeader {
                     SourceIcon(PopoverFormat.source(info.source))
-                    VStack(alignment: .leading, spacing: Space.xxs) {
-                        HStack(spacing: Space.m) {
-                            if actions.renaming == info.id {
-                                RenameField(info: info, actions: actions, store: model.store).frame(height: Size.control)
-                            } else {
-                                Text(PopoverFormat.title(info)).typeRole(.title).lineLimit(1)
-                                if info.isPinned {
-                                    Image(systemName: "pin.fill").font(.system(size: Icon.m)).opacity(Opacity.secondaryOnDark)
-                                        .accessibilityLabel("Pinned")
-                                }
-                                TagChips(tags: tags, limit: 4)
-                            }
+                } title: {
+                    if actions.renaming == info.id {
+                        RenameField(info: info, actions: actions, store: model.store).frame(height: Size.control)
+                    } else {
+                        Text(PopoverFormat.title(info))
+                        if info.isPinned {
+                            Image(systemName: "pin.fill").font(.system(size: Icon.m)).opacity(Opacity.secondaryOnDark)
+                                .accessibilityLabel("Pinned")
                         }
-                        Text(PopoverFormat.subtitle(info.id, info: info, store: model.store))
-                            .typeRole(.monoSmall).opacity(Opacity.secondaryOnDark).lineLimit(1)
+                        TagChips(tags: tags, limit: 4)
                     }
-                    Spacer(minLength: 0)
+                } subtitle: {
+                    Text(PopoverFormat.subtitle(info.id, info: info, store: model.store))
+                } trailing: {
                     ContextMeter(info: info) { actions.handingOff = info }
                     ModelMenu(info: info)
                     // `ConversationMenuButton` with a light icon.
@@ -52,12 +48,6 @@ struct ConversationHeader: View {
                     .help("Actions")
                     .accessibilityLabel("Actions")
                 }
-                .foregroundStyle(Ink.text.onDark)
-                .environment(\.onSteel, true)
-                .padding(.horizontal, Space.l).padding(.vertical, Space.s)
-                // Reaches 1 pt up over the rule under the toolbar's part, so the two parts meet without a seam.
-                .background { TopBarBackdrop().padding(.top, -1) }
-                .overlay(alignment: .bottom) { Rectangle().fill(Ink.bar.rule).frame(height: Stroke.hairline) }
                 if actions.tagging == info.id || actions.error != nil {
                     VStack(spacing: Space.s) {
                         if actions.tagging == info.id, let store = model.store {
@@ -71,9 +61,6 @@ struct ConversationHeader: View {
                     .background(Ink.surface.raised)
                     .overlay(alignment: .bottom) { Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline) }
                 }
-                // Endfield's title rule between the header and the messages (the draft, #32), across the whole chat
-                // panel: magenta, yellow, green the rest (Martin's 07c); the chat's padding is the space below.
-                SegmentRule((Size.titleRule.magenta, Size.titleRule.yellow, Size.titleRule.green), height: Size.titleRule.height, stretches: true)
             }
             .confirmsDelete(actions, store: model.store)
             // A header for another conversation starts clean; a handoff stays in the same thread (its oldest part), so

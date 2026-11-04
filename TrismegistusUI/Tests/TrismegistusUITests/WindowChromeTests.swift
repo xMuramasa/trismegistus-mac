@@ -37,7 +37,7 @@ final class WindowChromeTests: XCTestCase {
         }
     }
 
-    /// The strip above a detail without a conversation header (Commands, News, the empty state).
+    /// The strip above a detail without a conversation header (Commands, the empty state).
     func testStripAboveAPlainDetail() throws {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 500),
                               styleMask: [.titled, .resizable, .closable, .fullSizeContentView], backing: .buffered, defer: false)

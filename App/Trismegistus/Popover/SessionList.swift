@@ -19,17 +19,9 @@ struct SessionList: View {
 
     /// One row per thread: its newest part.
     private var sessions: [SessionInfo] { SessionListing.threads(model.sessions, id: \.id, links: model.store?.links ?? [:]) }
-    /// Pinned conversations first; then the rest with the daily feed runs folded into one News row. Every kind.
-    private var fullListing: (pinned: [SessionInfo], rest: [ConversationListRow<SessionInfo>]) {
-        ConversationListRow.listing(sessions, news: model.news?.sessionIDs ?? [], newsAt: model.news?.rowTime,
-                                    activity: { model.store?.overview[$0.id]?.lastActivity ?? $0.lastActive.map(Date.init(timeIntervalSince1970:)) },
-                                    isPinned: \.isPinned)
-    }
-    /// The tab's counts and marks over the whole listing.
+    /// The tab's counts and marks over every kind.
     private var summary: ConversationKind.Summary {
-        let listing = fullListing
-        let shown = listing.pinned + listing.rest.compactMap { if case .item(let session) = $0 { session } else { nil } }
-        return ConversationKind.Summary(shown.map { session in
+        ConversationKind.Summary(sessions.map { session in
             let overview = model.store?.overview[session.id]
             return (source: session.source,
                     attention: ConversationKind.Attention(isWaitingForApproval: overview?.isWaitingForApproval ?? false,
@@ -38,20 +30,14 @@ struct SessionList: View {
     }
     /// The window's tab (one choice for both).
     private var kind: ConversationKind { summary.resolving(storedKind) }
-    /// The tab's rows; the News row is the app's, so in APP and All.
-    private var listing: (pinned: [SessionInfo], rest: [ConversationListRow<SessionInfo>]) {
+    /// The tab's rows, pinned conversations first.
+    private var listing: (pinned: [SessionInfo], rest: [SessionInfo]) {
         let kind = self.kind
-        let listing = fullListing
-        return (listing.pinned.filter { kind.includes($0.source) }, listing.rest.filter {
-            switch $0 {
-            case .item(let session): kind.includes(session.source)
-            case .news: kind == .app || kind == .all
-            }
-        })
+        return SessionListing.pinnedApart(sessions.filter { kind.includes($0.source) }, isPinned: \.isPinned)
     }
-    private var rows: [ConversationListRow<SessionInfo>] {
+    private var rows: [SessionInfo] {
         let listing = self.listing
-        return listing.pinned.map { .item($0) } + listing.rest
+        return listing.pinned + listing.rest
     }
     private var isEmpty: Bool { sessions.isEmpty && !isStale }
 
@@ -102,12 +88,7 @@ struct SessionList: View {
                                 ForEach(listing.pinned) { entry($0, now: context.date) }
                                 SectionLabel(title: "Conversations").background(Ink.surface.window)
                             }
-                            ForEach(listing.rest) { row in
-                                switch row {
-                                case .item(let session): entry(session, now: context.date)
-                                case .news: newsRow(now: context.date)
-                                }
-                            }
+                            ForEach(listing.rest) { entry($0, now: context.date) }
                         }
                     }
                     .background(Ink.line.rule)
@@ -142,10 +123,11 @@ struct SessionList: View {
 
     private func row(_ session: SessionInfo, now: Date) -> some View {
         let overview = model.store?.overview[session.id]
+        let isSelected = session.id == (selection ?? rows.first?.id)
         return SessionRowView(
             name: PopoverFormat.title(session), source: PopoverFormat.source(session.source),
             activity: PopoverFormat.ago(overview?.lastActivity ?? session.lastActive.map(Date.init(timeIntervalSince1970:)), now: now),
-            isSelected: session.id == (selection ?? rows.first?.id), isReadOnly: session.isReadOnly,
+            isSelected: isSelected, isReadOnly: session.isReadOnly,
             runElapsed: overview?.run.map { PopoverFormat.elapsed(since: $0.startedAt, now: now) },
             needsApproval: overview?.isWaitingForApproval ?? false
         )
@@ -155,19 +137,7 @@ struct SessionList: View {
             selection = session.id
             onOpen(session.id)
         }
-        .conversationChrome(session, tags: model.store?.tags[session.id] ?? [], actions: actions, store: model.store)
-    }
-
-    @ViewBuilder private func newsRow(now: Date) -> some View {
-        if let news = model.news {
-            NewsRowView(feed: news, isSelected: NewsRowView.id == (selection ?? rows.first?.id), now: now)
-                .id(NewsRowView.id)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    selection = NewsRowView.id
-                    onOpen(NewsRowView.id)
-                }
-        }
+        .conversationChrome(session, tags: model.store?.tags[session.id] ?? [], isSelected: isSelected, actions: actions, store: model.store)
     }
 
     private func move(_ delta: Int) -> KeyPress.Result {

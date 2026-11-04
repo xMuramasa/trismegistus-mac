@@ -46,7 +46,7 @@ struct OlderParts: View {
             HStack(spacing: Space.s) {
                 Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline)
                 Text(label(part, newer: newer, store: store)).typeRole(.label).foregroundStyle(Ink.text.secondary).fixedSize()
-                Image(systemName: isOpen ? Symbol.chevronDown : Symbol.chevronRight).font(.system(size: Icon.xs, weight: .semibold))
+                Image(systemName: Symbol.fold(isOpen: isOpen)).font(.system(size: Icon.xs, weight: .semibold))
                     .foregroundStyle(Ink.text.secondary)
                 Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline)
             }

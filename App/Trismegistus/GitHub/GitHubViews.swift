@@ -2,7 +2,7 @@ import SwiftUI
 import TrismegistusKit
 import TrismegistusUI
 
-/// The priority as an ink tag, like a news edition's feed tag.
+/// The priority as an ink tag.
 struct PriorityMark: View {
     let priority: String
 

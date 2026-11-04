@@ -92,6 +92,8 @@ struct FilterChip: View {
     var fills = false
     let action: () -> Void
 
+    @Environment(\.onSteel) private var onSteel
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: Space.s) {
@@ -102,7 +104,7 @@ struct FilterChip: View {
             .typeRole(.button)
             .padding(.horizontal, Space.m).padding(.vertical, Space.s)
             .frame(maxWidth: fills ? .infinity : nil)
-            .foregroundStyle(isOn ? Ink.selection : Ink.text.primary)
+            .foregroundStyle(isOn ? Ink.selection : onSteel ? Ink.text.onDark : Ink.text.primary)
             .background(isOn ? Ink.surface.inverse : .clear)
             .contentShape(Rectangle())
         }

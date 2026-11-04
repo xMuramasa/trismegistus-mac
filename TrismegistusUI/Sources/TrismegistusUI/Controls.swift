@@ -5,7 +5,8 @@ public enum EndfieldButtonKind: Sendable {
 }
 
 /// Square chip with a 1 px edge and a trailing SF Symbol. `iconOnly` hides the word but keeps it as tooltip and
-/// accessibility label. Pressed inverts to ink with yellow text; disabled goes sunken and muted.
+/// accessibility label. Pressed inverts to ink with yellow text; disabled goes sunken and muted (dark-panel on steel).
+/// On steel a secondary button has no fill and a light edge and word (`.btn.steel`, #57).
 public struct EndfieldButtonStyle: ButtonStyle {
     let kind: EndfieldButtonKind
     let title: String
@@ -28,16 +29,19 @@ public struct EndfieldButtonStyle: ButtonStyle {
         let style: EndfieldButtonStyle
         @Environment(\.isEnabled) private var isEnabled
         @Environment(\.onSidebar) private var onSidebar
+        @Environment(\.onSteel) private var onSteel
 
         private var palette: (fill: Color, edge: Color, text: Color) {
-            if !isEnabled { return (Ink.surface.sunken, Ink.line.rule, Ink.text.muted) }
+            if !isEnabled {
+                return onSteel ? (Ink.surface.darkPanel, Ink.text.secondary, Ink.text.onDark) : (Ink.surface.sunken, Ink.line.rule, Ink.text.muted)
+            }
             if configuration.isPressed { return (Ink.surface.inverse, Ink.line.strong, Ink.selection) }
             switch style.kind {
             case .primary: return (Ink.selection, Ink.line.strong, Ink.text.primary)
-            case .secondary: return (Ink.surface.raised, Ink.line.strong, Ink.text.primary)
+            case .secondary: return onSteel ? (.clear, Ink.text.onDark, Ink.text.onDark) : (Ink.surface.raised, Ink.line.strong, Ink.text.primary)
             case .danger: return (Ink.surface.raised, Ink.text.error, Ink.text.error)
-            // No ground of its own: light on the window sidebar's grey.
-            case .quiet: return (.clear, .clear, onSidebar ? Ink.text.onSidebar : Ink.text.primary)
+            // No ground of its own: light on the window sidebar's grey and on steel.
+            case .quiet: return (.clear, .clear, onSidebar ? Ink.text.onSidebar : onSteel ? Ink.text.onDark : Ink.text.primary)
             }
         }
 

@@ -73,6 +73,8 @@ public enum Symbol {
     public static let chevronRight = "chevron.right"
     public static let chevronDown = "chevron.down"
     public static let chevronUp = "chevron.up"
+    /// A fold control's chevron: down on a folded item, up on an open one. Navigation links keep `chevronRight`.
+    public static func fold(isOpen: Bool) -> String { isOpen ? chevronUp : chevronDown }
     public static let attach = "paperclip"
     /// the chat kind tabs (the app maps each kind to one)
     public static let kindApp = "macwindow"

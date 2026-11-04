@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// The main window's sections (#41), in the section bar's order, left to right: ⌘1…⌘6.
+/// The main window's sections (#41), in the section bar's order, left to right: ⌘1…⌘5.
 public enum WindowSection: String, CaseIterable, Identifiable, Sendable {
-    case chat, github, news, agents, jobs, commands
+    case chat, github, agents, jobs, commands
 
     public var id: Self { self }
 
@@ -10,7 +10,6 @@ public enum WindowSection: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .chat: "Chat"
         case .github: "GitHub"
-        case .news: "News"
         case .agents: "Agents"
         case .jobs: "Jobs"
         case .commands: "Commands"
@@ -22,7 +21,6 @@ public enum WindowSection: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .chat: "bubble.left"
         case .github: "checklist"
-        case .news: "newspaper"
         case .agents: "cpu"
         case .jobs: Symbol.cron
         case .commands: Symbol.terminal
@@ -39,10 +37,6 @@ public enum WindowSection: String, CaseIterable, Identifiable, Sendable {
 
     /// The `UserDefaults` key of the section's own selection; Chat keeps the key it had before sections.
     public var selectionKey: String { self == .chat ? "window.selectedSession" : "window.selection.\(rawValue)" }
-
-    /// Where an id opened from another section lands (Jobs, GitHub, Agents, Commands, a notification): News for the
-    /// News id, otherwise the conversation in Chat.
-    public static func opening(_ id: String, newsID: String) -> WindowSection { id == newsID ? .news : .chat }
 
     /// The selection a list keeps when its items change: the same one while it is listed, else the first.
     public static func kept(_ selection: String?, in ids: [String]) -> String? {

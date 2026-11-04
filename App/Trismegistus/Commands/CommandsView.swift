@@ -35,7 +35,7 @@ struct CommandsSidebar: View {
         }
     }
 
-    private static func count(_ n: Int) -> String { "\(n) \(n == 1 ? "call" : "calls")" }
+    static func count(_ n: Int) -> String { "\(n) \(n == 1 ? "call" : "calls")" }
 }
 
 /// Recent tool calls across conversations, newest first, from Hermes' history (Telegram, cron and CLI runs too),
@@ -72,7 +72,6 @@ struct CommandsView: View {
         let entries = entries
         VStack(spacing: 0) {
             header(count: entries.count)
-            Rectangle().fill(Ink.line.rule).frame(height: 1)
             if entries.isEmpty {
                 Text(emptyText).typeRole(.caption).foregroundStyle(Ink.text.muted)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -115,16 +114,18 @@ struct CommandsView: View {
     }
 
     private func header(count: Int) -> some View {
-        HStack(spacing: Space.s) {
-            Text(verbatim: "\(conversation.isEmpty ? "All conversations" : titles[conversation] ?? conversation) // \(count)")
-                .typeRole(.label).foregroundStyle(Ink.text.secondary).lineLimit(1)
-            if listFailed && log?.all.isEmpty == false {
-                Text("can't reach the relay").typeRole(.caption).foregroundStyle(Ink.text.error)
+        DetailHeader {
+            Text(verbatim: conversation.isEmpty ? "All conversations" : titles[conversation] ?? conversation)
+        } subtitle: {
+            HStack(spacing: Space.s) {
+                Text(verbatim: CommandsSidebar.count(count))
+                if listFailed && log?.all.isEmpty == false {
+                    Text("can't reach the relay").foregroundStyle(Ink.status.warn)
+                }
             }
-            Spacer(minLength: Space.s)
+        } trailing: {
             FilterChip(title: "Failed", symbol: "exclamationmark.triangle", isOn: failedOnly) { failedOnly.toggle() }
         }
-        .padding(.horizontal, Space.l).padding(.vertical, Space.m)
     }
 
     @ViewBuilder private func conversationLink(_ sessionID: String?) -> some View {

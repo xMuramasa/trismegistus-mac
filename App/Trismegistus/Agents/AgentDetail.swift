@@ -29,7 +29,7 @@ struct AgentDetail: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline)
+            if agent.command != nil || error != nil { commandLine }
             AgentTranscriptPane(agent: agent, transcript: transcript)
         }
         // Polls every 2 s while the agent is alive and this view is shown; a finished agent loads once.
@@ -43,25 +43,29 @@ struct AgentDetail: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: Space.s) {
-            HStack(spacing: Space.s) {
-                Text(agent.title).typeRole(.title).foregroundStyle(Ink.text.primary).lineLimit(1).truncationMode(.middle)
-                Spacer(minLength: Space.s)
-                if let id = agent.sessionID, canOpenConversation {
-                    EndfieldButton("Open conversation", symbol: Symbol.chevronRight) { onOpen(id) }
-                }
-                if board.canManage, agent.alive {
-                    if board.stopping.contains(agent.id) {
-                        Text("Stopping…").typeRole(.label).foregroundStyle(Ink.text.secondary)
-                    } else {
-                        EndfieldButton("Stop", symbol: Symbol.stop, kind: .danger) { confirmingStop = true }
-                    }
-                }
-            }
+        DetailHeader {
+            Text(agent.title).truncationMode(.middle)
+        } subtitle: {
             TimelineView(.periodic(from: .now, by: 30)) { context in
-                Text(summary(now: context.date)).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
-                    .lineLimit(2).textSelection(.enabled)
+                Text(summary(now: context.date)).textSelection(.enabled)
             }
+        } trailing: {
+            if let id = agent.sessionID, canOpenConversation {
+                EndfieldButton("Open conversation", symbol: Symbol.chevronRight) { onOpen(id) }
+            }
+            if board.canManage, agent.alive {
+                if board.stopping.contains(agent.id) {
+                    Text("Stopping…").typeRole(.label)
+                } else {
+                    EndfieldButton("Stop", symbol: Symbol.stop, kind: .danger) { confirmingStop = true }
+                }
+            }
+        }
+    }
+
+    /// The agent's command and the last refusal, under the band.
+    private var commandLine: some View {
+        VStack(alignment: .leading, spacing: Space.s) {
             if let command = agent.command {
                 Text(command).typeRole(.monoSmall).foregroundStyle(Ink.text.muted).lineLimit(2).truncationMode(.middle)
                     .textSelection(.enabled)

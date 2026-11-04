@@ -95,7 +95,7 @@ public struct TitleRule: View {
 }
 
 /// Endfield's title rule alone: magenta, yellow and green segments, then a hairline to the end unless `hairline` is
-/// off. `TitleRule` draws it at `Size.titleRuleSmall`; the window's conversation header at `Size.titleRule` (#32).
+/// off. `TitleRule` draws it at `Size.titleRuleSmall`; `DetailHeader` at `Size.titleRule` (#32, #57).
 public struct SegmentRule: View {
     let widths: (magenta: CGFloat, yellow: CGFloat, green: CGFloat)
     let height: CGFloat
@@ -103,7 +103,7 @@ public struct SegmentRule: View {
     let stretches: Bool
 
     /// - Parameter stretches: magenta and yellow keep their widths and green fills the rest of the width (the window's
-    ///   rule under the conversation header, as in the Penpot frame); otherwise all three keep their widths and a
+    ///   rule under a detail's header, as in the Penpot frame); otherwise all three keep their widths and a
     ///   hairline may follow.
     public init(
         _ widths: (magenta: CGFloat, yellow: CGFloat, green: CGFloat) = (
@@ -271,7 +271,7 @@ public struct ToolRowView: View {
         VStack(spacing: 0) {
             Button { isExpanded.toggle() } label: {
                 HStack(spacing: Space.s) {
-                    Image(systemName: isExpanded ? Symbol.chevronDown : Symbol.chevronRight)
+                    Image(systemName: Symbol.fold(isOpen: isExpanded))
                         .font(.system(size: Icon.xxs, weight: .bold)).frame(width: Icon.xxs)
                     Text(tool).typeRole(.mono, weight: .semibold)
                     Text(summary).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary).lineLimit(1)

@@ -196,8 +196,7 @@ public struct TerminalEntryView: View {
                 Text(title).lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: Space.s)
                 headerTrailing
-                // A dropdown's convention: down opens, up closes.
-                Image(systemName: folded ? Symbol.chevronDown : Symbol.chevronUp)
+                Image(systemName: Symbol.fold(isOpen: !folded))
                     .font(.system(size: Icon.xs, weight: .bold)).frame(width: Icon.s)
             }
             .typeRole(.monoSmall, weight: .semibold)

@@ -11,7 +11,6 @@ struct JobDetail: View {
     let onOpen: (String) -> Void
     let onCreated: (String) -> Void
 
-    @Environment(AppModel.self) private var model
     @State private var draft: JobDraft
     @State private var busy = false
     /// The relay's or Hermes' refusal of the last write.
@@ -29,22 +28,30 @@ struct JobDetail: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.xl) {
-            TitleRule(job?.title ?? "New job")
-            if let job { status(job) }
-            if board.canManage {
-                form
-                buttons
-            } else if let job {
-                summary(job)
+        VStack(alignment: .leading, spacing: 0) {
+            DetailHeader {
+                Text(verbatim: job?.title ?? "New job")
+            } subtitle: {
+                EmptyView()
+            } trailing: {
+                EmptyView()
             }
-            if let job {
-                hermesValues(job)
-                runList(job)
+            VStack(alignment: .leading, spacing: Space.xl) {
+                if let job { status(job) }
+                if board.canManage {
+                    form
+                    buttons
+                } else if let job {
+                    summary(job)
+                }
+                if let job {
+                    hermesValues(job)
+                    runList(job)
+                }
             }
+            .padding(Space.l)
+            .frame(maxWidth: Size.chatColumn, alignment: .leading)
         }
-        .padding(Space.l)
-        .frame(maxWidth: Size.chatColumn, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .leading)
         .alert("Delete job?", isPresented: $confirmingDelete, presenting: job) { job in
             Button("Delete", role: .destructive) { write { try await board.delete(job) } }
@@ -317,11 +324,10 @@ struct JobDetail: View {
         }
     }
 
-    /// Opens its conversation, read-only like every cron session (by its `cron_` id, listed or not); a news run opens News.
+    /// Opens its conversation, read-only like every cron session (by its `cron_` id, listed or not).
     private func run(_ run: JobRun) -> some View {
-        let target = model.news?.sessionIDs.contains(run.id) == true ? NewsRowView.id : run.id
         let when = run.startedAt.map { Date(timeIntervalSince1970: $0).formatted(.clock.day().month(.abbreviated).hour().minute()) } ?? "—"
-        return Button { onOpen(target) } label: {
+        return Button { onOpen(run.id) } label: {
             HStack(spacing: Space.s) {
                 Text(when).typeRole(.monoSmall)
                 Text(run.title ?? run.id).typeRole(.monoSmall).lineLimit(1)
@@ -331,6 +337,6 @@ struct JobDetail: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(target == NewsRowView.id ? "Open News" : "Open the conversation")
+        .help("Open the conversation")
     }
 }

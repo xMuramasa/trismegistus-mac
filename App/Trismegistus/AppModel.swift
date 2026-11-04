@@ -15,8 +15,6 @@ final class AppModel {
     private(set) var deviceName: String?
     /// Nil until paired. Per-session state (`sessions[id]`), `open`/`close`, history and the REST calls live here.
     private(set) var store: SessionStore?
-    /// The News conversation (#19): the daily feed runs folded into one; a new one per connection.
-    private(set) var news: NewsFeed?
     /// This device's name and role (`GET /api/me`), fetched on each (re)connect and when the app comes to the
     /// foreground; Jobs, GitHub and Agents all read it.
     private(set) var device: DeviceProfile?
@@ -129,7 +127,6 @@ final class AppModel {
         )
         store.images = ImageFiles(directory: Self.imagesURL(for: relayURL), rest: store.rest)
         self.store = store
-        news = NewsFeed(rest: store.rest)
         let device = DeviceProfile(rest: store.rest)
         self.device = device
         let jobs = JobBoard(rest: store.rest, device: device)
@@ -168,7 +165,6 @@ final class AppModel {
         agentsWatch = nil
         await store?.stop()
         store = nil
-        news = nil
         device = nil
         jobs = nil
         github = nil

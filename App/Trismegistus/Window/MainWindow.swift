@@ -2,7 +2,7 @@ import SwiftUI
 import TrismegistusKit
 import TrismegistusUI
 
-/// Six sections (#41: Chat, GitHub, News, Agents, Jobs, Commands), each with its own sidebar list and detail; the
+/// Five sections (#41, #57: Chat, GitHub, Agents, Jobs, Commands), each with its own sidebar list and detail; the
 /// terminal pane follows Chat's conversation. The sidebar is our own column (`SidebarSplit`, #32), not the system's
 /// floating glass panel; the toolbar's toggle, the View menu and ⌃⌘S show and hide it, with the section bar at its
 /// bottom. Each section keeps its own selection.
@@ -11,7 +11,6 @@ struct MainWindow: View {
     @AppStorage("window.section") private var section = WindowSection.chat
     @AppStorage(WindowSection.chat.selectionKey) private var selectedSession = ""
     @AppStorage(WindowSection.github.selectionKey) private var selectedIssue = ""
-    @AppStorage(WindowSection.news.selectionKey) private var selectedEdition = ""
     @AppStorage(WindowSection.agents.selectionKey) private var selectedAgent = ""
     @AppStorage(WindowSection.jobs.selectionKey) private var selectedJob = ""
     /// `""`: all conversations.
@@ -39,14 +38,13 @@ struct MainWindow: View {
         Binding(get: { commandsConversation }, set: { commandsConversation = $0 ?? "" })
     }
 
-    /// A notification's chat, or a conversation (or News) opened from Jobs, GitHub, Agents or Commands.
+    /// A notification's chat, or a conversation opened from Jobs, GitHub, Agents or Commands.
     private var opening: Binding<String?> {
         Binding(get: { chatSelection.wrappedValue }, set: { $0.map(open) })
     }
 
     private func open(_ id: String) {
-        section = WindowSection.opening(id, newsID: NewsRowView.id)
-        guard section == .chat else { return }
+        section = .chat
         selectedSession = id
         // The tab of the thread's newest part (the row shown); All stays All, and an unlisted id leaves the tab alone.
         let tip = model.store?.threadTip(of: id) ?? id
@@ -63,8 +61,8 @@ struct MainWindow: View {
         } detail: {
             TrailingSplit(isShown: $terminalShown, width: $terminalWidth) {
                 detail
-                    // The detail's own grounds (Commands, Jobs, News, the empty state) reach up under the toolbar and
-                    // covered the strip there; this draws it back above them. A conversation's header continues it below.
+                    // The detail's own grounds (Commands, Jobs, the empty state) reach up under the toolbar and
+                    // covered the strip there; this draws it back above them.
                     .topBarColumn(.window)
             } pane: {
                 TerminalPane(sessionID: section == .chat ? chatSelection.wrappedValue : nil)
@@ -74,7 +72,6 @@ struct MainWindow: View {
         .topBar()
         .providesCommandLog(model)
         .selectsChatFromNotifications(model.notifications, selection: opening)
-        .refreshesNews(model)
         .toolbar { toolbar }
         .toolbar(removing: .title)
         .focusedSceneValue(\.sidebar, SidebarActions(isShown: sidebarShown, toggle: toggleSidebar, find: findInSidebar,
@@ -94,7 +91,6 @@ struct MainWindow: View {
         switch section {
         case .chat: ConversationSidebar(selection: chatSelection, filterFocus: $filterFocused)
         case .github: GitHubSidebar(selection: optional($selectedIssue), filterFocus: $filterFocused)
-        case .news: NewsSidebar(selection: optional($selectedEdition), filterFocus: $filterFocused)
         case .agents: AgentsSidebar(selection: optional($selectedAgent), filterFocus: $filterFocused)
         case .jobs: JobsSidebar(selection: optional($selectedJob), filterFocus: $filterFocused)
         case .commands:
@@ -117,7 +113,6 @@ struct MainWindow: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity).background(EndfieldBackdrop())
             }
         case .github: GitHubView(selection: optional($selectedIssue).wrappedValue, onOpen: open)
-        case .news: NewsDetail(selection: optional($selectedEdition))
         case .agents: AgentsView(selection: optional($selectedAgent), onOpen: open)
         case .jobs: JobsView(selection: optional($selectedJob), onOpen: open)
         case .commands:
@@ -264,7 +259,7 @@ extension FocusedValues {
     @Entry var sidebar: SidebarActions?
 }
 
-/// View menu: the six sections (⌘1…⌘6), show or hide the sidebar (⌃⌘S, the system's key for it) and ⌘K for the
+/// View menu: the five sections (⌘1…⌘5), show or hide the sidebar (⌃⌘S, the system's key for it) and ⌘K for the
 /// current section's filter. Disabled unless the main window is key.
 struct SidebarMenuCommands: Commands {
     @FocusedValue(\.sidebar) private var sidebar

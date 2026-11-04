@@ -13,8 +13,8 @@ extension EnvironmentValues {
 
 public extension View {
     /// The window's top bar, on the window's root: hides the toolbar's own background (glass and scroll edge on macOS
-    /// 26) and draws the steel strip behind the toolbar instead, with a 1 pt rule under it. A `TopBarBackdrop` right
-    /// below the toolbar (the conversation header) continues the strip and covers the rule with its own.
+    /// 26) and draws the steel strip behind the toolbar instead, with a 1 pt rule under it. The detail
+    /// headers (`DetailHeader`) start under that rule with their own band (#57).
     func topBar() -> some View { modifier(TopBar()) }
 }
 

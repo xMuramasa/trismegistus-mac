@@ -163,7 +163,7 @@ struct GitHubSidebar: View {
                 if toggled.contains(group.status) { toggled.remove(group.status) } else { toggled.insert(group.status) }
             } label: {
                 HStack(spacing: Space.s) {
-                    Image(systemName: folded ? Symbol.chevronRight : Symbol.chevronDown)
+                    Image(systemName: Symbol.fold(isOpen: !folded))
                         .font(.system(size: Icon.xxs, weight: .bold)).frame(width: Icon.xxs)
                     Text(group.status.isEmpty ? "No status" : group.status).typeRole(.label)
                     Text(verbatim: "\(group.items.count)").typeRole(.monoSmall)

@@ -3,13 +3,13 @@ import XCTest
 
 @testable import TrismegistusUI
 
-/// The window's sections (#41): order, shortcuts, where each keeps its selection, and where an opened id lands.
+/// The window's sections (#41, #57): order, shortcuts and where each keeps its selection.
 final class SectionBarTests: XCTestCase {
     func testOrderShortcutsAndTooltips() {
-        XCTAssertEqual(WindowSection.allCases, [.chat, .github, .news, .agents, .jobs, .commands])
-        XCTAssertEqual(WindowSection.allCases.map(\.key.character), ["1", "2", "3", "4", "5", "6"])
+        XCTAssertEqual(WindowSection.allCases, [.chat, .github, .agents, .jobs, .commands])
+        XCTAssertEqual(WindowSection.allCases.map(\.key.character), ["1", "2", "3", "4", "5"])
         XCTAssertEqual(WindowSection.chat.help, "Chat (⌘1)")
-        XCTAssertEqual(WindowSection.commands.help, "Commands (⌘6)")
+        XCTAssertEqual(WindowSection.commands.help, "Commands (⌘5)")
     }
 
     func testEachSectionKeepsItsOwnSelection() {
@@ -21,9 +21,9 @@ final class SectionBarTests: XCTestCase {
         XCTAssertFalse(keys.contains("window.section"))
     }
 
-    func testOpeningLandsInChatOrNews() {
-        XCTAssertEqual(WindowSection.opening("20261101_120000_ab12", newsID: "trismegistus.news"), .chat)
-        XCTAssertEqual(WindowSection.opening("trismegistus.news", newsID: "trismegistus.news"), .news)
+    /// `window.section` may still hold "news": with the raw value gone `@AppStorage` falls back to Chat.
+    func testStoredNewsSectionIsGone() {
+        XCTAssertNil(WindowSection(rawValue: "news"))
     }
 
     func testKeptSelection() {

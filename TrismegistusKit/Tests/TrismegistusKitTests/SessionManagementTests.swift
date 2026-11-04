@@ -58,30 +58,18 @@ import Testing
 }
 
 @Suite struct SessionListingTests {
-    @Test func pinnedComeFirstEachGroupKeepingItsOrder() {
+    @Test func pinnedGoApartEachGroupKeepingItsOrder() {
         let items = [("a", false), ("b", true), ("c", false), ("d", true)]
-        #expect(SessionListing.pinnedFirst(items, isPinned: \.1).map(\.0) == ["b", "d", "a", "c"])
+        let listing = SessionListing.pinnedApart(items, isPinned: \.1)
+        #expect(listing.pinned.map(\.0) == ["b", "d"])
+        #expect(listing.rest.map(\.0) == ["a", "c"])
     }
 
-    private func fold(_ items: [(String, Double)], news: Set<String> = [], at: Double? = nil) -> [String] {
-        SessionListing.foldingNews(items, id: \.0, activity: { Date(timeIntervalSince1970: $0.1) }, news: news,
-                                   newsAt: at.map(Date.init(timeIntervalSince1970:)))
-            .map { $0?.0 ?? "NEWS" }
-    }
-
-    @Test func editionsWithoutFeedRunsPlaceTheNewsRowByTheirTime() {
-        let items: [(String, Double)] = [("a", 300), ("b", 200), ("c", 100)]
-        #expect(fold(items, at: 250) == ["a", "NEWS", "b", "c"])
-        #expect(fold(items, at: 400) == ["NEWS", "a", "b", "c"])
-        #expect(fold(items, at: 50) == ["a", "b", "c", "NEWS"])
-        #expect(fold([], at: 50) == ["NEWS"])
-        #expect(fold(items) == ["a", "b", "c"]) // no editions, no runs: no row
-    }
-
-    @Test func feedRunsFoldIntoOneNewsRowWhereTheFirstWas() {
-        let items: [(String, Double)] = [("a", 300), ("r1", 250), ("b", 200), ("r2", 150)]
-        #expect(fold(items, news: ["r1", "r2"], at: 10) == ["a", "NEWS", "b"])
-        #expect(fold(items, news: ["r1", "r2"]) == ["a", "NEWS", "b"])
+    /// The daily feed runs are ordinary cron conversations (#57): each keeps its row, in the Cron tab.
+    @Test func feedRunsAreListedLikeAnyCronRun() {
+        let items = [("a", "api_server"), ("cron_news_1", "cron"), ("b", "telegram"), ("cron_news_2", "cron")]
+        #expect(SessionListing.pinnedApart(items) { _ in false }.rest.map(\.0) == items.map(\.0))
+        #expect(items.filter { ConversationKind.cron.includes($0.1) }.map(\.0) == ["cron_news_1", "cron_news_2"])
     }
 
     @Test func selectionMovesToTheNextConversationWhenItsOwnLeaves() {
@@ -90,7 +78,7 @@ import Testing
         #expect(SessionListing.selection("c", from: old, to: ["a", "b"]) == "b")
         #expect(SessionListing.selection("a", from: ["a"], to: []) == nil)
         #expect(SessionListing.selection("b", from: old, to: ["c", "b", "a"]) == "b") // reordered, not removed
-        #expect(SessionListing.selection("x", from: old, to: ["a"]) == "x") // not in the list (News, Commands)
+        #expect(SessionListing.selection("x", from: old, to: ["a"]) == "x") // not in the list (Commands)
         #expect(SessionListing.selection(nil, from: old, to: []) == nil)
     }
 

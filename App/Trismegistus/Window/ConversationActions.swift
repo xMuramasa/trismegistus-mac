@@ -51,17 +51,6 @@ final class ConversationActions {
     }
 }
 
-extension ConversationListRow {
-    /// Pinned items first; the rest with the News row placed where the first feed run was among the unpinned ones
-    /// (a pinned feed run is just a pinned conversation), or by `newsAt` when no run is listed.
-    static func listing(_ items: [Item], news: Set<String>, newsAt: Date?, activity: (Item) -> Date?,
-                        isPinned: (Item) -> Bool) -> (pinned: [Item], rest: [Self]) {
-        let pinned = items.filter { isPinned($0) && !news.contains($0.id) }
-        let rest = items.filter { !(isPinned($0) && !news.contains($0.id)) }
-        return (pinned, folding(rest, news: news, newsAt: newsAt, activity: activity))
-    }
-}
-
 // MARK: Menu
 
 /// Pin/Unpin, Rename, Tags, Hand off and Delete, as the relay allows them for the conversation's source.
@@ -93,7 +82,7 @@ struct ConversationMenuItems: View {
     }
 }
 
-/// The trailing `…` button.
+/// The row's `…` button.
 struct ConversationMenuButton: View {
     let info: SessionInfo
     let actions: ConversationActions
@@ -148,8 +137,9 @@ extension View {
 
 // MARK: Rows
 
-/// Pin glyph, `…` button, tag chips, right-click menu and the inline rename, laid over a `SessionRowView`; light on
-/// the window sidebar's grey unless the row is the selected white card.
+/// `…` button (under the pointer and on the selected row only), pin glyph, tag chips, right-click menu with the same
+/// items and the inline rename, laid over a `SessionRowView`; light on the window sidebar's grey unless the row is the
+/// selected white card.
 private struct ConversationChrome: ViewModifier {
     let info: SessionInfo
     let tags: [String]
@@ -158,18 +148,24 @@ private struct ConversationChrome: ViewModifier {
     let store: SessionStore?
 
     @Environment(\.onSidebar) private var onSidebar
+    @State private var isHovered = false
 
     func body(content: Content) -> some View {
         let onGrey = onSidebar && !isSelected
+        let showsMenu = isHovered || isSelected
         content
             .overlay(alignment: .topTrailing) {
-                HStack(spacing: Space.xxs) {
+                HStack(alignment: .top, spacing: Space.xxs) {
+                    // Hidden, not removed: the pointer leaves the row for the open menu, and removing the button would close it.
+                    ConversationMenuButton(info: info, actions: actions, store: store)
+                        .opacity(showsMenu ? 1 : 0).allowsHitTesting(showsMenu)
                     if info.isPinned {
+                        // On the title's line: the centred run timer starts below it.
                         Image(systemName: "pin.fill").font(.system(size: Icon.s))
                             .foregroundStyle(RowInk(onSidebar: onSidebar, isSelected: isSelected).meta)
+                            .padding(.top, Space.xxs)
                             .accessibilityLabel("Pinned")
                     }
-                    ConversationMenuButton(info: info, actions: actions, store: store)
                 }
                 .padding(.top, Space.xs).padding(.trailing, Space.s)
                 .environment(\.onSidebar, onGrey)
@@ -181,6 +177,7 @@ private struct ConversationChrome: ViewModifier {
             .overlay {
                 if actions.renaming == info.id { RenameField(info: info, actions: actions, store: store) }
             }
+            .onHover { isHovered = $0 }
             .contextMenu { ConversationMenuItems(info: info, actions: actions, store: store) }
     }
 }

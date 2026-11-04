@@ -47,6 +47,8 @@ public enum Ink {
         public let onSidebar = Palette.raised
         /// headers, meta lines and the footer on the window sidebar (about 4.7:1 on secondary; nothing dimmer)
         public let onSidebarSecondary = Palette.onSteel
+        /// the title on a detail's steel band
+        public let onBand = Palette.raised
         public let link = Palette.blue
         public let error = Palette.red
     }
@@ -60,6 +62,8 @@ public enum Ink {
         public let terminal = Palette.ink
         /// ink behind a chip, a toggle that is on, a pressed button, a switch that is on
         public let inverse = Palette.ink
+        /// the warn status chip; a disabled button on steel
+        public let darkPanel = Palette.darkPanel
     }
     public static let surface = Surface()
     public struct Line: Sendable {
@@ -188,7 +192,7 @@ public enum Size {
         public let height: CGFloat = 640
     }
     public static let windowMin = WindowMin()
-    /// the window's conversation header; green is a minimum, it stretches
+    /// the detail header; green is a minimum, it stretches
     public struct TitleRule: Sendable {
         public let magenta: CGFloat = 48
         public let yellow: CGFloat = 120
@@ -208,6 +212,17 @@ public enum Size {
     public static let titleRuleSmall = TitleRuleSmall()
     /// tool and subagent rows
     public static let rowTool: CGFloat = 28
+    /// the columns of a tool row: the icon and fold cells, the tool name (wide in Commands), the duration, the status
+    public struct ToolRow: Sendable {
+        public let cell: CGFloat = 16
+        public let name: CGFloat = 48
+        public let nameWide: CGFloat = 112
+        public let duration: CGFloat = 56
+        public let status: CGFloat = 64
+    }
+    public static let toolRow = ToolRow()
+    /// a status chip's height
+    public static let chip: CGFloat = 16
     /// status dot
     public static let dot: CGFloat = 7
     /// the approval banner's square

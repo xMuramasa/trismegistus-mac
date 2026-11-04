@@ -100,20 +100,20 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   protocol caps text at 32,768 characters (Unicode scalars): from 30,000 a counter `30,512 / 32,768` shows under it,
   red over the cap, where Send is disabled.
 - **Main window:** our own sidebar column (`SidebarSplit`, #32; not `NavigationSplitView`), the detail, and our own
-  trailing terminal pane (`⌘⌥T`). **Six sections** (#41, design 09f): Chat, GitHub, News, Agents, Jobs, Commands, picked
+  trailing terminal pane (`⌘⌥T`). **Five sections** (#41, #57, design 09f): Chat, GitHub, Agents, Jobs, Commands, picked
   from the icon bar at the sidebar's bottom (under the paired-device footer; it hides with the sidebar) or with
-  ⌘1…⌘6 (View menu; tooltips `Chat (⌘1)` …). Each section has its own sidebar list (header `TITLE // n`, a filter field
+  ⌘1…⌘5 (View menu; tooltips `Chat (⌘1)` …). Each section has its own sidebar list (header `TITLE // n`, a filter field
   that ⌘K focuses, arrow keys move the selection) and detail: Chat the conversations (pin, rename, tags, delete, new)
   and the conversation; GitHub the Work board by status (repo, priority and list-kind pickers, Done folded) and the
-  issue; News the editions by day and the edition; Agents the runs and the agent's detail and transcript; Jobs the
+  issue; Agents the runs and the agent's detail and transcript; Jobs the
   jobs (+ New job) and the job's detail or form; Commands "All conversations" and the conversations with matching
   calls (the filter is the log's search) and the log (failed-only in its header). Each section keeps its own selection
   (`window.section`, `window.selection.<section>`; Chat keeps `window.selectedSession`). Opening a conversation from
-  GitHub, Agents, Jobs, Commands or a notification switches to Chat with it selected (a news run opens News). The
+  GitHub, Agents, Jobs, Commands or a notification switches to Chat with it selected. The
   terminal pane shows Chat's conversation only. The sidebar ground is `surface.sidebar` (the palette's secondary grey)
   with light text (`text.on-sidebar`, `text.on-sidebar-secondary`, ≈4.7:1, nothing dimmer); the selected row is a
-  white card with a yellow outline and ink text; the filter fields stay light. The daily feed runs are not in Chat's
-  list (News has them); the popover keeps its one News row.
+  white card with a yellow outline and ink text; the filter fields stay light. The daily feed runs are ordinary read-only
+  cron conversations, listed like every other cron run (the news itself is read at news.lab.x-muramasa.dev).
   **Chat kind tabs** (#48): under the header, which names the tab (`TELEGRAM // 4`), above the filter, a row of bare
   icon tabs in the section bar's look: APP `macwindow`, TELEGRAM `paperplane`, TERMINAL `terminal`, MORE
   `ellipsis.circle` ▾, each with its count in mono; the selected one with the yellow bar (ink in the popover); a
@@ -128,7 +128,7 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   from a notification, Jobs, GitHub, Agents or Commands switches to its kind's tab (All stays All), + New makes an app
   conversation and switches to APP, and a tab switch keeps the open conversation in the detail until another is
   picked. A Telegram chat continued in the app is an app conversation (APP, its Telegram part folded above). The
-  popover's list has the same tabs and follows the window's (one choice, `chat.kind`); its News row is in APP and All.
+  popover's list has the same tabs and follows the window's (one choice, `chat.kind`).
   The Commands section's conversation list is not filtered. The chat keeps messages and answers; each run shows one marker (`4 COMMANDS · 6.1 s · 1 failed`) that focuses the pane.
   The **terminal pane** is a read-only transcript of the selected conversation's tool calls: `$ command` from the
   `tool.started` preview, then output, exit code and duration from the `tool.completed` preview (JSON for the
