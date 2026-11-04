@@ -31,45 +31,6 @@ public struct CodeBlockView: View {
     }
 }
 
-/// WORKING, elapsed, and a 2 px track with a yellow sweep (static under Reduce Motion).
-public struct WorkingIndicator: View {
-    let detail: String
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    /// The sweep: a third of the track wide, across it every 1.4 s, parked at 35 % under Reduce Motion.
-    private static let sweepPeriod = 1.4, sweepWidth = 0.3, restingPhase = 0.35
-
-    public init(detail: String) { self.detail = detail }
-
-    public var body: some View {
-        VStack(alignment: .leading, spacing: Space.s) {
-            HStack(spacing: Space.s) {
-                Text("Working").typeRole(.label)
-                Text(detail).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
-                Spacer()
-                Text("⌘. stop").typeRole(.caption).foregroundStyle(Ink.text.muted)
-            }
-            TimelineView(.animation(paused: reduceMotion)) { context in
-                let phase = reduceMotion
-                    ? Self.restingPhase
-                    : (context.date.timeIntervalSinceReferenceDate / Self.sweepPeriod).truncatingRemainder(dividingBy: 1)
-                Rectangle().fill(Ink.line.rule).frame(height: Stroke.accent)
-                    .overlay(alignment: .leading) {
-                        GeometryReader { geo in
-                            Rectangle().fill(Ink.selection)
-                                .frame(width: geo.size.width * Self.sweepWidth)
-                                .offset(x: geo.size.width * (1 - Self.sweepWidth) * phase)
-                        }
-                    }
-                    .clipped()
-            }
-            .frame(height: Stroke.accent)
-        }
-        .foregroundStyle(Ink.text.primary)
-        .accessibilityElement(children: .combine)
-    }
-}
-
 public enum ApprovalAction: Sendable {
     case once, session, deny
 }
@@ -302,7 +263,6 @@ public struct TerminalEntryView: View {
 
 #Preview("Blocks") {
     VStack(alignment: .leading, spacing: 16) {
-        WorkingIndicator(detail: "00:42 · 3 tools")
         CodeBlockView(language: "bash", code: "cd ~/Projects/homelab/penpot\ndocker compose up -d --wait")
         ApprovalBannerView(
             tool: "terminal", command: "rm -rf ~/.cache/trismegistus-build",

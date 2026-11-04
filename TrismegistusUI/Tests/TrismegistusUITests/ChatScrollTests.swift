@@ -49,11 +49,13 @@ final class ChatScrollTests: XCTestCase {
         }
 
         private var input: some View {
-            Composer(
-                "Message Hermes", text: $chat.text, maxLines: compact ? Size.composer.popoverLines : Size.composer.windowLines,
-                chosenHeight: $chat.chosen, maxHeight: columnHeight / 2)
-                .padding(Space.l)
-                .background(Ink.surface.window)
+            ComposerBlock {
+                RunLine("Run active", isActive: true, clock: "00:36")
+            } input: {
+                Composer(
+                    "Message Hermes", text: $chat.text, maxLines: compact ? Size.composer.popoverLines : Size.composer.windowLines,
+                    chosenHeight: $chat.chosen, maxHeight: columnHeight / 2)
+            }
         }
 
         var body: some View {
@@ -91,14 +93,18 @@ final class ChatScrollTests: XCTestCase {
 
     private func spin(_ seconds: Double = 0.3) { RunLoop.main.run(until: Date().addingTimeInterval(seconds)) }
 
-    /// On screen, far off the visible area: the display cycle runs as in the app (fully offscreen, nothing went blank).
     private func window(_ chat: ChatState, compact: Bool, docked: Bool = true) -> NSWindow {
+        window(Chat(chat: chat, compact: compact, docked: docked), compact: compact)
+    }
+
+    /// On screen, far off the visible area: the display cycle runs as in the app (fully offscreen, nothing went blank).
+    private func window(_ root: some View, compact: Bool) -> NSWindow {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: compact ? 360 : 700, height: compact ? 560 : 600), styleMask: [.titled],
             backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: .aqua)
-        window.contentView = NSHostingView(rootView: Chat(chat: chat, compact: compact, docked: docked))
+        window.contentView = NSHostingView(rootView: root)
         window.setFrameOrigin(NSPoint(x: -5000, y: -5000))
         window.orderFrontRegardless()
         addTeardownBlock { @MainActor in window.orderOut(nil) }
@@ -174,6 +180,43 @@ final class ChatScrollTests: XCTestCase {
                 }
             }
         }
+    }
+
+    /// Fixed content, so the document's height is exact: it ends the merged block's height (run line, input line,
+    /// padding, rule) further down, at any height of the field.
+    func testTheContentIsPaddedByTheBlocksHeight() throws {
+        final class Block: ObservableObject {
+            @Published var text = ""
+            var height: CGFloat = 0
+        }
+        struct Fixed: View {
+            @ObservedObject var block: Block
+
+            var body: some View {
+                DockedScroll {
+                    Color.clear.frame(height: 2000)
+                } dock: {
+                    ComposerBlock {
+                        RunLine("Run active", isActive: true, clock: "00:36")
+                    } input: {
+                        Composer("Steer this run", text: $block.text, maxLines: Size.composer.windowLines, chosenHeight: .constant(0), maxHeight: 300)
+                    }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { [block] in block.height = $0 }
+                }
+            }
+        }
+        let block = Block()
+        let window = window(Fixed(block: block), compact: false)
+        let scroll = try chatScroll(window)
+        var heights: [CGFloat] = []
+        for n in [1, 5, 10] {
+            block.text = Self.lines(n)
+            spin()
+            XCTAssertEqual(scroll.documentView?.frame.height ?? 0, 2000 + block.height, accuracy: 1, "\(n) lines")
+            heights.append(block.height)
+        }
+        XCTAssertEqual(heights, heights.sorted(), "the block grows with the field")
+        XCTAssertGreaterThan(heights[0], Space.xl + Space.s + Size.control + 2 * Space.m - 1, "the run line is part of it")
     }
 
     func testScrolledUpItStaysWhereItWas() throws {

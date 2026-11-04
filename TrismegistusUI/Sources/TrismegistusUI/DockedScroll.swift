@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A chat's scroll view, bottom-anchored, with a dock (the composer, the run strip) laid over its bottom edge (#52).
+/// A chat's scroll view, bottom-anchored, with a dock (the composer block) laid over its bottom edge (#52).
 /// The messages end `dock`'s height higher, so the last one sits just above it.
 ///
 /// The dock goes over the scroll view, not under it: a composer that grew a line at a time under the scroll view shrank

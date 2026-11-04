@@ -163,6 +163,57 @@ final class ComposerTests: XCTestCase {
         XCTAssertEqual(taps.back, 1, "Esc is still the popover's Back")
     }
 
+    func testAFocusRequestPutsTheFocusInTheField() throws {
+        final class Requests: ObservableObject { @Published var count = 0 }
+        struct Fields: View {
+            @ObservedObject var requests: Requests
+            @State private var text = ""
+            var body: some View {
+                Composer("Steer this run", text: $text, maxLines: 10, chosenHeight: .constant(0), maxHeight: 200, focusRequests: requests.count)
+            }
+        }
+        let requests = Requests()
+        let window = window(Fields(requests: requests))
+        let field = try XCTUnwrap(textView(in: try XCTUnwrap(window.contentView)))
+        window.makeFirstResponder(nil)
+        requests.count += 1
+        spin()
+        XCTAssertIdentical(window.firstResponder, field)
+    }
+
+    /// The merged block (#58), with the field drawn.
+    func testBlockSnapshots() throws {
+        func block(_ run: Bool) -> some View {
+            ComposerBlock {
+                RunLine(run ? "Run active" : "Ready", isActive: run, clock: run ? "00:36" : nil, hints: [(key: "⌘↩", action: run ? "steer" : "send"), (key: "⌘K", action: "conversations")])
+            } input: {
+                HStack(alignment: .bottom, spacing: Space.s) {
+                    EndfieldButton("Attach images", symbol: Symbol.attach, kind: .quiet, iconOnly: true) {}
+                    Composer(run ? "Steer this run" : "Message Hermes", text: .constant(""), maxLines: 10, chosenHeight: .constant(0), maxHeight: 200)
+                    if run {
+                        EndfieldButton("Stop", symbol: Symbol.stop, kind: .danger, iconOnly: true) {}
+                        EndfieldButton("Steer", symbol: Symbol.steer, kind: .primary) {}
+                    } else {
+                        EndfieldButton("Send", symbol: Symbol.send, kind: .primary, iconOnly: true) {}
+                    }
+                }
+            }
+            .frame(width: 732)
+        }
+        for (name, run) in [("ComposerBlockRun", true), ("ComposerBlockReady", false)] {
+            let window = window(block(run), height: 120)
+            let host = try XCTUnwrap(window.contentView)
+            window.setContentSize(NSSize(width: 732, height: host.fittingSize.height))
+            host.layoutSubtreeIfNeeded()
+            spin(0.2)
+            let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: rep)
+            let png = try XCTUnwrap(rep.representation(using: .png, properties: [:]))
+            try FileManager.default.createDirectory(at: SnapshotTests.directory, withIntermediateDirectories: true)
+            try png.write(to: SnapshotTests.directory.appendingPathComponent("\(name).png"))
+        }
+    }
+
     // MARK: snapshots
 
     private func snap(_ name: String, _ text: String, focused: Bool = false, maxLines: CGFloat = Size.composer.windowLines) throws {

@@ -129,7 +129,7 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   conversation and switches to APP, and a tab switch keeps the open conversation in the detail until another is
   picked. A Telegram chat continued in the app is an app conversation (APP, its Telegram part folded above). The
   popover's list has the same tabs and follows the window's (one choice, `chat.kind`).
-  The Commands section's conversation list is not filtered. The chat keeps messages and answers; each run shows one marker (`4 COMMANDS · 6.1 s · 1 failed`) that focuses the pane.
+  The Commands section's conversation list is not filtered. The chat keeps messages and answers; each run shows one chip (`>_ 4 COMMANDS · 6.1 s · 1 failed`) that unfolds the run's cards in place (#58); Hermes' answers render lists, task lists and headings, and the input sits in one composer block with the run line above it.
   The **terminal pane** is a read-only transcript of the selected conversation's tool calls: `$ command` from the
   `tool.started` preview, then output, exit code and duration from the `tool.completed` preview (JSON for the
   terminal tool; shown raw when cut). Filter: commands only or all tools. Live output arrives when a command finishes and is

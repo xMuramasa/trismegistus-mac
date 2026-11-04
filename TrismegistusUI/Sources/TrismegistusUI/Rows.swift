@@ -331,42 +331,6 @@ public struct SubagentRowView: View {
     }
 }
 
-/// One marker per run in the chat: `>_ 4 COMMANDS · 6.1 s · 1 failed`; with an action it focuses the terminal pane.
-public struct RunMarker: View {
-    let commands: Int
-    let duration: String
-    let failed: Int
-    let action: (@MainActor () -> Void)?
-
-    public init(commands: Int, duration: String, failed: Int = 0, action: (@MainActor () -> Void)? = nil) {
-        self.commands = commands
-        self.duration = duration
-        self.failed = failed
-        self.action = action
-    }
-
-    private var text: some View {
-        HStack(spacing: Space.s) {
-            Text(">_").typeRole(.monoSmall, weight: .bold)
-            Text(verbatim: "\(commands) \(commands == 1 ? "command" : "commands") · \(duration)").typeRole(.label)
-            if failed > 0 { Text(verbatim: "· \(failed) failed").typeRole(.label).foregroundStyle(Ink.text.error) }
-        }
-        .foregroundStyle(Ink.text.primary)
-        .padding(.horizontal, Space.s).padding(.vertical, Space.xs)
-        .background(Ink.surface.sunken)
-        .edge(Ink.line.rule)
-        .accessibilityElement(children: .combine)
-    }
-
-    public var body: some View {
-        if let action {
-            Button(action: action) { text }.buttonStyle(.plain)
-        } else {
-            text
-        }
-    }
-}
-
 #Preview("Status and hints") {
     VStack(alignment: .leading, spacing: 12) {
         TitleRule("Trismegistus-mac // Controls")
@@ -398,7 +362,6 @@ public struct RunMarker: View {
         ToolRowView(
             tool: "terminal", summary: "pytest -q tests/", duration: "4.8 s", exitCode: 1, isExpanded: .constant(false))
         SubagentRowView(name: "research", toolCount: 3, duration: "8.4 s")
-        RunMarker(commands: 4, duration: "6.1 s", failed: 1)
     }
     .frame(width: 320).padding().background(Ink.surface.window)
 }

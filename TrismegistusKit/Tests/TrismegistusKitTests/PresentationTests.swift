@@ -205,6 +205,117 @@ private func completed(
     }
 }
 
+@Suite struct MarkdownDocumentTests {
+    @Test func aBlankLineSeparatesParagraphs() {
+        #expect(MarkdownBlocks.document("Hello **world**\nsame one\n\n \nsecond paragraph") == [.block(.prose("Hello **world**\nsame one")), .block(.prose("second paragraph"))])
+        #expect(MarkdownBlocks.document("").isEmpty)
+    }
+
+    @Test func bulletedList() {
+        #expect(MarkdownBlocks.document("- one\n* **two**\n+ `three`") == [.list([
+            MarkdownListItem(.bullet, "one"), MarkdownListItem(.bullet, "**two**"), MarkdownListItem(.bullet, "`three`"),
+        ])])
+    }
+
+    @Test func numberedListCountsUpFromTheFirst() {
+        #expect(MarkdownBlocks.document("1. a\n1. b\n1) c") == [.list([
+            MarkdownListItem(.number(1), "a"), MarkdownListItem(.number(2), "b"), MarkdownListItem(.number(3), "c"),
+        ])])
+        #expect(MarkdownBlocks.document("3. a\n4. b") == [.list([MarkdownListItem(.number(3), "a"), MarkdownListItem(.number(4), "b")])])
+    }
+
+    @Test func taskList() {
+        let blocks = MarkdownBlocks.document("- [ ] open\n- [x] done\n- [X] also\n* plain\n- [ ]\n- [y] no")
+        #expect(blocks == [.list([
+            MarkdownListItem(.task(done: false), "open"), MarkdownListItem(.task(done: true), "done"), MarkdownListItem(.task(done: true), "also"),
+            MarkdownListItem(.bullet, "plain"), MarkdownListItem(.bullet, "[ ]"), MarkdownListItem(.bullet, "[y] no"),
+        ])])
+        #expect(MarkdownBlocks.taskProgress(blocks) == (2, 3))
+    }
+
+    @Test func taskProgressCountsNestedItemsAndEveryList() {
+        let md = "- [x] a\n  - [ ] b\n  - [x] c\n\nText\n\n- [ ] d"
+        #expect(MarkdownBlocks.taskProgress(MarkdownBlocks.document(md)) == (2, 4))
+        #expect(MarkdownBlocks.taskProgress(MarkdownBlocks.document("no tasks\n- here")) == (0, 0))
+    }
+
+    @Test func nestedItemsOneLevel() {
+        #expect(MarkdownBlocks.document("- a\n  - b\n    - deep\n  1. c\n- d") == [.list([
+            MarkdownListItem(.bullet, "a", children: [
+                MarkdownListItem(.bullet, "b"), MarkdownListItem(.bullet, "deep"), MarkdownListItem(.number(1), "c"),
+            ]),
+            MarkdownListItem(.bullet, "d"),
+        ])])
+        #expect(MarkdownBlocks.document("1. a\n   - b\n2. c") == [.list([
+            MarkdownListItem(.number(1), "a", children: [MarkdownListItem(.bullet, "b")]), MarkdownListItem(.number(2), "c"),
+        ])])
+    }
+
+    @Test func listAfterAParagraphAndHeading() {
+        #expect(MarkdownBlocks.document("Checked:\n- a\n- b\n\nNot yet:\n1. c") == [
+            .block(.prose("Checked:")), .list([MarkdownListItem(.bullet, "a"), MarkdownListItem(.bullet, "b")]),
+            .block(.prose("Not yet:")), .list([MarkdownListItem(.number(1), "c")]),
+        ])
+        #expect(MarkdownBlocks.document("## How\n- a\n### Then\nb") == [
+            .heading(level: 2, text: "How"), .list([MarkdownListItem(.bullet, "a")]), .heading(level: 3, text: "Then"), .block(.prose("b")),
+        ])
+    }
+
+    @Test func aLooseListStaysOneList() {
+        #expect(MarkdownBlocks.document("1. a\n\n2. b\n\n\n3. c\n\nafter") == [
+            .list([MarkdownListItem(.number(1), "a"), MarkdownListItem(.number(2), "b"), MarkdownListItem(.number(3), "c")]),
+            .block(.prose("after")),
+        ])
+    }
+
+    @Test func continuationLinesJoinTheItem() {
+        #expect(MarkdownBlocks.document("- a\n  more\nlazy\n\n  second paragraph\n- b\n  - c\n    of c") == [.list([
+            MarkdownListItem(.bullet, "a\nmore\nlazy\n\nsecond paragraph"),
+            MarkdownListItem(.bullet, "b", children: [MarkdownListItem(.bullet, "c\nof c")]),
+        ])])
+    }
+
+    @Test func aChangeOfMarkerKindStartsANewList() {
+        #expect(MarkdownBlocks.document("- a\n1. b\n- c") == [
+            .list([MarkdownListItem(.bullet, "a")]), .list([MarkdownListItem(.number(1), "b")]), .list([MarkdownListItem(.bullet, "c")]),
+        ])
+        #expect(MarkdownBlocks.document("- a\n\n1. b") == [.list([MarkdownListItem(.bullet, "a")]), .list([MarkdownListItem(.number(1), "b")])])
+    }
+
+    @Test func textThatOnlyLooksLikeAList() {
+        for md in ["-1 degrees outside", "--flag turns it on", "use -v or\n--verbose here", "-", "- ", "*bold* word", "**bold** word", "1.5 is a version", "12 monkeys", "---", "- - -", "* * *", "    - indented code"] {
+            #expect(MarkdownBlocks.document(md) == [.block(.prose(md))])
+        }
+        #expect(MarkdownBlocks.document("It was\n1986. A good year.") == [.block(.prose("It was\n1986. A good year."))])
+        #expect(MarkdownBlocks.document("- a\n---\nb") == [.list([MarkdownListItem(.bullet, "a")]), .block(.prose("---\nb"))])
+    }
+
+    @Test func headings() {
+        #expect(MarkdownBlocks.document("# One\n## Two ##\n   ### Three **b**\ntext") == [
+            .heading(level: 1, text: "One"), .heading(level: 2, text: "Two"), .heading(level: 3, text: "Three **b**"), .block(.prose("text")),
+        ])
+    }
+
+    @Test func textThatOnlyLooksLikeAHeading() {
+        for md in ["#49 is the inbox", "#", "# ", "#### four", "    # indented"] {
+            #expect(MarkdownBlocks.document(md) == [.block(.prose(md))])
+        }
+        #expect(MarkdownBlocks.document("# C#") == [.heading(level: 1, text: "C#")])
+    }
+
+    @Test func aFenceBetweenItemsSplitsTheList() {
+        #expect(MarkdownBlocks.document("1. step\n\n   ```sh\n   ls\n   ```\n2. next") == [
+            .list([MarkdownListItem(.number(1), "step")]), .block(.code(language: "sh", text: "ls")), .list([MarkdownListItem(.number(2), "next")]),
+        ])
+    }
+
+    @Test func aTableAfterAListEndsIt() {
+        #expect(MarkdownBlocks.document("- a\nx | y\n--- | ---\n1 | 2") == [
+            .list([MarkdownListItem(.bullet, "a")]), .block(.table(header: ["x", "y"], rows: [["1", "2"]], alignments: [.leading, .leading])),
+        ])
+    }
+}
+
 @Suite struct PairingPayloadTests {
     @Test func canonicalCode() throws {
         let p = try PairingPayload.parse("ABCD-EFGH-JKMN")

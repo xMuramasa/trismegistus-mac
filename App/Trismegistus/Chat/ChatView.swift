@@ -16,6 +16,10 @@ struct ChatView: View {
     @State private var actionError: String?
     /// When this view first saw the current run, for a run with no events yet.
     @State private var runSeen = Date()
+    /// The current run's chip is unfolded.
+    @State private var workOpen = false
+    /// Raised by Steer on an empty field: the field takes the focus.
+    @State private var composerFocusRequests = 0
     @State private var handingOff: SessionInfo?
     /// The composer's dragged height (0: auto-grow): kept in the window, per view in the popover.
     @AppStorage("composer.height") private var windowComposerHeight = 0.0
@@ -39,28 +43,25 @@ struct ChatView: View {
         let empty = items.isEmpty && state?.historyLoaded == true && state?.historyError == nil
         VStack(spacing: 0) {
             if let approval { banner(approval) }
-            // The run strip and the input lie over the scroll view's bottom, never under it (#52, `DockedScroll`).
+            // The composer block lies over the scroll view's bottom, never under it (#52, `DockedScroll`).
             DockedScroll {
                 LazyVStack(alignment: .leading, spacing: compact ? Space.m : Space.xl) {
                     OlderParts(tipID: id, compact: compact)
                     historyStatus
-                    ChatTranscript(items: items, sessionID: id, onShowTerminal: showTerminal, retry: retry(_:))
+                    ChatTranscript(items: items, sessionID: id, events: state?.events ?? [], onShowTerminal: showTerminal, retry: retry(_:))
                     if let run { working(run) } else if let info, SessionCapabilities(info).canHandOff, Self.stalled(items) { stallRow(info) }
                 }
-                // The window: Space.m under the header's title rule, wider side margins (the draft, #32).
-                .padding(.horizontal, compact ? Space.l : Space.xl).padding(.vertical, compact ? Space.l : Space.m)
-                // A readable column: on a wide window, opening a pane or the sidebar doesn't re-wrap the messages.
+                // The window: Space.m under the header's title rule.
+                .padding(.vertical, compact ? Space.l : Space.m)
+                // A readable column, the composer's: on a wide window, opening a pane or the sidebar doesn't re-wrap the messages.
                 .frame(maxWidth: Size.chatColumn)
+                .padding(.horizontal, Space.l)
                 .frame(maxWidth: .infinity)
                 .environment(\.plainAnswers, !compact)
             } dock: {
-                VStack(spacing: 0) {
-                    if let run { runStrip(run) }
-                    input
-                }
+                ComposerBlock { runLine } input: { input }
             }
-            .background { if !compact && !empty { Ink.surface.window.frame(maxWidth: Size.chatColumn) } }
-            if !compact { KeyHintStrip(hints).background(Ink.surface.window) }
+            .background { if !compact && !empty { Ink.surface.window.frame(maxWidth: Size.chatColumn + 2 * Space.l) } }
         }
         .background { if compact { Ink.surface.window } else { EndfieldBackdrop() } }
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { columnHeight = $0 }
@@ -73,7 +74,10 @@ struct ChatView: View {
             await model.store?.images?.forgetFailures() // a reopened conversation asks again for images that failed
             await model.store?.open(id)
         }
-        .onChange(of: run?.id, initial: true) { runSeen = Date() }
+        .onChange(of: run?.id, initial: true) {
+            runSeen = Date()
+            workOpen = false
+        }
         .handoffSheet($handingOff)
     }
 
@@ -103,7 +107,11 @@ struct ChatView: View {
     private var items: [ChatItem] {
         guard let state else { return [] }
         return ChatTimeline.items(state, compact: compact).filter {
-            if case .prompt(let p, _) = $0 { !hidden.contains(p.id) } else { true }
+            switch $0 {
+            case .prompt(let p, _): !hidden.contains(p.id)
+            case .marker(let id, _): id != run.map { "m-\($0.id)" } // the work line carries the live run's chip
+            default: true
+            }
         }
     }
 
@@ -143,37 +151,49 @@ struct ChatView: View {
         }
     }
 
-    private func working(_ run: ActiveRun) -> some View {
+    private func runStart(_ run: ActiveRun) -> Date {
         let first = state?.events.first { $0.runID == run.id }
-        let start = first.map { Date(timeIntervalSince1970: Double($0.ts) / 1000) } ?? runSeen
+        return first.map { Date(timeIntervalSince1970: Double($0.ts) / 1000) } ?? runSeen
+    }
+
+    private static func elapsed(from start: Date, to now: Date) -> String {
+        Duration.seconds(max(0, Int(now.timeIntervalSince(start)))).formatted(.time(pattern: .minuteSecond(padMinuteToLength: 2)))
+    }
+
+    /// The work line with the window's chip and cards; the popover shows the tool rows inline.
+    private func working(_ run: ActiveRun) -> some View {
+        let start = runStart(run)
         let tools = state.map { ChatTimeline.toolCount($0, runID: run.id) } ?? 0
-        return TimelineView(.periodic(from: .now, by: 1)) { context in
-            let elapsed = Duration.seconds(max(0, Int(context.date.timeIntervalSince(start))))
-                .formatted(.time(pattern: .minuteSecond(padMinuteToLength: 2)))
-            WorkingIndicator(
-                detail: "\(elapsed) · " + (run.status == .waitingForApproval ? "approval" : "\(tools) \(tools == 1 ? "tool" : "tools")"))
+        let entries = compact ? [] : TerminalTranscript.entries(from: state?.events.filter { $0.runID == run.id } ?? [])
+        let summary = TerminalTranscript.summary(of: entries)
+        return VStack(alignment: .leading, spacing: Space.s) {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                WorkLine(detail: "\(Self.elapsed(from: start, to: context.date)) · " + (run.status == .waitingForApproval ? "approval" : "\(tools) \(tools == 1 ? "tool" : "tools")")) {
+                    if summary.commandCount > 0 { RunChip(summary: summary, isOpen: $workOpen, showTerminal: showTerminal) }
+                }
+            }
+            if workOpen { RunCards(entries: entries) }
         }
     }
 
-    private func runStrip(_ run: ActiveRun) -> some View {
-        HStack(spacing: Space.s) {
-            Text("Run active").typeRole(.label).foregroundStyle(Ink.text.primary)
-            if !isReadOnly { Text("⌘↩ steers this run").typeRole(.caption).foregroundStyle(Ink.text.secondary) }
-            Spacer()
-            EndfieldButton("Stop", symbol: Symbol.stop, kind: .danger, iconOnly: true, shortcut: KeyboardShortcut(".", modifiers: .command)) {
-                act { try await model.stop(runID: run.id) }
+    /// Over the input: the run's state and clock, the keys in the window.
+    @ViewBuilder private var runLine: some View {
+        if let run {
+            let start = model.store?.overview[id]?.run?.startedAt ?? runStart(run)
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                RunLine("Run active", isActive: true, clock: Self.elapsed(from: start, to: context.date), hints: hints)
             }
+        } else {
+            RunLine(isReadOnly ? "Read-only" : "Ready", hints: hints)
         }
-        .padding(.horizontal, Space.l).padding(.vertical, Space.s)
-        .background(Ink.surface.sunken)
     }
 
     private var input: some View {
         let steering = run != nil
         let empty = Composer.message(draft).isEmpty
         let images = tray.items[id, default: []]
-        // Text, or images when not steering (steers are text only); never while an image is still being prepared.
-        let sendable = (!empty || (!steering && !tray.uploads(id).isEmpty)) && !tray.isPreparing(id) && !Composer.isOverLimit(draft)
+        // Never while an image is still being prepared. Steer stays pressable with no text: it then focuses the field.
+        let blocked = isReadOnly || tray.isPreparing(id) || Composer.isOverLimit(draft)
         return VStack(alignment: .leading, spacing: Space.s) {
             if !images.isEmpty {
                 AttachmentTray(
@@ -192,21 +212,27 @@ struct ChatView: View {
                 Composer(
                     approval != nil ? "Steer or wait" : steering ? "Steer this run" : "Message Hermes", text: $draft,
                     maxLines: compact ? Size.composer.popoverLines : Size.composer.windowLines,
-                    chosenHeight: compact ? $popoverComposerHeight : $windowComposerHeight, maxHeight: columnHeight / 2)
-                if steering {
+                    chosenHeight: compact ? $popoverComposerHeight : $windowComposerHeight, maxHeight: columnHeight / 2,
+                    focusRequests: composerFocusRequests)
+                .disabled(isReadOnly)
+                if let run {
+                    // Not `blocked`: a read-only conversation's run can still be stopped.
+                    EndfieldButton("Stop", symbol: Symbol.stop, kind: .danger, iconOnly: true, shortcut: KeyboardShortcut(".", modifiers: .command)) {
+                        act { try await model.stop(runID: run.id) }
+                    }
                     // While an approval is open, Once is the primary action.
                     EndfieldButton("Steer", symbol: Symbol.steer, kind: approval == nil ? .primary : .secondary, shortcut: KeyboardShortcut(.return, modifiers: .command)) {
                         submit()
                     }
-                    .disabled(!sendable)
+                    .disabled(blocked)
                 } else {
+                    // Text or images.
                     EndfieldButton("Send", symbol: Symbol.send, kind: .primary, iconOnly: true, shortcut: KeyboardShortcut(.return, modifiers: .command)) {
                         submit()
                     }
-                    .disabled(!sendable)
+                    .disabled(blocked || (empty && tray.uploads(id).isEmpty))
                 }
             }
-            .disabled(isReadOnly)
             if isReadOnly {
                 Text(verbatim: "Read-only: this conversation comes from \(info?.source ?? (id.hasPrefix("cron_") ? "cron" : "another app")); reply there.")
                     .typeRole(.caption).foregroundStyle(Ink.text.secondary).lineLimit(1)
@@ -216,9 +242,6 @@ struct ChatView: View {
             }
         }
         .animation(Motion.dropIn, value: images.map(\.id))
-        .padding(Space.l)
-        .background(Ink.surface.window)
-        .overlay(alignment: .top) { Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline) }
     }
 
     private var isReadOnly: Bool { SessionInfo.isReadOnly(id: id, info: info) }
@@ -228,6 +251,7 @@ struct ChatView: View {
 
     /// The window's keys (the popover's chat page has its own strip). ⌘K is the window's "Conversations" command.
     private var hints: [(key: String, action: String)] {
+        guard !compact else { return [] }
         var hints: [(key: String, action: String)] = []
         if !isReadOnly { hints.append(("⌘↩", run == nil ? "send" : "steer")) }
         if run != nil { hints.append(("⌘.", "stop")) }
@@ -239,7 +263,10 @@ struct ChatView: View {
     private func submit() {
         let text = Composer.message(draft)
         if let run {
-            guard !text.isEmpty else { return }
+            guard !text.isEmpty else {
+                composerFocusRequests += 1
+                return
+            }
             draft = ""
             act {
                 do {
@@ -286,6 +313,8 @@ struct ChatTranscript: View {
     let items: [ChatItem]
     /// Whose messages: Hermes' media files are fetched per session.
     let sessionID: String
+    /// The live events: a run's cards unfold from them.
+    var events: [Event] = []
     var onShowTerminal: (@MainActor () -> Void)? = nil
     var retry: @MainActor (OutgoingPrompt) -> Void = { _ in }
     @State private var expanded: Set<String> = []
@@ -320,23 +349,59 @@ struct ChatTranscript: View {
             case .tool(let id, let row):
                 ToolRowView(
                     tool: row.tool, summary: row.summary, duration: row.duration, output: row.output, exitCode: row.exitCode,
-                    isExpanded: Binding(
-                        get: { expanded.contains(id) },
-                        set: { if $0 { expanded.insert(id) } else { expanded.remove(id) } }))
+                    isExpanded: isExpanded(id))
             case .subagent(_, let name, let toolCount, let duration):
                 SubagentRowView(name: name, toolCount: toolCount, duration: duration)
-            case .marker(_, let summary):
-                RunMarker(
-                    commands: summary.commandCount, duration: String(format: "%.1f s", summary.totalDuration),
-                    failed: summary.failedCount, action: onShowTerminal)
+            case .marker(let id, let summary):
+                VStack(alignment: .leading, spacing: Space.s) {
+                    RunChip(summary: summary, isOpen: isExpanded(id), showTerminal: onShowTerminal)
+                    if expanded.contains(id) {
+                        RunCards(entries: TerminalTranscript.entries(from: events).filter { "m-\($0.runID)" == id })
+                    }
+                }
             case .note(_, let text, let isError):
                 Text(text).typeRole(.caption).foregroundStyle(isError ? Ink.text.error : Ink.text.secondary)
             }
         }
     }
 
+    private func isExpanded(_ id: String) -> Binding<Bool> {
+        Binding(
+            get: { expanded.contains(id) },
+            set: { if $0 { expanded.insert(id) } else { expanded.remove(id) } })
+    }
+
     private func stamp(_ time: Date?) -> String {
         time.map { " // " + $0.formatted(.clock.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)) } ?? ""
+    }
+}
+
+/// The chip of a run's commands; its context menu still reaches the terminal pane.
+private struct RunChip: View {
+    let summary: RunSummary
+    @Binding var isOpen: Bool
+    let showTerminal: (@MainActor () -> Void)?
+
+    var body: some View {
+        CommandChip(
+            commands: summary.commandCount, duration: String(format: "%.1f s", summary.totalDuration), failed: summary.failedCount,
+            isOpen: $isOpen
+        )
+        .contextMenu {
+            if let showTerminal { Button("Show in Terminal") { showTerminal() } }
+        }
+    }
+}
+
+/// A run's item cards, unfolded in place under its chip.
+private struct RunCards: View {
+    let entries: [TerminalEntry]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.xxl) {
+            ForEach(entries) { EntryRow(entry: $0) }
+        }
+        .padding(.top, Space.s).padding(.bottom, Space.xs)
     }
 }
 
@@ -361,9 +426,33 @@ private struct UserMessage: View {
     }
 }
 
-/// The answer as Markdown: prose with inline styles (line breaks and list markers kept as written, since `Text` drops
-/// block structure), fenced code as `CodeBlockView`, Hermes' `MEDIA:` files as images. Parsed once per text: the lazy stack recreates a row each time it
-/// scrolls back into view.
+extension MarkdownPart where Extra == MarkdownBlock {
+    /// `markdown` for `MarkdownView`: tables and images stay blocks for the caller to draw. `clean` runs over the text
+    /// first (GitHub text drops its HTML).
+    static func parse(_ markdown: String, clean: (String) -> String = { $0 }) -> [MarkdownPart<MarkdownBlock>] {
+        func styled(_ text: String) -> AttributedString { MarkdownText.styled(clean(text)) }
+        func converted(_ item: MarkdownListItem) -> MarkdownItem {
+            let marker: MarkdownItem.Marker = switch item.marker {
+            case .bullet: .bullet
+            case .number(let n): .number(n)
+            case .task(let done): .task(done: done)
+            }
+            return MarkdownItem(marker, text: styled(item.text), children: item.children.map(converted))
+        }
+        return MarkdownBlocks.document(markdown).map {
+            switch $0 {
+            case .block(.prose(let text)): .prose(styled(text))
+            case .block(.code(let language, let text)): .code(language: language, text: text)
+            case .block(let block): .extra(block)
+            case .heading(_, let text): .heading(styled(text))
+            case .list(let items): .list(items.map(converted))
+            }
+        }
+    }
+}
+
+/// The answer as Markdown: `MarkdownView`, with Hermes' `MEDIA:` files as images. Parsed once per text: the lazy stack
+/// recreates a row each time it scrolls back into view.
 private struct AnswerMessage: View {
     let text: String
     let label: String
@@ -371,16 +460,9 @@ private struct AnswerMessage: View {
     /// Plain (the window): the text inset Space.m, level with a user message's text. Else a yellow bar beside it.
     @Environment(\.plainAnswers) private var plain
 
-    private enum Block {
-        case prose(AttributedString)
-        case code(language: String?, text: String)
-        case table(header: [String], rows: [[String]], alignments: [MarkdownBlock.Alignment])
-        case image(path: String)
-    }
-
     private final class Parsed {
-        let blocks: [Block]
-        init(_ blocks: [Block]) { self.blocks = blocks }
+        let parts: [MarkdownPart<MarkdownBlock>]
+        init(_ parts: [MarkdownPart<MarkdownBlock>]) { self.parts = parts }
     }
 
     private static let parsed: NSCache<NSString, Parsed> = {
@@ -389,19 +471,11 @@ private struct AnswerMessage: View {
         return cache
     }()
 
-    private static func blocks(_ text: String) -> [Block] {
-        if let hit = parsed.object(forKey: text as NSString) { return hit.blocks }
-        let blocks: [Block] = MarkdownBlocks.parse(text).map {
-            switch $0 {
-            case .prose(let s):
-                .prose((try? AttributedString(markdown: s, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(s))
-            case .code(let language, let code): .code(language: language, text: code)
-            case .table(let header, let rows, let alignments): .table(header: header, rows: rows, alignments: alignments)
-            case .image(let path): .image(path: path)
-            }
-        }
-        parsed.setObject(Parsed(blocks), forKey: text as NSString)
-        return blocks
+    private static func parts(_ text: String) -> [MarkdownPart<MarkdownBlock>] {
+        if let hit = parsed.object(forKey: text as NSString) { return hit.parts }
+        let parts = MarkdownPart.parse(text)
+        parsed.setObject(Parsed(parts), forKey: text as NSString)
+        return parts
     }
 
     var body: some View {
@@ -409,20 +483,14 @@ private struct AnswerMessage: View {
             Text(label).typeRole(.label).foregroundStyle(Ink.text.secondary)
             HStack(alignment: .top, spacing: Space.m) {
                 if !plain { Rectangle().fill(Ink.selection).frame(width: Stroke.mark) }
-                VStack(alignment: .leading, spacing: Space.s) {
-                    ForEach(Array(Self.blocks(text).enumerated()), id: \.offset) { _, block in
-                        switch block {
-                        case .prose(let s):
-                            Text(s)
-                                .typeRole(.body).foregroundStyle(Ink.text.primary).textSelection(.enabled)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        case .code(let language, let code):
-                            CodeBlockView(language: language, code: code)
-                        case .table(let header, let rows, let alignments):
-                            MarkdownTableView(header: header, rows: rows, alignments: alignments)
-                        case .image(let path):
-                            MessageImages(sessionID: sessionID, images: [.chat(.media(path: path))])
-                        }
+                MarkdownView(Self.parts(text)) { block in
+                    switch block {
+                    case .table(let header, let rows, let alignments):
+                        MarkdownTableView(header: header, rows: rows, alignments: alignments)
+                    case .image(let path):
+                        MessageImages(sessionID: sessionID, images: [.chat(.media(path: path))])
+                    case .prose, .code:
+                        EmptyView() // `parse` makes parts of these
                     }
                 }
             }

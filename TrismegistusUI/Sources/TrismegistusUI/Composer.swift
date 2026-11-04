@@ -18,29 +18,42 @@ public struct Composer: View {
     /// The height dragged with the grabber; 0 is auto-grow.
     @Binding var chosenHeight: Double
     let maxHeight: CGFloat
+    /// Raising it puts the keyboard focus in the field (Steer pressed with nothing typed).
+    let focusRequests: Int
     var forceFocused = false  // snapshots: focus can't be set from outside
     @State private var lines = 1
     @State private var focused = false
     @State private var dragStart: CGFloat?
     @Environment(\.isEnabled) private var isEnabled
 
-    public init(_ placeholder: String, text: Binding<String>, maxLines: CGFloat, chosenHeight: Binding<Double>, maxHeight: CGFloat) {
+    public init(
+        _ placeholder: String, text: Binding<String>, maxLines: CGFloat, chosenHeight: Binding<Double>, maxHeight: CGFloat,
+        focusRequests: Int = 0
+    ) {
         self.placeholder = placeholder
         self._text = text
         self.maxLines = maxLines
         self._chosenHeight = chosenHeight
         self.maxHeight = maxHeight
+        self.focusRequests = focusRequests
     }
 
     public var body: some View {
         let height = Self.height(lines: lines, maxLines: maxLines, chosen: chosenHeight, limit: maxHeight)
         let isFocused = focused || forceFocused
         VStack(alignment: .trailing, spacing: Space.xs) {
-            ComposerEditor(placeholder: placeholder, text: $text, lines: $lines, focused: $focused, isEnabled: isEnabled)
-                .frame(height: height)
-                .background(isFocused ? Ink.surface.raised : Ink.surface.sunken)
-                .edge(isFocused ? Ink.line.strong : Ink.line.rule)
-                .overlay(alignment: .top) { grabber(height) }
+            ComposerEditor(
+                placeholder: placeholder, text: $text, lines: $lines, focused: $focused, isEnabled: isEnabled, focusRequests: focusRequests
+            )
+            .frame(height: height)
+            .background(isEnabled ? Ink.surface.raised : Ink.surface.sunken)
+            .edge(isEnabled ? Ink.line.strong : Ink.line.rule)
+            .overlay {
+                if isFocused {
+                    Rectangle().strokeBorder(Ink.text.link, lineWidth: Stroke.accent).padding(-(Stroke.hairline + Stroke.accent))
+                }
+            }
+            .overlay(alignment: .top) { grabber(height) }
             if let counter = Self.counter(text) {
                 Text(counter).typeRole(.monoSmall).foregroundStyle(Self.isOverLimit(text) ? Ink.status.error : Ink.text.secondary)
             }
@@ -98,6 +111,29 @@ public struct Composer: View {
     public static func message(_ draft: String) -> String { draft.trimmingCharacters(in: .whitespacesAndNewlines) }
 }
 
+/// The one block under a chat (`.composer`): raised, a rule on top, the run line over the input line, on the chat column.
+public struct ComposerBlock<RunLine: View, Input: View>: View {
+    let runLine: RunLine
+    let input: Input
+
+    public init(@ViewBuilder runLine: () -> RunLine, @ViewBuilder input: () -> Input) {
+        self.runLine = runLine()
+        self.input = input()
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: Space.s) {
+            runLine
+            input
+        }
+        .frame(maxWidth: Size.chatColumn)
+        .padding(.horizontal, Space.l).padding(.vertical, Space.m)
+        .frame(maxWidth: .infinity)
+        .background(Ink.surface.raised)
+        .overlay(alignment: .top) { Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline) }
+    }
+}
+
 /// The text view in a scroll view. It publishes its line count (wrapped lines included) for the current width; the
 /// height it gets back never changes that width, so nothing loops (#28).
 struct ComposerEditor: NSViewRepresentable {
@@ -106,6 +142,7 @@ struct ComposerEditor: NSViewRepresentable {
     @Binding var lines: Int
     @Binding var focused: Bool
     let isEnabled: Bool
+    let focusRequests: Int
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -151,6 +188,10 @@ struct ComposerEditor: NSViewRepresentable {
         guard let view = scroll.documentView as? TextView else { return }
         let coordinator = context.coordinator
         coordinator.editor = self
+        if coordinator.focusRequests != focusRequests {
+            coordinator.focusRequests = focusRequests
+            view.window?.makeFirstResponder(view)
+        }
         if view.placeholder != placeholder {
             view.placeholder = placeholder
             view.setAccessibilityPlaceholderValue(placeholder)
@@ -181,8 +222,13 @@ struct ComposerEditor: NSViewRepresentable {
         var editor: ComposerEditor
         /// Inside `updateNSView`: SwiftUI state can't change now.
         var updating = false
+        /// The requests already served: a field that appears later doesn't take the focus.
+        var focusRequests: Int
 
-        init(_ editor: ComposerEditor) { self.editor = editor }
+        init(_ editor: ComposerEditor) {
+            self.editor = editor
+            focusRequests = editor.focusRequests
+        }
 
         func textDidChange(_ notification: Notification) {
             guard !updating, let view = notification.object as? TextView else { return }

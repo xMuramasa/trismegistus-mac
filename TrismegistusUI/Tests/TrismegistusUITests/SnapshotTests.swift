@@ -279,19 +279,81 @@ final class SnapshotTests: XCTestCase {
             }
         }
         try snap("SubagentRowView", width: 320) { SubagentRowView(name: "research", toolCount: 3, duration: "8.4 s") }
-        try snap("RunMarker") {
-            VStack(alignment: .leading, spacing: 8) {
-                RunMarker(commands: 4, duration: "6.1 s", failed: 1)
-                RunMarker(commands: 1, duration: "0.3 s")
+    }
+
+    func testMarkdown() throws {
+        func text(_ markdown: String) -> AttributedString { MarkdownText.styled(markdown) }
+        let parts: [MarkdownPart<Int>] = [
+            .prose(text("I'm testing through **macOS accessibility**. That covers structure and text.")),
+            .prose(text("Checked and working:")),
+            .list([
+                MarkdownItem(.bullet, text: text("**#41, sections:** Chat, GitHub and Jobs each switch and show their list, then wrap under the text.")),
+                MarkdownItem(.bullet, text: text("**#49, the inbox:** the eye tab"), children: [
+                    MarkdownItem(.bullet, text: text("The check panel has Looks good, the note field, and Not right, which stays disabled until there's a note.")),
+                    MarkdownItem(.bullet, text: text("homelab#1 correctly says so.")),
+                ]),
+            ]),
+            .prose(text("Small defects:")),
+            .list([
+                MarkdownItem(.number(1), text: text("The chat header says \"run run_\".")),
+                MarkdownItem(.number(2), text: text("Number formatting differs: 1748 in one place, 1.748 in another, your locale's thousands dot.")),
+            ]),
+            .heading(text("Monitors")),
+            .prose(text("The daemon is still running. `cua-driver stop` ends it; see https://github.com/xMuramasa/homelab/issues/1.")),
+            .list([
+                MarkdownItem(.task(done: true), text: text("Add the probe, wrapping onto a second line under its text so the hanging indent shows.")),
+                MarkdownItem(.task(done: false), text: text("Open one, with `code`")),
+            ]),
+            .code(language: "bash", text: "scripts/mac-build.sh"),
+        ]
+        // Hosted: `ImageRenderer` leaves out `Text`'s background attribute, so the code chips.
+        let host = NSHostingView(
+            rootView: MarkdownView(parts) { _ in EmptyView() }.padding(16).frame(width: 512).background(Palette.paper))
+        host.appearance = NSAppearance(named: .aqua)
+        host.frame.size = host.fittingSize
+        host.layoutSubtreeIfNeeded()
+        let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: rep)
+        let png = try XCTUnwrap(rep.representation(using: .png, properties: [:]))
+        try FileManager.default.createDirectory(at: Self.directory, withIntermediateDirectories: true)
+        try png.write(to: Self.directory.appendingPathComponent("MarkdownView.png"))
+    }
+
+    func testRunLineAndWorkLine() throws {
+        let hints = [(key: "⌘↩", action: "steer"), (key: "⌘.", action: "stop"), (key: "⌘⌥T", action: "terminal"), (key: "⌘K", action: "conversations")]
+        try snap("RunLine", width: 700) {
+            VStack(spacing: 8) {
+                RunLine("Run active", isActive: true, clock: "00:36", hints: hints)
+                RunLine("Ready", hints: [(key: "⌘↩", action: "send"), (key: "⌘K", action: "conversations")])
+                RunLine("Ready")
             }
         }
+        try snap("RunLineNarrow", width: 260) { RunLine("Run active", isActive: true, clock: "00:36", hints: hints) }
+        try snap("CommandChip") {
+            VStack(alignment: .leading, spacing: 8) {
+                CommandChip(commands: 2, duration: "6.7 s", isOpen: .constant(false))
+                CommandChip(commands: 4, duration: "6.1 s", failed: 1, isOpen: .constant(true))
+            }
+        }
+        try snap("WorkLine", width: 700) {
+            VStack(spacing: 16) {
+                WorkLine(detail: "00:15 · 2 tools") { CommandChip(commands: 2, duration: "6.7 s", isOpen: .constant(false)) }
+                WorkLine(detail: "00:03 · approval") {}
+            }
+        }
+    }
+
+    func testWorkTrackGoesToAndFro() {
+        XCTAssertEqual(WorkTrack.phase(0), 0)
+        XCTAssertEqual(WorkTrack.phase(1.2), 0.5, accuracy: 0.001)
+        XCTAssertEqual(WorkTrack.phase(2.4), 1, accuracy: 0.001)
+        XCTAssertEqual(WorkTrack.phase(4.8), 0, accuracy: 0.001)
     }
 
     func testBlocks() throws {
         try snap("CodeBlockView", width: 300) {
             CodeBlockView(language: "bash", code: "cd ~/Projects/homelab/penpot\ndocker compose up -d --wait")
         }
-        try snap("WorkingIndicator", width: 300) { WorkingIndicator(detail: "00:42 · 3 tools") }
         try snap("ApprovalBannerView", width: 320) {
             ApprovalBannerView(
                 tool: "terminal", command: "rm -rf ~/.cache/trismegistus-build",

@@ -225,8 +225,12 @@ public enum Size {
     public static let chip: CGFloat = 16
     /// status dot
     public static let dot: CGFloat = 7
-    /// the approval banner's square
+    /// the approval banner's square, the composer's run-state square
     public static let marker: CGFloat = 8
+    /// a Markdown list's square bullet
+    public static let bullet: CGFloat = 4
+    /// a Markdown task list's box
+    public static let taskBox: CGFloat = 16
     /// a running command's block cursor
     public struct Cursor: Sendable {
         public let width: CGFloat = 7

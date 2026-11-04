@@ -95,3 +95,136 @@ public struct IssueRunRow: View {
         .overlay(Rectangle().strokeBorder(Ink.line.rule, lineWidth: Stroke.hairline))
     }
 }
+
+/// The composer's top line: the run's state and clock, then the keys as sunken mono chips on the right. The chips go
+/// first when a pane narrows the column.
+public struct RunLine: View {
+    let state: String
+    let isActive: Bool
+    let clock: String?
+    let hints: [(key: String, action: String)]
+
+    public init(_ state: String, isActive: Bool = false, clock: String? = nil, hints: [(key: String, action: String)] = []) {
+        self.state = state
+        self.isActive = isActive
+        self.clock = clock
+        self.hints = hints
+    }
+
+    public var body: some View {
+        HStack(spacing: Space.s) {
+            if isActive {
+                Rectangle().fill(Ink.status.online).frame(width: Size.marker, height: Size.marker).accessibilityHidden(true)
+            }
+            Text(state).typeRole(.label).foregroundStyle(Ink.text.primary).lineLimit(1).fixedSize()
+            if let clock { Text(verbatim: clock).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary).fixedSize() }
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Space.m) {
+                    ForEach(hints, id: \.key) { hint($0.key, $0.action) }
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                Color.clear.frame(height: 0)
+            }
+        }
+        .frame(minHeight: Space.xl)
+    }
+
+    private func hint(_ key: String, _ action: String) -> some View {
+        HStack(spacing: Space.xs) {
+            Text(key).typeRole(.monoSmall).foregroundStyle(Ink.text.primary)
+                .padding(.horizontal, Space.xs).background(Ink.surface.sunken)
+            Text(action).typeRole(.caption).foregroundStyle(Ink.text.secondary)
+        }
+        .fixedSize()
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// `>_ 2 COMMANDS · 6.7 s` with a chevron: unfolds the run's item cards in place.
+public struct CommandChip: View {
+    let commands: Int
+    let duration: String
+    let failed: Int
+    @Binding var isOpen: Bool
+
+    public init(commands: Int, duration: String, failed: Int = 0, isOpen: Binding<Bool>) {
+        self.commands = commands
+        self.duration = duration
+        self.failed = failed
+        self._isOpen = isOpen
+    }
+
+    public var body: some View {
+        Button { isOpen.toggle() } label: {
+            HStack(spacing: Space.s) {
+                Text(verbatim: ">_").typeRole(.monoSmall)
+                Text(verbatim: "\(commands) \(commands == 1 ? "command" : "commands") · \(duration)").typeRole(.label)
+                if failed > 0 { Text(verbatim: "· \(failed) failed").typeRole(.label).foregroundStyle(Ink.text.error) }
+                Image(systemName: isOpen ? Symbol.chevronUp : Symbol.chevronDown).font(.system(size: Icon.xxs, weight: .bold))
+                    .accessibilityHidden(true)
+            }
+            .foregroundStyle(Ink.text.primary)
+            .padding(.horizontal, Space.s)
+            .frame(height: Size.cardHeader)
+            .background(Ink.surface.sunken)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(isOpen ? "Open" : "Folded")
+    }
+}
+
+/// The running work: the command chip, WORKING and its readings on one line, a progress track under them.
+public struct WorkLine<Chip: View>: View {
+    let detail: String
+    let chip: Chip
+
+    public init(detail: String, @ViewBuilder chip: () -> Chip) {
+        self.detail = detail
+        self.chip = chip()
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: Space.s) {
+            HStack(spacing: Space.m) {
+                chip
+                Text("Working").typeRole(.label).foregroundStyle(Ink.text.primary)
+                Text(verbatim: detail).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
+            }
+            WorkTrack()
+        }
+    }
+}
+
+/// A 2 pt rule with an ink segment going to and fro, parked under Reduce Motion. Ink, not yellow: the screen's one yellow
+/// mark stays on Steer.
+struct WorkTrack: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// The segment: 30 % of the track, 2.4 s each way, parked at 35 %.
+    private static let period = 2.4, width = 0.3, restingPhase = 0.35
+
+    /// Eased position across the track, 0…1, at a time in seconds.
+    static func phase(_ time: Double) -> Double {
+        let t = (time / period).truncatingRemainder(dividingBy: 2)
+        let way = t <= 1 ? t : 2 - t
+        return way * way * (3 - 2 * way)
+    }
+
+    var body: some View {
+        TimelineView(.animation(paused: reduceMotion)) { context in
+            let phase = reduceMotion ? Self.restingPhase : Self.phase(context.date.timeIntervalSinceReferenceDate)
+            Rectangle().fill(Ink.line.rule)
+                .overlay(alignment: .leading) {
+                    GeometryReader { geo in
+                        Rectangle().fill(Ink.line.strong)
+                            .frame(width: geo.size.width * Self.width)
+                            .offset(x: geo.size.width * (1 - Self.width) * phase)
+                    }
+                }
+                .clipped()
+        }
+        .frame(height: Stroke.accent)
+        .accessibilityHidden(true)
+    }
+}
