@@ -87,8 +87,11 @@ public final class SessionStore {
                     for id in sessions.keys where sessions[id]?.lastSeq == 0 { sessions[id]?.historyLoaded = false }
                 }
                 wasConnected = true
-                // Resubscribed live only: the relay re-sends the status of a run that is still going.
+                // Resubscribed live only: the relay re-sends the status of a run that is still going (and its pending
+                // approval), so forget what was live. A run that ended while the socket was down (a relay or gateway
+                // restart) would otherwise stay "working" in the open chat forever: nothing would ever end it.
                 for id in overview.keys where overview[id]?.lastSeq == 0 { overview[id]?.lostTrack() }
+                for id in sessions.keys where sessions[id]?.lastSeq == 0 { sessions[id]?.lostTrack() }
             }
             connection = state
         case .message(let message):

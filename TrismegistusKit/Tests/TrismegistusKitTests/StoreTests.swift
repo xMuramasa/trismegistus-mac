@@ -240,6 +240,22 @@ struct SessionStoreTests {
         #expect(store.connection == .connected(device: "macbook", serverVersion: "0.1.0"))
     }
 
+    /// A run that ended while the socket was down (the relay restarted, Hermes interrupted it) doesn't stay "working":
+    /// the open chat and its row forget it on the live-only resubscribe, and a run the relay re-sends comes back.
+    @Test func reconnectForgetsARunThatEndedWhileDisconnected() async {
+        await store.handle(.state(.connected(device: "macbook", serverVersion: "0.1.0")))
+        await store.open("s1")
+        await store.handle(.message(.run(runID: "run_1", sessionID: "s1", status: .running)))
+        #expect(store.sessions["s1"]?.run?.id == "run_1")
+        await store.handle(.state(.reconnecting(attempt: 1, at: Date())))
+        await store.handle(.state(.connected(device: "macbook", serverVersion: "0.1.0")))
+        #expect(store.sessions["s1"]?.run == nil)
+        #expect(store.overview["s1"]?.run == nil)
+        #expect(!store.isWorking)
+        await store.handle(.message(.run(runID: "run_2", sessionID: "s1", status: .running)))
+        #expect(store.sessions["s1"]?.run?.id == "run_2")
+    }
+
     /// #54: another device's prompt reaches an open conversation through the history, at once and at the end.
     @Test func anotherDevicesRunReloadsTheHistory() async {
         await store.open("s1")

@@ -133,6 +133,13 @@ public struct SessionState: Sendable, Equatable {
         }
     }
 
+    /// Subscribed again without a seq: what was live may be over. The relay re-sends the status of a run that is still
+    /// going, with its pending approval, right after the subscription; the outbox stays.
+    mutating func lostTrack() {
+        run = nil
+        approvals = []
+    }
+
     /// A run ended: the history has the finished turn (and any prompt or steer this device didn't see).
     private mutating func end(_ runID: String) {
         if run?.id == runID { run = nil }
