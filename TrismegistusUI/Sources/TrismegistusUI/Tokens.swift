@@ -172,6 +172,12 @@ public enum Size {
     public static let chatColumn: CGFloat = 700
     /// an issue's panels, body and comments
     public static let issueColumn: CGFloat = 720
+    /// a run's result and steps
+    public static let runColumn: CGFloat = 960
+    /// a run's report folds here: 8 lines of the body role
+    public static let reportFold: CGFloat = 144
+    /// the accent column down the right of an item card
+    public static let cardEdge: CGFloat = 12
     /// a menu in a readout row
     public static let readoutPicker: CGFloat = 116
     public struct Popover: Sendable {

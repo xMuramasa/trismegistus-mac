@@ -105,7 +105,7 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   ⌘1…⌘5 (View menu; tooltips `Chat (⌘1)` …). Each section has its own sidebar list (header `TITLE // n`, a filter field
   that ⌘K focuses, arrow keys move the selection) and detail: Chat the conversations (pin, rename, tags, delete, new)
   and the conversation; GitHub the Work board by status (repo, priority and list-kind pickers, Done folded) and the
-  issue; Agents the runs and the agent's detail and transcript; Jobs the
+  issue; Agents the runs and the agent's detail: the result on top, then the run's steps as tool rows; Jobs the
   jobs (+ New job) and the job's detail or form; Commands "All conversations" and the conversations with matching
   calls (the filter is the log's search) and the log (failed-only in its header). Each section keeps its own selection
   (`window.section`, `window.selection.<section>`; Chat keeps `window.selectedSession`). Opening a conversation from

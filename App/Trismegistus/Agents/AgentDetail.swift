@@ -3,7 +3,7 @@ import TrismegistusKit
 import TrismegistusUI
 
 /// The selected agent: how it stands and its buttons (open the conversation that started it, stop for a manager
-/// device), then its transcript. A new one per agent (`.id`), so the transcript starts over.
+/// device), then the run. A new one per agent (`.id`), so the transcript starts over.
 struct AgentDetail: View {
     let agent: Agent
     let board: AgentBoard
@@ -30,7 +30,7 @@ struct AgentDetail: View {
         VStack(spacing: 0) {
             header
             if agent.command != nil || error != nil { commandLine }
-            AgentTranscriptPane(agent: agent, transcript: transcript)
+            AgentRunPane(agent: agent, transcript: transcript)
         }
         // Polls every 2 s while the agent is alive and this view is shown; a finished agent loads once.
         .task { if agent.hasTranscript { await transcript.follow() } }
@@ -95,105 +95,88 @@ struct AgentDetail: View {
     }
 }
 
-/// The transcript on ink like the terminal pane: text as plain mono, a tool call as one line with a mark, its result
-/// dimmed (red when it failed), the final answer as Markdown on a card. Follows the end unless scrolled up.
-private struct AgentTranscriptPane: View {
+/// The run under the header: the result on top (the last progress line while it runs), then its steps in one card, open
+/// by default because they are this screen's content. A process has neither.
+private struct AgentRunPane: View {
     let agent: Agent
     let transcript: AgentTranscript
 
-    @State private var position = ScrollPosition(edge: .bottom)
-    @State private var atBottom = true
+    @State private var stepsOpen = true
+    @State private var openRows: Set<String> = []
 
     var body: some View {
-        Group {
-            if !agent.hasTranscript {
-                note("No transcript for this process.")
-            } else if transcript.steps.isEmpty {
-                if let error = transcript.error {
-                    note(AgentsError.describe(error), isError: true)
-                } else {
-                    note(transcript.isLoaded ? "No steps yet." : "Reading the transcript…")
+        if agent.hasTranscript {
+            let rows = AgentRun.rows(of: transcript.steps, cwd: agent.cwd)
+            AgentRunScroll(alive: agent.alive) {
+                VStack(spacing: Space.xxl) {
+                    result
+                    if transcript.steps.isEmpty {
+                        if let error = transcript.error {
+                            note(AgentsError.describe(error), isError: true)
+                        } else {
+                            note(transcript.isLoaded ? "No steps yet." : "Reading the transcript…")
+                        }
+                    } else {
+                        steps(rows)
+                    }
                 }
-            } else {
-                steps
             }
+        } else {
+            note("No transcript for this process.").frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Ink.surface.terminal)
     }
 
     private func note(_ text: String, isError: Bool = false) -> some View {
-        Text(text).typeRole(.caption).foregroundStyle(isError ? Ink.text.error : Ink.text.muted)
-            .padding(Space.l).frame(maxWidth: .infinity, maxHeight: .infinity)
+        Text(text).typeRole(.caption).foregroundStyle(isError ? Ink.text.error : Ink.text.muted).padding(Space.l)
     }
 
-    private var steps: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: Space.s) {
-                if transcript.dropped > 0 {
-                    Text(verbatim: "\(transcript.dropped) earlier steps are not shown.").typeRole(.caption).foregroundStyle(Ink.text.muted)
+    private var chipKind: StatusChip.Kind {
+        switch agent.tone {
+        case .ok: .ok
+        case .warn: .warn
+        case .err: .err
+        case .neutral: .neutral
+        }
+    }
+
+    private var result: some View {
+        let report = agent.alive ? nil : AgentRun.report(of: transcript.steps)
+        let title = report.map { MarkdownText.styled($0.title) }
+            ?? AttributedString(agent.alive ? agent.progress ?? "No progress yet." : "No report.")
+        return TimelineView(.periodic(from: .now, by: 30)) { context in
+            AgentResultCard(chip: StatusChip(agent.statusWords, kind: chipKind), meta: AgentFacts.result(agent, now: context.date), title: title) {
+                if let report, !report.body.isEmpty { GitHubMarkdown(text: report.body) }
+            }
+        }
+    }
+
+    private func steps(_ rows: [AgentRow]) -> some View {
+        let nameWidth = rows.contains { ($0.tool?.count ?? 0) > AgentRun.shortName } ? Size.toolRow.nameWide : Size.toolRow.name
+        return AgentStepsCard(line: AgentRun.stepsLine(rows), isOpen: $stepsOpen) {
+            LazyVStack(spacing: 0) {
+                if transcript.dropped > 0 { ToolNarration("\(transcript.dropped) earlier steps are not shown.") }
+                ForEach(rows) { row in
+                    if let tool = row.tool {
+                        ToolCallRow(symbol: agentToolSymbol(tool), tool: tool, command: row.text, failed: row.failed, output: row.output,
+                                    nameWidth: nameWidth, isOpen: isOpen(row))
+                    } else {
+                        ToolNarration(String(MarkdownText.styled(row.text).characters))
+                    }
                 }
-                ForEach(transcript.steps) { AgentStepRow(step: $0) }
                 if let error = transcript.error {
                     Text(AgentsError.describe(error)).typeRole(.caption).foregroundStyle(Ink.text.error)
+                        .padding(.horizontal, Space.m).padding(.vertical, Space.s)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-            }
-            .padding(Space.l)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .scrollPosition($position)
-        .defaultScrollAnchor(.bottom)
-        .onScrollGeometryChange(for: Bool.self) { geometry in
-            geometry.contentOffset.y + geometry.containerSize.height >= geometry.contentSize.height - Space.xxl
-        } action: { _, nowAtBottom in
-            atBottom = nowAtBottom
-        }
-        .onChange(of: transcript.steps.last?.id) {
-            if atBottom { position.scrollTo(edge: .bottom) }
-        }
-        .overlay(alignment: .bottomTrailing) {
-            if !atBottom {
-                EndfieldButton("Follow", symbol: Symbol.chevronDown, kind: .primary) {
-                    atBottom = true
-                    position.scrollTo(edge: .bottom)
-                }
-                .padding(Space.l)
             }
         }
     }
-}
 
-private struct AgentStepRow: View {
-    let step: AgentStep
-
-    var body: some View {
-        switch step.kind {
-        case .text, .unknown:
-            Text(step.text).typeRole(.monoSmall).foregroundStyle(Ink.text.onDark)
-                .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-        case .tool:
-            HStack(alignment: .firstTextBaseline, spacing: Space.s) {
-                Image(systemName: "hammer").font(.system(size: Icon.s)).foregroundStyle(Ink.selection).accessibilityLabel("Tool")
-                Text(step.text).typeRole(.monoSmall, weight: .semibold).foregroundStyle(Ink.text.onDark).textSelection(.enabled)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        case .toolResult:
-            HStack(alignment: .firstTextBaseline, spacing: Space.s) {
-                Image(systemName: step.error ? Symbol.close : "arrow.turn.down.right").font(.system(size: Icon.s))
-                    .accessibilityLabel(step.error ? "Tool failed" : "Tool result")
-                Text(step.text).typeRole(.monoSmall).textSelection(.enabled)
-            }
-            .foregroundStyle(step.error ? Ink.text.error : Ink.text.onDark.opacity(Opacity.secondaryOnDark))
-            .padding(.leading, Space.l)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        case .result:
-            VStack(alignment: .leading, spacing: Space.s) {
-                Text("Result").typeRole(.label).foregroundStyle(Ink.text.secondary)
-                GitHubMarkdown(text: step.text)
-            }
-            .padding(Space.m)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Ink.surface.raised)
+    private func isOpen(_ row: AgentRow) -> Binding<Bool> {
+        Binding {
+            openRows.contains(row.id)
+        } set: { open in
+            if open { openRows.insert(row.id) } else { openRows.remove(row.id) }
         }
     }
 }

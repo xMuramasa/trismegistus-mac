@@ -151,15 +151,24 @@ private struct AgentRow: View {
 @MainActor enum AgentFacts {
     /// `repo#12 · delegate · started 5 min ago` or `delegate · ended 2 hr ago · 41 turns · 1 hr, 2 min`.
     static func line(_ agent: Agent, now: Date) -> String {
-        var parts = [agent.issueRef, agent.isDelegate ? "delegate" : "process"].compactMap { $0 }
-        if agent.alive {
-            if let start = agent.started { parts.append("started \(JobDetail.relative(start, now: now))") }
-        } else {
-            if let end = agent.ended ?? agent.started { parts.append("ended \(JobDetail.relative(end, now: now))") }
-            if let turns = agent.numTurns { parts.append("\(turns) \(turns == 1 ? "turn" : "turns")") }
-            if let ms = agent.durationMs, let words = duration(ms) { parts.append(words) }
-        }
+        let parts = [agent.issueRef, agent.isDelegate ? "delegate" : "process", age(agent, now: now)].compactMap { $0 } + effort(agent)
         return parts.joined(separator: " · ")
+    }
+
+    /// The result card's: `41 turns · 1 hr, 2 min · ended 2 hr ago`.
+    static func result(_ agent: Agent, now: Date) -> String {
+        (effort(agent) + [age(agent, now: now)].compactMap { $0 }).joined(separator: " · ")
+    }
+
+    private static func age(_ agent: Agent, now: Date) -> String? {
+        if agent.alive { return agent.started.map { "started \(JobDetail.relative($0, now: now))" } }
+        return (agent.ended ?? agent.started).map { "ended \(JobDetail.relative($0, now: now))" }
+    }
+
+    /// A finished run's turns and duration.
+    private static func effort(_ agent: Agent) -> [String] {
+        guard !agent.alive else { return [] }
+        return [agent.numTurns.map { "\($0) \($0 == 1 ? "turn" : "turns")" }, agent.durationMs.flatMap(duration)].compactMap { $0 }
     }
 
     static func duration(_ ms: Int) -> String? {
