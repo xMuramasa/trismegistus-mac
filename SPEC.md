@@ -141,8 +141,8 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   `tool.started` preview, then output, exit code and duration from the `tool.completed` preview (JSON for the
   terminal tool; shown raw when cut). Filter: commands only or all tools. Live output arrives when a command finishes and is
   cut at 4,000 characters; past calls come from the Hermes history (every source, output in full), fetched again every
-  10 s while the pane is shown. The **Commands** section lists recent calls across conversations (filters: failed,
-  conversation, search), synced incrementally and cached per relay in the app's Caches (deleted on unpair). It is not
+  10 s while the pane is shown. The **Commands** section lists recent calls across conversations, grouped by conversation with the newest first (filters: failed, conversation,
+  search; One line, on by default, shows each call as a row), synced incrementally and cached per relay in the app's Caches (deleted on unpair). It is not
   a shell.
 - **Markdown:** prose with `AttributedString(markdown:)`; fenced code blocks are split out and drawn as views with a
   language label and a copy button.

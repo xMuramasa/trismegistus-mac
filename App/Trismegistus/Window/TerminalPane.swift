@@ -86,12 +86,21 @@ struct TerminalPane: View {
 
 struct EntryRow: View {
     let entry: TerminalEntry
+    var oneLine = false
+    /// Some entry in the same list is from an earlier day: every time column takes the dated width.
+    var dated = false
+
+    /// The list holds a call from an earlier day, whose time carries the day.
+    static func dated(_ entries: [TerminalEntry]) -> Bool {
+        entries.contains { !Calendar.current.isDateInToday(Date(timeIntervalSince1970: Double($0.time) / 1000)) }
+    }
 
     var body: some View {
         TerminalEntryView(
-            title: "\(Self.time(entry.time)) \(entry.tool)", detail: entry.cwd,
-            command: entry.command ?? "…", output: output, exitCode: entry.exitCode, isRunning: entry.isRunning,
-            startedAt: Date(timeIntervalSince1970: Double(entry.time) / 1000), duration: entry.duration)
+            time: Self.time(entry.time), tool: entry.tool, detail: entry.cwd,
+            command: entry.command ?? "…", output: output, exitCode: entry.exitCode, failed: entry.failed,
+            isRunning: entry.isRunning, startedAt: Date(timeIntervalSince1970: Double(entry.time) / 1000),
+            duration: entry.duration, oneLine: oneLine, timeWidth: dated ? Size.toolRow.timeDated : nil)
     }
 
     /// The running entry says why it has no output yet, as in the draft.

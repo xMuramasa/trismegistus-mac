@@ -50,10 +50,39 @@ public struct RunSummary: Sendable, Equatable {
     }
 }
 
+/// One conversation's calls in the Commands log, in the order given (newest first).
+public struct ConversationCalls: Sendable, Equatable, Identifiable {
+    /// The conversation's id.
+    public var id: String
+    public var entries: [TerminalEntry]
+
+    public var failedCount: Int { entries.count(where: \.failed) }
+}
+
 public enum TerminalTranscript {
     public static let terminalTool = "terminal"
+    /// The Commands log's One line toggle, kept in `@AppStorage`: on until Martin turns it off (#56 d).
+    public static let oneLineKey = "commands.oneLine"
+    public static let oneLineByDefault = true
 
     public enum Filter: Sendable { case commands, all }
+
+    /// One group per conversation, in the order each first appears: `entries` newest first (`CommandLog.all`) gives the
+    /// newest group first and the newest call first inside it.
+    public static func groups(_ entries: [TerminalEntry]) -> [ConversationCalls] {
+        var groups: [ConversationCalls] = []
+        var index: [String: Int] = [:]
+        for e in entries {
+            let id = e.sessionID ?? ""
+            if let i = index[id] {
+                groups[i].entries.append(e)
+            } else {
+                index[id] = groups.count
+                groups.append(ConversationCalls(id: id, entries: [e]))
+            }
+        }
+        return groups
+    }
 
     /// Pairs `tool.started` with `tool.completed` in order. The events carry no call id, so a completion belongs to the
     /// oldest unfinished call of the same tool in the same run; a completion without a start (replay gap) is its own entry.

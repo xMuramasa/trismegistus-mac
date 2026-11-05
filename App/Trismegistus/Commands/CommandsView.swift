@@ -38,10 +38,13 @@ struct CommandsSidebar: View {
     static func count(_ n: Int) -> String { "\(n) \(n == 1 ? "call" : "calls")" }
 }
 
-/// Recent tool calls across conversations, newest first, from Hermes' history (Telegram, cron and CLI runs too),
-/// fetched again every 10 s while shown. Filters: the sidebar's conversation and search, failed only here. Each entry
-/// opens its conversation.
+/// Recent tool calls across conversations from Hermes' history (Telegram, cron and CLI runs too), one group per
+/// conversation, newest group and newest call first, fetched again every 10 s while shown. Filters: the sidebar's
+/// conversation and search, failed only here. Each group's head opens its conversation.
 struct CommandsView: View {
+    /// A group shows this many calls until Show more or a filter.
+    private static let groupLimit = 6
+
     /// A conversation id, `""` for all.
     let conversation: String
     let search: String
@@ -50,8 +53,11 @@ struct CommandsView: View {
 
     @Environment(AppModel.self) private var model
     @Environment(CommandLog.self) private var log: CommandLog?
+    @AppStorage(TerminalTranscript.oneLineKey) private var oneLine = TerminalTranscript.oneLineByDefault
     @State private var failedOnly = false
     @State private var listFailed = false
+    @State private var foldedGroups: Set<String> = []
+    @State private var fullGroups: Set<String> = []
 
     private var titles: [String: String] {
         Dictionary((sessions ?? model.sessions).map { ($0.id, ConversationSidebar.title($0)) }, uniquingKeysWith: { a, _ in a })
@@ -62,28 +68,25 @@ struct CommandsView: View {
         return needle.isEmpty || [e.command, e.cwd, e.output, e.errorText].contains { $0?.localizedCaseInsensitiveContains(needle) == true }
     }
 
+    /// The conversation's calls; the counts don't move with the Failed filter or the search.
     private var entries: [TerminalEntry] {
-        (log?.all ?? []).filter { e in
-            (!failedOnly || e.failed) && (conversation.isEmpty || e.sessionID == conversation) && Self.matches(e, search)
-        }
+        (log?.all ?? []).filter { conversation.isEmpty || $0.sessionID == conversation }
     }
+
+    private func shows(_ e: TerminalEntry) -> Bool { (!failedOnly || e.failed) && Self.matches(e, search) }
 
     var body: some View {
         let entries = entries
+        let groups = TerminalTranscript.groups(entries).filter { $0.entries.contains(where: shows) }
         VStack(spacing: 0) {
-            header(count: entries.count)
-            if entries.isEmpty {
+            header(calls: entries.count, failed: entries.count(where: \.failed))
+            if groups.isEmpty {
                 Text(emptyText).typeRole(.caption).foregroundStyle(Ink.text.muted)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: Space.xl) {
-                        ForEach(entries) { entry in
-                            VStack(alignment: .leading, spacing: Space.s) {
-                                conversationLink(entry.sessionID)
-                                EntryRow(entry: entry)
-                            }
-                        }
+                    LazyVStack(alignment: .leading, spacing: Space.xxxl) {
+                        ForEach(groups) { groupView($0) }
                     }
                     .padding(Space.l)
                 }
@@ -113,33 +116,55 @@ struct CommandsView: View {
         return "No commands match."
     }
 
-    private func header(count: Int) -> some View {
+    private func header(calls: Int, failed: Int) -> some View {
         DetailHeader {
             Text(verbatim: conversation.isEmpty ? "All conversations" : titles[conversation] ?? conversation)
         } subtitle: {
             HStack(spacing: Space.s) {
-                Text(verbatim: CommandsSidebar.count(count))
+                Text(verbatim: "\(CommandsSidebar.count(calls)) · \(failed) failed")
                 if listFailed && log?.all.isEmpty == false {
                     Text("can't reach the relay").foregroundStyle(Ink.status.warn)
                 }
             }
         } trailing: {
-            FilterChip(title: "Failed", symbol: "exclamationmark.triangle", isOn: failedOnly) { failedOnly.toggle() }
+            HStack(spacing: Space.s) {
+                FilterChip(title: "One line", symbol: "text.justify", isOn: oneLine) { oneLine.toggle() }
+                FilterChip(title: "Failed", symbol: "exclamationmark.triangle", isOn: failedOnly) { failedOnly.toggle() }
+            }
         }
     }
 
-    @ViewBuilder private func conversationLink(_ sessionID: String?) -> some View {
-        if let sessionID {
-            Button { onOpen(sessionID) } label: {
-                HStack(spacing: Space.xs) {
-                    Text(titles[sessionID] ?? sessionID).lineLimit(1)
-                    Image(systemName: Symbol.chevronRight).font(.system(size: Icon.xs))
+    private func groupView(_ group: ConversationCalls) -> some View {
+        let rows = group.entries.filter(shows)
+        let cut = rows.count == group.entries.count && !fullGroups.contains(group.id)
+        let shown = cut ? Array(rows.prefix(Self.groupLimit)) : rows
+        let isOpen = !foldedGroups.contains(group.id)
+        let dated = EntryRow.dated(shown)
+        return VStack(alignment: .leading, spacing: 0) {
+            CommandGroupHead(
+                title: titles[group.id] ?? group.id, calls: group.entries.count, failed: group.failedCount, isOpen: isOpen,
+                onOpen: { onOpen(group.id) },
+                onFold: { foldedGroups.formSymmetricDifference([group.id]) })
+            if isOpen {
+                Group {
+                    if oneLine {
+                        LazyVStack(spacing: 0) {
+                            ForEach(shown) { EntryRow(entry: $0, oneLine: true, dated: dated) }
+                        }
+                        .background { Rectangle().fill(Ink.surface.raised).shadow(Shadow.card) }
+                    } else {
+                        LazyVStack(alignment: .leading, spacing: Space.xxl) {
+                            ForEach(shown) { EntryRow(entry: $0, dated: dated) }
+                        }
+                    }
                 }
-                .typeRole(.monoSmall).foregroundStyle(Ink.text.link)
-                .contentShape(Rectangle())
+                .padding(.top, Space.m)
+                if shown.count < group.entries.count {
+                    CommandGroupFoot(shown: shown.count, total: group.entries.count,
+                                     onMore: shown.count < rows.count ? { fullGroups.insert(group.id) } : nil)
+                        .padding(.top, Space.s)
+                }
             }
-            .buttonStyle(.plain)
-            .help("Open the conversation")
         }
     }
 }

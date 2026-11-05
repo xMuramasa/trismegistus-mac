@@ -24,6 +24,28 @@ private func live(_ seq: Int, ms: Int, _ preview: String?, completed result: Str
     return events
 }
 
+@Suite struct CommandGroupTests {
+    private func entry(_ session: String, id: Int, time: Int, exit: Int = 0) -> TerminalEntry {
+        TerminalEntry(id: id, runID: "", tool: "terminal", time: time, exitCode: exit, isError: false, isTruncated: false,
+                      isRunning: false, sessionID: session)
+    }
+
+    @Test func oneGroupPerConversationNewestFirst() {
+        // Interleaved, newest first, as `CommandLog.all` gives them.
+        let groups = TerminalTranscript.groups([
+            entry("b", id: 1, time: 50), entry("a", id: 2, time: 40), entry("b", id: 3, time: 30, exit: 1),
+            entry("a", id: 4, time: 20), entry("c", id: 5, time: 10, exit: 2), entry("b", id: 6, time: 5, exit: 127),
+        ])
+        #expect(groups.map(\.id) == ["b", "a", "c"])
+        #expect(groups[0].entries.map(\.id) == [1, 3, 6] && groups[1].entries.map(\.id) == [2, 4])
+        #expect(groups.map(\.failedCount) == [2, 0, 1])
+    }
+
+    @Test func noCallsNoGroups() { #expect(TerminalTranscript.groups([]).isEmpty) }
+
+    @Test func oneLineIsOnUntilTurnedOff() { #expect(TerminalTranscript.oneLineByDefault) }
+}
+
 @Suite struct HistoryTranscriptTests {
     @Test func toolCallsWithTheirResults() throws {
         let e = TerminalTranscript.entries(fromHistory: try appSession(), sessionID: "s1")

@@ -366,12 +366,12 @@ final class SnapshotTests: XCTestCase {
         try snap("TerminalEntryView") {
             VStack(alignment: .leading, spacing: 12) {
                 TerminalEntryView(
-                    title: "12:04:31 terminal", detail: "~/Projects/homelab", command: "ls ~/Projects",
+                    time: "12:04:31", tool: "terminal", detail: "~/Projects/homelab", command: "ls ~/Projects",
                     output: "endfield-dotfiles\nhomelab", exitCode: 0, duration: 0.3, startsFolded: false)
-                TerminalEntryView(title: "12:04:40 terminal", command: "pytest -q tests/", exitCode: 1, duration: 4.8)
-                TerminalEntryView(title: "12:04:50 terminal", command: "sleep 30", isRunning: true, startedAt: .now)
+                TerminalEntryView(time: "12:04:40", tool: "terminal", command: "pytest -q tests/", exitCode: 1, duration: 4.8)
+                TerminalEntryView(time: "12:04:50", tool: "terminal", command: "sleep 30", isRunning: true, startedAt: .now)
                 TerminalEntryView(
-                    title: "12:05:02 terminal", command: "seq 40",
+                    time: "12:05:02", tool: "terminal", command: "seq 40",
                     output: (1...40).map(String.init).joined(separator: "\n"), exitCode: 0, duration: 1.2,
                     startsFolded: false)
             }
@@ -382,11 +382,11 @@ final class SnapshotTests: XCTestCase {
     func testTerminalPaneGround() throws {
         try snap("TerminalPaneGround") {
             VStack(alignment: .leading, spacing: 12) {
-                TerminalEntryView(title: "21:40:12 terminal", command: "git status", exitCode: 0, duration: 0.1)
+                TerminalEntryView(time: "21:40:12", tool: "terminal", command: "git status", exitCode: 0, duration: 0.1)
                 TerminalEntryView(
-                    title: "21:40:15 terminal", detail: "~/Projects/homelab", command: "ls apps",
+                    time: "21:40:15", tool: "terminal", detail: "~/Projects/homelab", command: "ls apps",
                     output: "homepage\nhindsight-ui\npenpot", exitCode: 0, duration: 0.2, startsFolded: false)
-                TerminalEntryView(title: "21:41:02 read_file", command: "SPEC.md", exitCode: 0, duration: 0.0)
+                TerminalEntryView(time: "21:41:02", tool: "read_file", command: "SPEC.md", exitCode: 0, duration: 0.0)
                 Spacer(minLength: 0)
             }
             .padding(16)
@@ -394,6 +394,69 @@ final class SnapshotTests: XCTestCase {
             .background { EndfieldContours(color: Palette.sunken, opacity: 0.3).background(Palette.ink) }
             .padding(-16)
         }
+    }
+
+    /// The Commands log as the app stacks it (`CommandsView`), from the band down.
+    private func commandsLog(oneLine: Bool) -> some View {
+        var hovered = TerminalEntryView(time: "14:02:57", tool: "vision_analyze", command: "/tmp/tm-jobs.png: does the prompt column match?", duration: 0.1, oneLine: oneLine, timeWidth: Size.toolRow.timeDated)
+        hovered.forceHovered = true
+        let entries = Group {
+            TerminalEntryView(time: "14:03:04", tool: "terminal", command: "\n  cua-driver screenshot --window Trismegistus --out /tmp/tm-commands.png\nls", exitCode: 0, oneLine: oneLine, timeWidth: Size.toolRow.timeDated)
+            hovered
+            TerminalEntryView(time: "14:02:24", tool: "web_extract", command: "https://penpot.app/", duration: 4.2, oneLine: oneLine, timeWidth: Size.toolRow.timeDated)
+            TerminalEntryView(time: "14:01:18", tool: "terminal", detail: "~/Projects/homelab", command: "cua-driver focus --app Trismegistus --space 2",
+                              output: "no such space", exitCode: 1, duration: 0.5, startsFolded: false, oneLine: oneLine, timeWidth: Size.toolRow.timeDated)
+            TerminalEntryView(time: "14:01:02", tool: "read_file", command: "{\"path\":\"SPEC.md\"}", failed: true, duration: 0.1, oneLine: oneLine, timeWidth: Size.toolRow.timeDated)
+            TerminalEntryView(time: "3 Nov 22:40:12", tool: "terminal", command: "sleep 30", isRunning: true, startedAt: .now, oneLine: oneLine, timeWidth: Size.toolRow.timeDated)
+        }
+        return VStack(alignment: .leading, spacing: 0) {
+            DetailHeader {
+                Text(verbatim: "All conversations")
+            } subtitle: {
+                Text(verbatim: "1741 calls · 5 failed")
+            } trailing: {
+                HStack(spacing: 8) {
+                    FilterChip(title: "One line", symbol: "text.justify", isOn: oneLine) {}
+                    FilterChip(title: "Failed", symbol: "exclamationmark.triangle", isOn: false) {}
+                }
+            }
+            VStack(alignment: .leading, spacing: 32) {
+                VStack(alignment: .leading, spacing: 0) {
+                    CommandGroupHead(title: "Swift app", calls: 69, failed: 2, isOpen: true, onOpen: {}, onFold: {})
+                    Group {
+                        if oneLine {
+                            VStack(spacing: 0) { entries }
+                                .background { Rectangle().fill(Ink.surface.raised).shadow(Shadow.card) }
+                        } else {
+                            VStack(alignment: .leading, spacing: 24) { entries }
+                        }
+                    }
+                    .padding(.top, 12)
+                    CommandGroupFoot(shown: 6, total: 69, onMore: {}).padding(.top, 8)
+                }
+                CommandGroupHead(title: "Compare Open Design vs Penpot", calls: 66, failed: 0, isOpen: false, onOpen: {}, onFold: {})
+            }
+            .padding(16)
+        }
+    }
+
+    func testCommandsLogOneLine() throws {
+        try snap("CommandsLogOneLine", width: 900) { commandsLog(oneLine: true) }
+    }
+
+    func testCommandsLogCards() throws {
+        try snap("CommandsLogCards", width: 900) { commandsLog(oneLine: false) }
+    }
+
+    /// The cards under the chat's `>_ n COMMANDS` chip, at the chat column's width, and in the terminal pane's.
+    func testChatCommandCards() throws {
+        let cards = VStack(alignment: .leading, spacing: 24) {
+            TerminalEntryView(time: "21:27:08", tool: "terminal", command: "git -C ~/Projects/open-design log --oneline -5", duration: 4.8)
+            TerminalEntryView(time: "21:27:13", tool: "vision_analyze", command: "/tmp/tm-chat.png: is the chip on one line with the progress track?", duration: 2.1)
+            TerminalEntryView(time: "21:27:15", tool: "terminal", command: "swift test --filter SectionBar", exitCode: 1, duration: 18.9)
+        }
+        try snap("ChatCommandCards", width: Size.chatColumn) { cards }
+        try snap("ChatCommandCardsNarrow", width: Size.terminal.default) { cards }
     }
 
     func testTerminalOutputPreview() {

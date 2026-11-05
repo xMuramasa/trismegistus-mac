@@ -113,8 +113,8 @@ public enum Ink {
         public let header = Palette.arkOrange
         /// the title and chevron on a card's header
         public let onHeader = Palette.raised
-        /// top to bottom; the last at opacity.track
-        public let accents = [Palette.accentCyan, Palette.accentMagenta, Palette.yellow, Palette.muted]
+        /// a card's accent column by tool: terminal, vision_analyze, any other
+        public let accents = [Palette.accentCyan, Palette.accentMagenta, Palette.yellow]
     }
     public static let card = Card()
     public static let titleRule = [Palette.magenta, Palette.yellow, Palette.green]
@@ -129,8 +129,6 @@ public enum Opacity {
     public static let track: Double = 0.5
     public static let paperCrosses: Double = 0.55
     public static let terminalContours: Double = 0.3
-    /// the duration on a terminal card's header
-    public static let cardDetail: Double = 0.85
     /// the paper veil over the chat while images are dragged over it
     public static let dropVeil: Double = 0.85
 }
@@ -184,6 +182,8 @@ public enum Size {
     public static let jobPromptEditor: CGFloat = 360
     /// the accent column down the right of an item card
     public static let cardEdge: CGFloat = 12
+    /// the tool name's column on a call's card header (vision_analyze fits at 12 pt mono)
+    public static let cardTool: CGFloat = 112
     /// a menu in a readout row
     public static let readoutPicker: CGFloat = 116
     public struct Popover: Sendable {
@@ -228,13 +228,16 @@ public enum Size {
     public static let titleRuleSmall = TitleRuleSmall()
     /// tool and subagent rows
     public static let rowTool: CGFloat = 28
-    /// the columns of a tool row: the icon and fold cells, the tool name (wide in Commands), the duration, the status
+    /// the columns of a tool row: the icon and fold cells, the time (Commands; dated when a list holds an earlier day's call), the tool name (wide in Commands), the duration, the status (narrow in Commands)
     public struct ToolRow: Sendable {
         public let cell: CGFloat = 16
         public let name: CGFloat = 48
+        public let time: CGFloat = 72
+        public let timeDated: CGFloat = 112
         public let nameWide: CGFloat = 112
         public let duration: CGFloat = 56
         public let status: CGFloat = 64
+        public let statusNarrow: CGFloat = 56
     }
     public static let toolRow = ToolRow()
     /// a status chip's height
@@ -253,15 +256,6 @@ public enum Size {
         public let height: CGFloat = 13
     }
     public static let cursor = Cursor()
-    /// the dash leading a terminal card's header
-    public struct CardDash: Sendable {
-        public let width: CGFloat = 8
-        public let height: CGFloat = 1.5
-    }
-    public static let cardDash = CardDash()
-    public static let cardBodyMin: CGFloat = 54
-    /// height of one accent segment (its width is stroke.card-accent)
-    public static let cardAccent: CGFloat = 11
     /// a divider's drag area
     public static let grip: CGFloat = 7
     /// the click target of a section bar icon
@@ -326,7 +320,6 @@ public enum Stroke {
     public static let hairline: CGFloat = 1
     public static let hairlineFine: CGFloat = 0.5
     public static let accent: CGFloat = 2
-    public static let cardAccent: CGFloat = 4
     public static let rule: CGFloat = 4
     /// selection and accent bars (rows, the banner's top, notices)
     public static let mark: CGFloat = 3
