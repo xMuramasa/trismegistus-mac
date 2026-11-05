@@ -28,6 +28,8 @@ public enum Palette {
     public static let terminalGreen = Color(hex: 0x00875A)
     /// Endfield ANSI red, darkened
     public static let terminalRed = Color(hex: 0xC4271F)
+    /// Endfield blue, lightened: readable as ANSI blue on dark-panel (ls colours directories with it)
+    public static let ansiBlue = Color(hex: 0x7AA2FF)
     /// Arknights item-card orange: terminal card headers
     public static let arkOrange = Color(hex: 0xE86600)
     /// text and icons on the steel bar and on ink
@@ -59,10 +61,9 @@ public enum Ink {
         public let sunken = Palette.sunken
         /// the window sidebar's ground (#40, 09f)
         public let sidebar = Palette.secondary
-        public let terminal = Palette.ink
         /// ink behind a chip, a toggle that is on, a pressed button, a switch that is on
         public let inverse = Palette.ink
-        /// the warn status chip; a disabled button on steel
+        /// the warn status chip; a disabled button on steel; the terminal drawer's ground
         public let darkPanel = Palette.darkPanel
     }
     public static let surface = Surface()
@@ -117,6 +118,8 @@ public enum Ink {
         public let accents = [Palette.accentCyan, Palette.accentMagenta, Palette.yellow]
     }
     public static let card = Card()
+    /// the terminal drawer's 16 ANSI colours, normal then bright; bright black (8) is its muted notices
+    public static let ansi = [Palette.ink, Palette.red, Palette.green, Palette.yellow, Palette.ansiBlue, Palette.magenta, Palette.accentCyan, Palette.onSteel, Palette.muted, Palette.red, Palette.green, Palette.yellow, Palette.ansiBlue, Palette.magenta, Palette.accentCyan, Palette.raised]
     public static let titleRule = [Palette.magenta, Palette.yellow, Palette.green]
 }
 
@@ -128,7 +131,6 @@ public enum Opacity {
     public static let ruleOnSidebar: Double = 0.24
     public static let track: Double = 0.5
     public static let paperCrosses: Double = 0.55
-    public static let terminalContours: Double = 0.3
     /// the paper veil over the chat while images are dragged over it
     public static let dropVeil: Double = 0.85
 }
@@ -203,6 +205,13 @@ public enum Size {
         public let max: CGFloat = 560
     }
     public static let terminal = Terminal()
+    /// the terminal drawer's height under the chat
+    public struct TerminalDrawer: Sendable {
+        public let min: CGFloat = 120
+        public let `default`: CGFloat = 200
+        public let max: CGFloat = 480
+    }
+    public static let terminalDrawer = TerminalDrawer()
     public struct WindowMin: Sendable {
         public let width: CGFloat = 1100
         public let height: CGFloat = 640

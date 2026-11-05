@@ -378,24 +378,6 @@ final class SnapshotTests: XCTestCase {
         }
     }
 
-    /// The terminal pane's ground: ink with the contour lines in `sunken` (the app's pane uses opacity 0.3), cards on it.
-    func testTerminalPaneGround() throws {
-        try snap("TerminalPaneGround") {
-            VStack(alignment: .leading, spacing: 12) {
-                TerminalEntryView(time: "21:40:12", tool: "terminal", command: "git status", exitCode: 0, duration: 0.1)
-                TerminalEntryView(
-                    time: "21:40:15", tool: "terminal", detail: "~/Projects/homelab", command: "ls apps",
-                    output: "homepage\nhindsight-ui\npenpot", exitCode: 0, duration: 0.2, startsFolded: false)
-                TerminalEntryView(time: "21:41:02", tool: "read_file", command: "SPEC.md", exitCode: 0, duration: 0.0)
-                Spacer(minLength: 0)
-            }
-            .padding(16)
-            .frame(height: 620)
-            .background { EndfieldContours(color: Palette.sunken, opacity: 0.3).background(Palette.ink) }
-            .padding(-16)
-        }
-    }
-
     /// The Commands log as the app stacks it (`CommandsView`), from the band down.
     private func commandsLog(oneLine: Bool) -> some View {
         var hovered = TerminalEntryView(time: "14:02:57", tool: "vision_analyze", command: "/tmp/tm-jobs.png: does the prompt column match?", duration: 0.1, oneLine: oneLine, timeWidth: Size.toolRow.timeDated)

@@ -76,6 +76,42 @@ public extension View {
     }
 }
 
+/// The strip's terminal button and ⌘⌥T, Chat only. While the drawer is open it reads pressed: raised fill, ink icon.
+public struct TerminalToggle: View {
+    let section: WindowSection
+    let isOpen: Bool
+    let action: () -> Void
+
+    public init(section: WindowSection, isOpen: Bool, action: @escaping () -> Void) {
+        self.section = section
+        self.isOpen = isOpen
+        self.action = action
+    }
+
+    var isAvailable: Bool { section == .chat }
+    var isPressed: Bool { isAvailable && isOpen }
+    var help: String { isAvailable ? "Toggle terminal (⌘⌥T)" : "The terminal pane is Chat only" }
+
+    public var body: some View {
+        Button(action: action) {
+            Image(systemName: Symbol.terminal)
+                .typeRole(.button)
+                .foregroundStyle(isPressed ? Ink.text.primary : Ink.text.onDark)
+                .padding(Space.s)
+                .background(isPressed ? Ink.surface.raised : .clear)
+                .overlay(Rectangle().strokeBorder(isPressed ? Ink.line.strong : Ink.text.onDark, lineWidth: Stroke.hairline))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut("t", modifiers: [.command, .option])
+        .disabled(!isAvailable)
+        .opacity(isAvailable ? 1 : Opacity.outlineOnDark)
+        .help(help)
+        .accessibilityLabel("Terminal")
+        .accessibilityAddTraits(isPressed ? .isSelected : [])
+    }
+}
+
 /// The strip's left-to-right gradient as it falls under this view. The gradient is window-wide; while panes move only
 /// its offset changes (#28).
 public struct TopBarBackdrop: View {

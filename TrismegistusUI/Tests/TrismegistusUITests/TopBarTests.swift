@@ -6,20 +6,19 @@ import XCTest
 
 /// The window as laid out since #32: the toolbar's steel strip across the whole window, our own sidebar column
 /// (`SidebarSplit`) with a rule, the conversation header continuing the strip with the title rule under it, the chat
-/// and its key hints, the terminal as our own trailing column (`TrailingSplit`). Rendered from the window's frame view (toolbar included) to
+/// and its key hints, the terminal drawer under them. Rendered from the window's frame view (toolbar included) to
 /// `.build/snapshots/Window32*.png`, sidebar open and closed.
 @MainActor
 final class TopBarTests: XCTestCase {
     private final class Panes: ObservableObject {
         @Published var sidebar = true
         @Published var width = 260.0
-        @Published var terminal = true
-        @Published var terminalWidth = 360.0
     }
 
     private struct Window: View {
         @ObservedObject var panes: Panes
         @State private var filter = ""
+        @State private var screen = TerminalScreen()
 
         var body: some View {
             SidebarSplit(isShown: $panes.sidebar, width: $panes.width) {
@@ -48,17 +47,10 @@ final class TopBarTests: XCTestCase {
                         .overlay(alignment: .top) { Rectangle().fill(Palette.rule).frame(height: 1) }
                 }
             } detail: {
-                // As in the app: the terminal as our own trailing column, inside the detail.
-                TrailingSplit(isShown: $panes.terminal, width: $panes.terminalWidth) {
+                // As in the app: the drawer under the chat, inside the detail.
+                VStack(spacing: 0) {
                     detail
-                } pane: {
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text("TERMINAL").typeRole(.label).foregroundStyle(Palette.onSteel).padding(.horizontal, 16).padding(.vertical, 10)
-                        Rectangle().fill(Palette.onSteel.opacity(0.12)).frame(height: 1)
-                        Spacer(minLength: 0)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Palette.ink, ignoresSafeAreaEdges: [])
+                    TerminalDrawer(screen: screen)
                 }
             }
             .endfieldPaper()
@@ -159,7 +151,8 @@ final class TopBarTests: XCTestCase {
 
             // The strip runs from the window's left edge, above the sidebar too.
             assertSteel(rgb(rep, CGPoint(x: 150, y: top / 2), scale: scale), "\(name): toolbar above the sidebar")
-            let low = window.contentView!.bounds.height - 60
+            // Above the drawer.
+            let low = window.contentView!.bounds.height - 260
             if shown {
                 // One flat grey column (#41) from under the toolbar to the bottom, darker than the chat's paper, then
                 // the 1 pt rule at x = 260, between the two.
@@ -191,14 +184,15 @@ final class TopBarTests: XCTestCase {
                     XCTAssertEqual(rule[i], header[i], accuracy: 0.02, "a seam between the toolbar and the header at x = \(x)")
                 }
             }
-            // The terminal column (ours since the toolbar's items moved to the window's right edge): the strip runs on
-            // above it into ink, and its own ground starts under the toolbar.
+            // The strip reaches ink at the window's right edge; the drawer runs under the chat on dark-panel, to that edge.
             let width = window.contentView!.bounds.width
-            let aboveTerminal = rgb(rep, CGPoint(x: width - 180, y: top / 2), scale: scale)
-            let terminalGround = rgb(rep, CGPoint(x: width - 180, y: low), scale: scale)
-            print("window32 \(name): strip above the terminal \(aboveTerminal), terminal ground \(terminalGround)")
-            XCTAssertLessThan(aboveTerminal[0], 0.2, "the strip doesn't reach ink above the terminal")
-            XCTAssertLessThan(terminalGround[0], 0.15, "the terminal column isn't ink")
+            let height = window.contentView!.bounds.height
+            let stripEnd = rgb(rep, CGPoint(x: width - 180, y: top / 2), scale: scale)
+            let drawer = rgb(rep, CGPoint(x: width - 4, y: height - 60), scale: scale)
+            print("window32 \(name): strip's end \(stripEnd), drawer ground \(drawer)")
+            XCTAssertLessThan(stripEnd[0], 0.2, "the strip doesn't reach ink")
+            assertDarker(drawer, than: rgb(rep, CGPoint(x: 600, y: low), scale: scale), "\(name): drawer against the paper")
+            XCTAssertGreaterThan(drawer[0], stripEnd[0], "the drawer is ink, not dark-panel")
         }
         XCTAssertEqual(headers.count, 2)
         for i in 0..<3 where headers.count == 2 { XCTAssertEqual(headers[0][i], headers[1][i], accuracy: 0.01, "the gradient moved with the sidebar") }

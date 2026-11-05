@@ -3,7 +3,7 @@ import TrismegistusKit
 import TrismegistusUI
 
 /// Five sections (#41, #57: Chat, GitHub, Agents, Jobs, Commands), each with its own sidebar list and detail; the
-/// terminal pane follows Chat's conversation. The sidebar is our own column (`SidebarSplit`, #32), not the system's
+/// terminal drawer sits under Chat's detail (#64). The sidebar is our own column (`SidebarSplit`, #32), not the system's
 /// floating glass panel; the toolbar's toggle, the View menu and ⌃⌘S show and hide it, with the section bar at its
 /// bottom. Each section keeps its own selection.
 struct MainWindow: View {
@@ -17,11 +17,10 @@ struct MainWindow: View {
     @AppStorage(WindowSection.commands.selectionKey) private var commandsConversation = ""
     /// Chat's tab (APP, TELEGRAM, TERMINAL or a MORE entry), shared with the popover.
     @AppStorage("chat.kind") private var chatKind = ConversationKind.app
-    @AppStorage("window.terminalShown") private var terminalShown = true
-    @AppStorage("window.terminalWidth") private var terminalWidth = Double(Size.terminal.default)
     @AppStorage("window.sidebarShown") private var sidebarShown = true
     @AppStorage("window.sidebarWidth") private var sidebarWidth = Double(Size.sidebar.default)
     @State private var commandsSearch = ""
+    private let terminal = TerminalSession.shared
     /// The session list the Commands log fetched last, for its sidebar's titles.
     @State private var commandSessions: [SessionInfo]?
     @FocusState private var filterFocused: Bool
@@ -51,6 +50,13 @@ struct MainWindow: View {
         if chatKind != .all, let info = model.sessions.first(where: { $0.id == tip }) { chatKind = ConversationKind(source: info.source) }
     }
 
+    /// The chip's "Show in Commands": this conversation's calls, whatever the search was.
+    private func showCommands(_ id: String) {
+        commandsSearch = ""
+        commandsConversation = id
+        section = .commands
+    }
+
     var body: some View {
         SidebarSplit(isShown: $sidebarShown, width: $sidebarWidth) {
             VStack(spacing: 0) {
@@ -59,14 +65,10 @@ struct MainWindow: View {
                 SectionBar(selection: $section)
             }
         } detail: {
-            TrailingSplit(isShown: $terminalShown, width: $terminalWidth) {
-                detail
-                    // The detail's own grounds (Commands, Jobs, the empty state) reach up under the toolbar and
-                    // covered the strip there; this draws it back above them.
-                    .topBarColumn(.window)
-            } pane: {
-                TerminalPane(sessionID: section == .chat ? chatSelection.wrappedValue : nil)
-            }
+            detail
+                // The detail's own grounds (Commands, Jobs, the empty state) reach up under the toolbar and
+                // covered the strip there; this draws it back above them.
+                .topBarColumn(.window)
         }
         .endfieldPaper()
         .topBar()
@@ -79,6 +81,7 @@ struct MainWindow: View {
         .frame(minWidth: Size.windowMin.width, minHeight: Size.windowMin.height)
         .background(WindowFrameMemory(name: "TrismegistusMainWindow"))
         .onAppear {
+            terminal.attach(model)
             // Before sections the side views were selections in Chat's key (`trismegistus.jobs`, …).
             if let old = WindowSection.allCases.first(where: { selectedSession == "trismegistus.\($0.rawValue)" }) {
                 section = old
@@ -102,15 +105,16 @@ struct MainWindow: View {
     @ViewBuilder private var detail: some View {
         switch section {
         case .chat:
-            if let id = chatSelection.wrappedValue {
-                VStack(spacing: 0) {
+            VStack(spacing: 0) {
+                if let id = chatSelection.wrappedValue {
                     ConversationHeader(sessionID: id)
-                    ChatView(sessionID: id, compact: false, onShowTerminal: { withAnimation(Motion.panel) { terminalShown = true } })
+                    ChatView(sessionID: id, compact: false, onShowCommands: showCommands)
+                } else {
+                    Text("No conversation selected").typeRole(.caption).foregroundStyle(Ink.text.muted)
+                        .padding(Space.s).background(Ink.surface.window)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity).background(EndfieldBackdrop())
                 }
-            } else {
-                Text("No conversation selected").typeRole(.caption).foregroundStyle(Ink.text.muted)
-                    .padding(Space.s).background(Ink.surface.window)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity).background(EndfieldBackdrop())
+                if terminal.isShown { TerminalDrawer(screen: terminal.screen) }
             }
         case .github: GitHubView(selection: optional($selectedIssue).wrappedValue, onOpen: open)
         case .agents: AgentsView(selection: optional($selectedAgent), onOpen: open)
@@ -168,8 +172,10 @@ struct MainWindow: View {
         ToolbarSpacer(.flexible)
         ToolbarItem(placement: .primaryAction) { TopBarStatus(state: link.state, detail: link.detail) }
             .sharedBackgroundVisibility(.hidden)
-        ToolbarItem(placement: .primaryAction) { TerminalToggle(isOn: $terminalShown) }
-            .sharedBackgroundVisibility(.hidden)
+        ToolbarItem(placement: .primaryAction) {
+            TerminalToggle(section: section, isOpen: terminal.isShown) { withAnimation(Motion.panel) { terminal.toggle() } }
+        }
+        .sharedBackgroundVisibility(.hidden)
         ToolbarItem(placement: .primaryAction) {
             SettingsLink {
                 Image(systemName: "slider.horizontal.3").typeRole(.button).foregroundStyle(Ink.text.onDark)
@@ -220,29 +226,6 @@ private struct TopBarStatus: View {
         }
         .foregroundStyle(Ink.text.onDark)
         .accessibilityElement(children: .combine)
-    }
-}
-
-/// Icon-only terminal button on the steel strip; inverted (ink with yellow) while the pane is shown, like
-/// EndfieldButton pressed.
-private struct TerminalToggle: View {
-    @Binding var isOn: Bool
-
-    var body: some View {
-        Button { withAnimation(Motion.panel) { isOn.toggle() } } label: {
-            Image(systemName: Symbol.terminal)
-                .typeRole(.button)
-                .foregroundStyle(isOn ? Ink.selection : Ink.text.onDark)
-                .padding(.vertical, Space.s).padding(.horizontal, Space.s)
-                .background(isOn ? Ink.surface.inverse : .clear)
-                .overlay(Rectangle().strokeBorder(isOn ? Ink.line.strong : Ink.text.onDark, lineWidth: Stroke.hairline))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .keyboardShortcut("t", modifiers: [.command, .option])
-        .help("Terminal (⌥⌘T)")
-        .accessibilityLabel("Terminal")
-        .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 }
 

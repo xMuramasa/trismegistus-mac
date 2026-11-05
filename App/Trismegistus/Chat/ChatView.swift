@@ -3,11 +3,12 @@ import TrismegistusKit
 import TrismegistusUI
 
 /// One conversation: approval banner, messages, working indicator, input. `compact` is the popover layout (tool and
-/// subagent rows inline); the window passes `compact: false` and gets one marker per run that calls `onShowTerminal`.
+/// subagent rows inline); the window passes `compact: false` and gets one chip per run, whose menu reaches this
+/// conversation's calls in the Commands section through `onShowCommands`.
 struct ChatView: View {
     let sessionID: String
     var compact: Bool = true
-    var onShowTerminal: (() -> Void)? = nil
+    var onShowCommands: ((String) -> Void)? = nil
 
     @Environment(AppModel.self) private var model
     @State private var draft = ""
@@ -48,7 +49,7 @@ struct ChatView: View {
                 LazyVStack(alignment: .leading, spacing: compact ? Space.m : Space.xl) {
                     OlderParts(tipID: id, compact: compact)
                     historyStatus
-                    ChatTranscript(items: items, sessionID: id, events: state?.events ?? [], onShowTerminal: showTerminal, retry: retry(_:))
+                    ChatTranscript(items: items, sessionID: id, events: state?.events ?? [], onShowCommands: showCommands, retry: retry(_:))
                     if let run { working(run) } else if let info, SessionCapabilities(info).canHandOff, Self.stalled(items) { stallRow(info) }
                 }
                 // The window: Space.m under the header's title rule.
@@ -115,9 +116,9 @@ struct ChatView: View {
         }
     }
 
-    private var showTerminal: (@MainActor () -> Void)? {
-        guard let onShowTerminal else { return nil }
-        return { onShowTerminal() }
+    private var showCommands: (@MainActor () -> Void)? {
+        guard let onShowCommands else { return nil }
+        return { onShowCommands(id) }
     }
 
     private func banner(_ approval: PendingApproval) -> some View {
@@ -169,7 +170,7 @@ struct ChatView: View {
         return VStack(alignment: .leading, spacing: Space.s) {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 WorkLine(detail: "\(Self.elapsed(from: start, to: context.date)) · " + (run.status == .waitingForApproval ? "approval" : "\(tools) \(tools == 1 ? "tool" : "tools")")) {
-                    if summary.commandCount > 0 { RunChip(summary: summary, isOpen: $workOpen, showTerminal: showTerminal) }
+                    if summary.commandCount > 0 { RunChip(summary: summary, isOpen: $workOpen, showCommands: showCommands) }
                 }
             }
             if workOpen { RunCards(entries: entries) }
@@ -315,7 +316,7 @@ struct ChatTranscript: View {
     let sessionID: String
     /// The live events: a run's cards unfold from them.
     var events: [Event] = []
-    var onShowTerminal: (@MainActor () -> Void)? = nil
+    var onShowCommands: (@MainActor () -> Void)? = nil
     var retry: @MainActor (OutgoingPrompt) -> Void = { _ in }
     @State private var expanded: Set<String> = []
 
@@ -354,7 +355,7 @@ struct ChatTranscript: View {
                 SubagentRowView(name: name, toolCount: toolCount, duration: duration)
             case .marker(let id, let summary):
                 VStack(alignment: .leading, spacing: Space.s) {
-                    RunChip(summary: summary, isOpen: isExpanded(id), showTerminal: onShowTerminal)
+                    RunChip(summary: summary, isOpen: isExpanded(id), showCommands: onShowCommands)
                     if expanded.contains(id) {
                         RunCards(entries: TerminalTranscript.entries(from: events).filter { "m-\($0.runID)" == id })
                     }
@@ -376,11 +377,11 @@ struct ChatTranscript: View {
     }
 }
 
-/// The chip of a run's commands; its context menu still reaches the terminal pane.
+/// The chip of a run's commands; its context menu reaches the Commands section.
 private struct RunChip: View {
     let summary: RunSummary
     @Binding var isOpen: Bool
-    let showTerminal: (@MainActor () -> Void)?
+    let showCommands: (@MainActor () -> Void)?
 
     var body: some View {
         CommandChip(
@@ -388,7 +389,7 @@ private struct RunChip: View {
             isOpen: $isOpen
         )
         .contextMenu {
-            if let showTerminal { Button("Show in Terminal") { showTerminal() } }
+            if let showCommands { Button("Show in Commands") { showCommands() } }
         }
     }
 }
@@ -402,6 +403,46 @@ private struct RunCards: View {
             ForEach(entries) { EntryRow(entry: $0) }
         }
         .padding(.top, Space.s).padding(.bottom, Space.xs)
+    }
+}
+
+/// One call as an item card, here and in the Commands log.
+struct EntryRow: View {
+    let entry: TerminalEntry
+    var oneLine = false
+    /// Some entry in the same list is from an earlier day: every time column takes the dated width.
+    var dated = false
+
+    /// The list holds a call from an earlier day, whose time carries the day.
+    static func dated(_ entries: [TerminalEntry]) -> Bool {
+        entries.contains { !Calendar.current.isDateInToday(Date(timeIntervalSince1970: Double($0.time) / 1000)) }
+    }
+
+    var body: some View {
+        TerminalEntryView(
+            time: Self.time(entry.time), tool: entry.tool, detail: entry.cwd,
+            command: entry.command ?? "…", output: output, exitCode: entry.exitCode, failed: entry.failed,
+            isRunning: entry.isRunning, startedAt: Date(timeIntervalSince1970: Double(entry.time) / 1000),
+            duration: entry.duration, oneLine: oneLine, timeWidth: dated ? Size.toolRow.timeDated : nil)
+    }
+
+    /// The running entry says why it has no output yet, as in the draft.
+    private var output: String? {
+        if entry.isRunning { return "output arrives when it finishes" }
+        if entry.awaitsResult { return "no result in the history yet" }
+        var lines: [String] = []
+        // Only the terminal tool reports an exit code; other tools show their failure here.
+        if entry.isError, entry.exitCode == nil { lines.append("✘ the tool reported an error") }
+        if let text = entry.output, !text.isEmpty { lines.append(text) }
+        if let text = entry.errorText, !text.isEmpty { lines.append(text) }
+        return lines.isEmpty ? nil : lines.joined(separator: "\n")
+    }
+
+    /// `14:02:11`, with the day before it when it isn't today (history reaches back days).
+    private static func time(_ ms: Int) -> String {
+        let date = Date(timeIntervalSince1970: Double(ms) / 1000)
+        let clock = date.formatted(.clock.hour(.twoDigits(amPM: .omitted)).minute().second())
+        return Calendar.current.isDateInToday(date) ? clock : date.formatted(.clock.day().month(.abbreviated)) + " " + clock
     }
 }
 

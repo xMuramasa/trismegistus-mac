@@ -12,7 +12,7 @@ commands, session list. Martin's laptop is the target; nothing is distributed.
   only the protocol, so a native client per platform is the same pattern.
 - **Menu bar app** (`MenuBarExtra` with the window style), not a Dock app: a companion that shows progress and asks
   for approvals belongs in the menu bar. SwiftUI, macOS 26 only (Martin's machine), Swift 6 strict concurrency.
-  Plus a **main window** (decided 2026-10-31, #4) for long work: conversations | chat | terminal. The popover stays for
+  Plus a **main window** (decided 2026-10-31, #4) for long work: conversations | chat, with a terminal under it. The popover stays for
   a glance and approvals and opens the window. Opening the app yourself (Finder, Spotlight, the Dock, or again while
   it runs) opens the window; a launch at login stays in the menu bar (`SMAppService` login items don't carry
   `keyAELaunchedAsLogInItem`, so a launch within a minute of Finder's, which starts with each login session, counts
@@ -72,6 +72,8 @@ TrismegistusKit/
                    dedupe by (session_id, seq); the rules from trismegistus issues #10/#11 (replay_gap filter,
                    late history) implemented and tested here from day one
     Keychain/      TokenStore protocol + KeychainTokenStore + InMemoryTokenStore (tests)
+    Terminal/      TerminalLink (actor): one shell over `/api/terminal`, read one frame at a time with `next()`;
+                   TerminalSocket: the socket with binary frames and close codes
   Tests/TrismegistusKitTests/
     ContractTests  (examples round-trip), RelayClientTests (against an in-process WebSocket fake serving recorded
     frames: auth → ready, subscribe → replay → live, ping/pong, drop → reconnect → resubscribe), StoreTests
@@ -99,8 +101,8 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   `composer.height`) until a double-click on the grabber. Sending trims only leading and trailing whitespace. The
   protocol caps text at 32,768 characters (Unicode scalars): from 30,000 a counter `30,512 / 32,768` shows under it,
   red over the cap, where Send is disabled.
-- **Main window:** our own sidebar column (`SidebarSplit`, #32; not `NavigationSplitView`), the detail, and our own
-  trailing terminal pane (`⌘⌥T`). **Five sections** (#41, #57, design 09f): Chat, GitHub, Agents, Jobs, Commands, picked
+- **Main window:** our own sidebar column (`SidebarSplit`, #32; not `NavigationSplitView`), the detail, and in Chat
+  the terminal drawer under it (`⌘⌥T`, #64). **Five sections** (#41, #57, design 09f): Chat, GitHub, Agents, Jobs, Commands, picked
   from the icon bar at the sidebar's bottom (under the paired-device footer; it hides with the sidebar) or with
   ⌘1…⌘5 (View menu; tooltips `Chat (⌘1)` …). Each section has its own sidebar list (header `TITLE // n`, a filter field
   that ⌘K focuses, arrow keys move the selection) and detail: Chat the conversations (pin, rename, tags, delete, new)
@@ -111,8 +113,7 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   the settings), or the form in its place while editing (24-hour time picker); Commands "All conversations" and the conversations with matching
   calls (the filter is the log's search) and the log (failed-only in its header). Each section keeps its own selection
   (`window.section`, `window.selection.<section>`; Chat keeps `window.selectedSession`). Opening a conversation from
-  GitHub, Agents, Jobs, Commands or a notification switches to Chat with it selected. The
-  terminal pane shows Chat's conversation only. The sidebar ground is `surface.sidebar` (the palette's secondary grey)
+  GitHub, Agents, Jobs, Commands or a notification switches to Chat with it selected. The sidebar ground is `surface.sidebar` (the palette's secondary grey)
   with light text (`text.on-sidebar`, `text.on-sidebar-secondary`, ≈4.7:1, nothing dimmer); the selected row is a
   white card with a yellow outline and ink text; the filter fields stay light. The daily feed runs are ordinary read-only
   cron conversations, listed like every other cron run (the news itself is read at news.lab.x-muramasa.dev).
@@ -137,13 +138,22 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   picked. A Telegram chat continued in the app is an app conversation (APP, its Telegram part folded above). The
   popover's list has the same tabs and follows the window's (one choice, `chat.kind`).
   The Commands section's conversation list is not filtered. The chat keeps messages and answers; each run shows one chip (`>_ 4 COMMANDS · 6.1 s · 1 failed`) that unfolds the run's cards in place (#58); Hermes' answers render lists, task lists and headings, and the input sits in one composer block with the run line above it.
-  The **terminal pane** is a read-only transcript of the selected conversation's tool calls: `$ command` from the
-  `tool.started` preview, then output, exit code and duration from the `tool.completed` preview (JSON for the
-  terminal tool; shown raw when cut). Filter: commands only or all tools. Live output arrives when a command finishes and is
-  cut at 4,000 characters; past calls come from the Hermes history (every source, output in full), fetched again every
-  10 s while the pane is shown. The **Commands** section lists recent calls across conversations, grouped by conversation with the newest first (filters: failed, conversation,
+  The chip's context menu has "Show in Commands", which opens Commands with this conversation selected.
+  The **Commands** section lists recent calls across conversations, grouped by conversation with the newest first (filters: failed, conversation,
   search; One line, on by default, shows each call as a row), synced incrementally and cached per relay in the app's Caches (deleted on unpair). It is not
-  a shell.
+  a shell; a call's card shows `$ command`, then output, exit code and duration. Live output arrives when a command
+  finishes and is cut at 4,000 characters; past calls come from the Hermes history (every source, output in full).
+  The **terminal drawer** (#64) is a real shell on optiplex, as the user Hermes runs as, in `~`, streamed over the relay
+  (`/api/terminal`, trismegistus#31); the app starts no local process. The top bar's terminal button and `⌘⌥T` toggle it
+  under the composer at the detail's full width, Chat only: elsewhere the button is disabled with "The terminal pane is
+  Chat only". SwiftTerm's `TerminalView` fed by `TerminalLink`: `xterm-256color`, selection, copy, paste, 10,000 lines of
+  scrollback, `dark-panel` ground, `on-steel` text, yellow cursor, the 16 ANSI colours from `color.role.ansi`, JetBrains
+  Mono 12 (the font's own line height: SwiftTerm has no line spacing). 200 pt tall; dragging the top edge sets 120–480 pt
+  (`window.terminalHeight`). One shell per app run: hiding the drawer or closing the window keeps it, and unpairing ends
+  it. The drawer stays closed at launch, so no shell starts until it is asked for. When the shell ends a muted line says so (`[shell ended · exit 0]`, `[connection lost]`,
+  `[terminal closed by the server: access ended]`) and the next Return or the next open starts a new one; the app never
+  reconnects a shell on its own. A refusal shows the relay's message as it is, plus the `systemctl --user start
+  trismegistus-term` fix for `unavailable` and `not_configured`.
 - **Markdown:** prose with `AttributedString(markdown:)`; fenced code blocks are split out and drawn as views with a
   language label and a copy button.
 - **Images** (#43, #44, #45; relay trismegistus#25, #26): a message takes up to 4 images by drop onto the chat column, the
@@ -171,9 +181,11 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   trust level as the phone.
 - **Settings:** relay URL, device name, connection status, unpair, launch at login (`SMAppService`), notification
   toggles (approval requests, run finished while closed, sound for approvals: on by default).
-- **Pairing sheet:** first launch; paste the code; shows the relay URL from the QR payload.
+- **Pairing sheet:** first launch; paste the code; shows the relay URL from the QR payload. A paired Mac has no terminal
+  yet: turn it on once on optiplex, for a manager device, with `docker exec trismegistus-relay trismegistus-relay devices
+  terminal macbook on`, and start the helper with `systemctl --user start trismegistus-term`.
 
-Not in v1: live terminal output (needs a relay change), dark mode, multiple relays, streaming deltas (the relay has streaming off), Sparkle updates, Linux
+Not in v1: dark mode, multiple relays, streaming deltas (the relay has streaming off), Sparkle updates, Linux
 (a Quickshell module in endfield-dotfiles is the Linux plan, not this repo), Windows.
 
 ## Security
@@ -182,6 +194,11 @@ Not in v1: live terminal output (needs a relay change), dark mode, multiple rela
   never message text or approval commands.
 - TLS to `hermes.lab.x-muramasa.dev` (tailnet-only name, Caddy certificate); ATS defaults, no exceptions.
 - The app is sandboxed with the network-client entitlement and read-only access to the files the user picks or drops (`com.apple.security.files.user-selected.read-only`, for attaching images, #43); nothing else.
+- The terminal drawer is a shell on optiplex, with everything the user Hermes runs as can do there. It needs a manager
+  device holding a per-device grant, off by default, which the relay checks at open and every 2 s after. To turn it off
+  on optiplex: `devices terminal macbook off` (closes the shell within 2 s), or `devices revoke macbook` to un-pair the
+  device altogether (through `docker exec trismegistus-relay trismegistus-relay …`). The stream is never logged by the
+  app or the relay, and a program on the host can't write the Mac's clipboard (OSC 52 is dropped).
 
 ## Phases
 
