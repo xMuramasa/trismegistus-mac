@@ -11,8 +11,10 @@ public struct Job: Decodable, Sendable, Equatable, Identifiable {
         public var expr: String?
         /// Hermes' own words for it.
         public var display: String?
+        /// The interval (kind `interval`).
+        public var minutes: Int?
 
-        enum CodingKeys: String, CodingKey { case kind, expr, display }
+        enum CodingKeys: String, CodingKey { case kind, expr, display, minutes }
 
         public init(from decoder: any Decoder) throws {
             // A job written by an older Hermes may keep the schedule as the string it was given.
@@ -25,6 +27,7 @@ public struct Job: Decodable, Sendable, Equatable, Identifiable {
             kind = try c.decodeIfPresent(String.self, forKey: .kind)
             expr = try c.decodeIfPresent(String.self, forKey: .expr)
             display = try c.decodeIfPresent(String.self, forKey: .display)
+            minutes = try c.decodeIfPresent(Int.self, forKey: .minutes)
         }
     }
 
@@ -109,6 +112,12 @@ public struct JobRun: Decodable, Sendable, Equatable, Identifiable {
     /// Unix seconds.
     public var startedAt: Double?
     public var title: String?
+
+    public init(id: String, startedAt: Double? = nil, title: String? = nil) {
+        self.id = id
+        self.startedAt = startedAt
+        self.title = title
+    }
 
     enum CodingKeys: String, CodingKey { case id, startedAt = "started_at", title }
 }

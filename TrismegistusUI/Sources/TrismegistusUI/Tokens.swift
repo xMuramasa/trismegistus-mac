@@ -176,6 +176,12 @@ public enum Size {
     public static let runColumn: CGFloat = 960
     /// a run's report folds here: 8 lines of the body role
     public static let reportFold: CGFloat = 144
+    /// a job's readout, prompt and form
+    public static let jobColumn: CGFloat = 720
+    /// a job's prompt folds here: 8 lines of 20 pt
+    public static let jobPromptFold: CGFloat = 160
+    /// the job form's prompt editor
+    public static let jobPromptEditor: CGFloat = 360
     /// the accent column down the right of an item card
     public static let cardEdge: CGFloat = 12
     /// a menu in a readout row

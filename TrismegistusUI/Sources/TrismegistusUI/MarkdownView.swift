@@ -102,10 +102,13 @@ public enum MarkdownText {
 /// indent, read-only task boxes. `extra` draws the caller's own blocks. Styled ahead of time, so a caller can cache parts.
 public struct MarkdownView<Extra, ExtraView: View>: View {
     let parts: [MarkdownPart<Extra>]
+    /// Between a paragraph's lines: 2 pt makes the body role's 18 pt line; a job's prompt reads at 20 pt (4).
+    let lineGap: CGFloat
     let extra: (Extra) -> ExtraView
 
-    public init(_ parts: [MarkdownPart<Extra>], @ViewBuilder extra: @escaping (Extra) -> ExtraView) {
+    public init(_ parts: [MarkdownPart<Extra>], lineGap: CGFloat = Space.xxs, @ViewBuilder extra: @escaping (Extra) -> ExtraView) {
         self.parts = parts
+        self.lineGap = lineGap
         self.extra = extra
     }
 
@@ -127,11 +130,11 @@ public struct MarkdownView<Extra, ExtraView: View>: View {
     @ViewBuilder private func block(_ part: MarkdownPart<Extra>) -> some View {
         switch part {
         case .prose(let text):
-            MarkdownLine(text: text)
+            MarkdownLine(text: text, gap: lineGap)
         case .heading(let text):
-            MarkdownLine(text: text, role: .headline).accessibilityAddTraits(.isHeader)
+            MarkdownLine(text: text, role: .headline, gap: lineGap).accessibilityAddTraits(.isHeader)
         case .list(let items):
-            MarkdownList(items: items)
+            MarkdownList(items: items, gap: lineGap)
         case .code(let language, let code):
             CodeBlockView(language: language, code: code)
         case .extra(let value):
@@ -145,11 +148,12 @@ private struct MarkdownLine: View {
     let text: AttributedString
     var role = TypeRole.body
     var color = Ink.text.primary
+    var gap = Space.xxs
 
     var body: some View {
         // fixedSize: in an HStack with a marker a lazy chat can measure the item at one line and truncate it with "…".
         Text(text)
-            .typeRole(role).lineSpacing(Space.xxs).foregroundStyle(color).tint(Ink.text.link).textSelection(.enabled)
+            .typeRole(role).lineSpacing(gap).foregroundStyle(color).tint(Ink.text.link).textSelection(.enabled)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -158,6 +162,7 @@ private struct MarkdownLine: View {
 private struct MarkdownList: View {
     let items: [MarkdownItem]
     var nested = false
+    var gap = Space.xxs
 
     var body: some View {
         // Task rows sit further apart: their boxes need the air.
@@ -167,10 +172,10 @@ private struct MarkdownList: View {
                 VStack(alignment: .leading, spacing: Space.xxs) {
                     HStack(alignment: .firstTextBaseline, spacing: 0) {
                         marker(item.marker).frame(minWidth: item.indent, alignment: .leading)
-                        MarkdownLine(text: item.text, color: item.isDone ? Ink.text.secondary : Ink.text.primary)
+                        MarkdownLine(text: item.text, color: item.isDone ? Ink.text.secondary : Ink.text.primary, gap: gap)
                     }
                     if !item.children.isEmpty {
-                        MarkdownList(items: item.children, nested: true).padding(.leading, item.indent)
+                        MarkdownList(items: item.children, nested: true, gap: gap).padding(.leading, item.indent)
                     }
                 }
             }

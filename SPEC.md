@@ -106,7 +106,9 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   that ⌘K focuses, arrow keys move the selection) and detail: Chat the conversations (pin, rename, tags, delete, new)
   and the conversation; GitHub the Work board by status (repo, priority and list-kind pickers, Done folded) and the
   issue; Agents the runs and the agent's detail: the result on top, then the run's steps as tool rows; Jobs the
-  jobs (+ New job) and the job's detail or form; Commands "All conversations" and the conversations with matching
+  jobs (+ New job; rows `daily 03:00 · next 13 h · ok 10 h`) and the job's detail (a pinned header with Pause, Run now and
+  Edit; a readout of cadence, the next 3 runs and the last result; the prompt as Markdown folded at 160 pt; the runs;
+  the settings), or the form in its place while editing (24-hour time picker); Commands "All conversations" and the conversations with matching
   calls (the filter is the log's search) and the log (failed-only in its header). Each section keeps its own selection
   (`window.section`, `window.selection.<section>`; Chat keeps `window.selectedSession`). Opening a conversation from
   GitHub, Agents, Jobs, Commands or a notification switches to Chat with it selected. The

@@ -63,6 +63,83 @@ let sampleJob = #"""
     }
 }
 
+@Suite struct JobReadingsTests {
+    /// 2026-11-04 14:05 in Santiago.
+    let now = Date(timeIntervalSince1970: 1_793_811_900)
+
+    func job(_ fields: String) throws -> Job { try Wire.decode(Job.self, from: Data("{\"id\":\"0000000000a1\",\(fields)}".utf8)) }
+
+    func iso(_ seconds: TimeInterval) -> String { ISO8601DateFormatter().string(from: now.addingTimeInterval(seconds)) }
+
+    func daily(_ rest: String = "", status: String = "ok") throws -> Job {
+        try job(#""schedule":{"kind":"cron","expr":"0 3 * * *"},"last_run_at":"\#(iso(-37_000))","last_status":"\#(status)","next_run_at":"\#(iso(46_800))"\#(rest)"#)
+    }
+
+    @Test func theMetaLine() throws {
+        #expect(try daily().meta(now: now) == "daily 03:00 · next 13 h · ok 10 h")
+        #expect(try daily(#","enabled":false"#).meta(now: now) == "daily 03:00 · ok 10 h", "a paused job has no next run")
+        #expect(try daily(status: "error").meta(now: now) == "daily 03:00 · next 13 h · err 10 h")
+        #expect(try job(#""schedule":{"kind":"interval","minutes":5,"display":"every 5m"},"next_run_at":"\#(iso(180))""#).meta(now: now)
+            == "every 5m · next 3 min · no runs yet")
+        #expect(try job(#""schedule":{"kind":"once","display":"once at 2026-10-29 19:00"},"last_run_at":"\#(iso(-432_000))","last_status":"ok""#).meta(now: now)
+            == "once 2026-10-29 19:00 · ok 5 d")
+    }
+
+    /// The default sidebar fits 40 of its mono characters.
+    @Test func theLongestPresetMetaFitsTheSidebar() throws {
+        let weekdays = try job(#""schedule":{"kind":"cron","expr":"0 9 * * 1-5"},"last_run_at":"\#(iso(-37_000))","last_status":"error","next_run_at":"\#(iso(46_800))""#)
+        #expect(weekdays.meta(now: now).count <= 40)
+    }
+
+    @Test func spansAreShort() {
+        #expect(Job.span(42) == "42 s" && Job.span(59.9) == "59 s" && Job.span(60) == "1 min" && Job.span(3599) == "59 min")
+        #expect(Job.span(3600) == "1 h" && Job.span(86_399) == "23 h" && Job.span(86_400) == "1 d" && Job.span(-180) == "3 min")
+    }
+
+    @Test func theCadenceAndItsCron() throws {
+        #expect(try daily().cadence == "Daily at 03:00" && daily().cron == "0 3 * * *")
+        #expect(try daily().subtitle == "daily at 03:00")
+        #expect(try daily(#","model":"claude-opus-5-5""#).subtitle == "daily at 03:00 · claude-opus-5-5")
+        let interval = try job(#""schedule":{"kind":"interval","minutes":5,"display":"every 5m"}"#)
+        #expect(interval.cadence == "Every 5m" && interval.cron == nil)
+        let other = try job(#""schedule":{"kind":"cron","expr":"*/15 * * * *"},"schedule_display":"*/15 * * * *""#)
+        #expect(other.cron == nil, "the words already are the expression")
+        let named = try job(#""schedule":{"kind":"cron","expr":"0 3 * * MON"},"schedule_display":"Mondays at 3""#)
+        #expect(named.cron == "0 3 * * MON", "Hermes reads names that CronExpression doesn't")
+    }
+
+    @Test func theNextThreeOnTheTwentyFourHourClock() throws {
+        let calendar = CronTests.calendar
+        // Thursday 2026-11-05 03:00 in Santiago.
+        let next = #""next_run_at":"2026-11-05T03:00:00-03:00""#
+        func lines(_ job: Job) -> [String] { job.nextRuns(calendar: calendar).map { Job.clockLine($0, calendar: calendar) } }
+        #expect(try lines(job(#""schedule":{"kind":"cron","expr":"0 3 * * *"},\#(next)"#)) == ["Thu 5 Nov 03:00", "Fri 6 Nov 03:00", "Sat 7 Nov 03:00"])
+        #expect(try lines(job(#""schedule":{"kind":"cron","expr":"30 16 * * *"},"next_run_at":"2026-11-05T16:30:00-03:00""#))[0] == "Thu 5 Nov 16:30")
+        #expect(try lines(job(#""schedule":{"kind":"interval","minutes":5},\#(next)"#)) == ["Thu 5 Nov 03:00", "Thu 5 Nov 03:05", "Thu 5 Nov 03:10"])
+        #expect(try lines(job(#""schedule":{"kind":"once","display":"once"},\#(next)"#)) == ["Thu 5 Nov 03:00"], "only Hermes' next run")
+        #expect(try lines(job(#""schedule":{"kind":"cron","expr":"0 3 * * *"},"repeat":{"times":5,"completed":4},\#(next)"#)).count == 1)
+        #expect(try lines(job(#""schedule":{"kind":"cron","expr":"0 3 * * *"},"enabled":false,\#(next)"#)).isEmpty)
+        #expect(try lines(job(#""schedule":{"kind":"cron","expr":"0 3 * * *"}"#)).isEmpty, "nothing without Hermes' next run")
+    }
+
+    @Test func theNewestRunsOutcome() throws {
+        func run(_ started: Date) -> JobRun { JobRun(id: "cron_0000000000a1_1", startedAt: started.timeIntervalSince1970) }
+        let last = now.addingTimeInterval(-37_000)
+        let ok = try daily().outcome(ofNewest: run(last.addingTimeInterval(-72)))
+        #expect(ok?.failed == false && ok?.duration == "1 min")
+        #expect(try daily(status: "error").outcome(ofNewest: run(last.addingTimeInterval(-5)))?.failed == true)
+        #expect(try daily().outcome(ofNewest: run(now)) == nil, "still running")
+        #expect(try job(#""schedule":"0 3 * * *""#).outcome(ofNewest: run(now)) == nil, "no runs recorded")
+    }
+
+    /// Martin's Mac: en_CL with the system's 12-hour clock. The schedule's time picker takes this locale.
+    @Test func theTimePickersLocaleIsOnTheTwentyFourHourClock() {
+        let locale = Locale(identifier: "en_CL@hours=h12").onTwentyFourHourClock
+        #expect(locale.hourCycle == .zeroToTwentyThree)
+        #expect(locale.region == Locale(identifier: "en_CL").region)
+    }
+}
+
 @Suite struct CronTests {
     /// Fixed zone and dates, so the tests don't depend on the machine's.
     static let calendar: Calendar = {

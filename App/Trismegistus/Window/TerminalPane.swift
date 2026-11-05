@@ -84,35 +84,6 @@ struct TerminalPane: View {
     }
 }
 
-struct FilterChip: View {
-    let title: String
-    let symbol: String
-    let isOn: Bool
-    /// Stretch to the width offered (a half of a segmented row) instead of hugging the label.
-    var fills = false
-    let action: () -> Void
-
-    @Environment(\.onSteel) private var onSteel
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: Space.s) {
-                // Never wrap: a narrow pane squeezed the labels into one letter column ("COM/MAN/DS").
-                Text(title).textCase(.uppercase).lineLimit(1).fixedSize()
-                Image(systemName: symbol)
-            }
-            .typeRole(.button)
-            .padding(.horizontal, Space.m).padding(.vertical, Space.s)
-            .frame(maxWidth: fills ? .infinity : nil)
-            .foregroundStyle(isOn ? Ink.selection : onSteel ? Ink.text.onDark : Ink.text.primary)
-            .background(isOn ? Ink.surface.inverse : .clear)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isOn ? .isSelected : [])
-    }
-}
-
 struct EntryRow: View {
     let entry: TerminalEntry
 

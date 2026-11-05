@@ -72,15 +72,9 @@ struct JobsView: View {
         VStack(spacing: 0) {
             if let error = board.error { notice(error, board: board) }
             if selection == Self.newJob, board.canManage {
-                ScrollView {
-                    JobDetail(job: nil, board: board, onOpen: onOpen, onCreated: { selection = $0 }).id(Self.newJob)
-                }
-                .settledWidth()
+                JobDetail(job: nil, board: board, onOpen: onOpen, onCreated: { selection = $0 }, onCancel: { selection = nil }).id(Self.newJob)
             } else if let job = board.jobs.first(where: { $0.id == selection }) {
-                ScrollView {
-                    JobDetail(job: job, board: board, onOpen: onOpen, onCreated: { _ in }).id(job.id)
-                }
-                .settledWidth()
+                JobDetail(job: job, board: board, onOpen: onOpen, onCreated: { _ in }).id(job.id)
             } else {
                 SectionEmpty(symbol: WindowSection.jobs.symbol, text: board.isLoaded ? "No job selected" : "Reading the jobs…")
             }
@@ -102,7 +96,7 @@ struct JobsView: View {
     }
 }
 
-/// A job in the sidebar: name and marks, then schedule in words, next run, last run.
+/// A job in the sidebar: name and marks, then `Job.meta`.
 private struct JobRow: View {
     let job: Job
     let isSelected: Bool
@@ -118,12 +112,7 @@ private struct JobRow: View {
                     Spacer(minLength: Space.s)
                     if job.isPaused { Text("Paused").typeRole(.label).foregroundStyle(ink.meta) }
                 }
-                HStack(spacing: Space.s) {
-                    Text(job.scheduleWords)
-                    if !job.isPaused, let next = job.nextRun { Text(verbatim: "· next \(JobDetail.relative(next, now: context.date))") }
-                    lastRun(now: context.date, ink: ink)
-                }
-                .typeRole(.monoSmall).foregroundStyle(ink.meta).lineLimit(1)
+                Text(meta(now: context.date, ink: ink)).typeRole(.monoSmall).foregroundStyle(ink.meta).lineLimit(1)
             }
             .padding(.horizontal, Space.m).padding(.vertical, Space.s)
             .frame(maxWidth: .infinity, minHeight: Size.row, alignment: .leading)
@@ -133,13 +122,10 @@ private struct JobRow: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    @ViewBuilder private func lastRun(now: Date, ink: RowInk) -> some View {
-        if let last = job.lastRun {
-            if job.lastRunFailed {
-                Text(verbatim: "· failed \(PopoverFormat.ago(last, now: now)): \(job.lastErrorLine ?? "no error line")").foregroundStyle(ink.error)
-            } else {
-                Text(verbatim: "· ok \(PopoverFormat.ago(last, now: now))")
-            }
-        }
+    /// `Job.meta`, a failed last run in the error ink.
+    private func meta(now: Date, ink: RowInk) -> AttributedString {
+        var line = AttributedString(job.meta(now: now))
+        if job.lastRunFailed, let err = line.range(of: "err ", options: .backwards) { line[err.lowerBound...].foregroundColor = ink.error }
+        return line
     }
 }
