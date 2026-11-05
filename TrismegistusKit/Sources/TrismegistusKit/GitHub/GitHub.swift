@@ -168,6 +168,9 @@ public extension [String] {
         priority.isEmpty ? self : filter { $0.caseInsensitiveCompare(priority) != .orderedSame }
     }
 
+    /// The labels except `agent:` ones, which the readout shows as Agent.
+    var withoutAgent: [String] { filter { !$0.lowercased().hasPrefix("agent:") } }
+
     /// The value of the `agent:` label (`agent: opus`), nil without one.
     var agentValue: String? {
         filter { $0.lowercased().hasPrefix("agent:") }

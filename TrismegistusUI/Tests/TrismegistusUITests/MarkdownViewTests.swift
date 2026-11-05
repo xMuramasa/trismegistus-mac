@@ -41,6 +41,31 @@ final class MarkdownViewTests: XCTestCase {
         XCTAssertFalse(runs("`curl https://example.test`").contains { $0.link != nil })
     }
 
+    /// A chip's sides glue to its code: a line can't end between them (a lone grey box at the line's end).
+    func testChipSidesDontBreak() {
+        let styled = String(MarkdownText.styled("see `a/b.swift` now").characters)
+        XCTAssertTrue(styled.contains("\u{00A0}a/b.swift\u{00A0}"), styled)
+        XCTAssertFalse(styled.contains("\u{2004}"))
+    }
+
+    /// QA 2026-11-04: a wrapped table cell spilled into the next row. Under a nil width proposal (the table's
+    /// horizontal scroll view) `CappedWidth` reports the wrapped height; `.frame(maxWidth:)` reported one line.
+    @MainActor func testCappedWidthReportsTheWrappedHeight() {
+        let long = "305 pass, 1 known issue in keychain() (TokenStoreTests.swift, a file I didn't touch)"
+        // fixedSize: nil proposals, as the scroll view gives the table.
+        func size(_ view: some View) -> CGSize { NSHostingView(rootView: Grid { GridRow { view } }.fixedSize()).fittingSize }
+        let line = size(Text(verbatim: "one").typeRole(.body)).height
+        let capped = size(CappedWidth(max: 120) { Text(verbatim: long).typeRole(.body) })
+        XCTAssertEqual(capped.width, 120, accuracy: 0.5)
+        XCTAssertGreaterThan(capped.height, line * 3)
+        let short = size(CappedWidth(max: 120) { Text(verbatim: "86 pass").typeRole(.body) })
+        XCTAssertLessThan(short.width, 120)
+        XCTAssertEqual(short.height, line, accuracy: 1)
+        // The bug it replaces: the frame keeps the width cap but not the height.
+        let framed = size(Text(verbatim: long).typeRole(.body).frame(maxWidth: 120).fixedSize(horizontal: false, vertical: true))
+        XCTAssertLessThan(framed.height, line * 2, "if .frame(maxWidth:) wraps here now, CappedWidth may be unneeded")
+    }
+
     /// `Text` has to draw the attribute: the chip's ground is on screen, not only in the string.
     @MainActor func testTheChipsGroundIsDrawn() throws {
         let host = NSHostingView(rootView: Text(MarkdownText.styled("`chip`")).padding(Space.m).background(Ink.surface.raised))

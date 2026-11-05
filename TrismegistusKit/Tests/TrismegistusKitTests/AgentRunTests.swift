@@ -78,6 +78,8 @@ import Testing
     @Test func pathsAreRelativeToTheWorktree() {
         #expect(AgentRun.relative("/wt/issue-60/apps/a.swift", to: Self.cwd) == "apps/a.swift")
         #expect(AgentRun.relative("/wt/issue-60/apps/a.swift", to: Self.cwd + "/") == "apps/a.swift")
+        #expect(AgentRun.relative("/wt/issue-60", to: Self.cwd) == ".")
+        #expect(AgentRun.relative("/wt/issue-60/", to: Self.cwd) == ".")
         #expect(AgentRun.relative("cat /wt/issue-60/a && cp \"/wt/issue-60/b\" c=/wt/issue-60/d", to: Self.cwd) == "cat a && cp \"b\" c=d")
     }
 

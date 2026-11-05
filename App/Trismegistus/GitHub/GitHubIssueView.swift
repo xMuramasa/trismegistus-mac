@@ -115,7 +115,7 @@ struct GitHubIssueView: View {
 
     /// The row with as many tags as fit: asked inside the row's own layout, its spacer would take half their room.
     private func readout(_ issue: GitHubIssue) -> some View {
-        let tags = issue.labels.withoutPriority(issue.priority)
+        let tags = issue.labels.withoutPriority(issue.priority).withoutAgent
         return ViewThatFits(in: .horizontal) {
             ForEach((0...tags.count).reversed(), id: \.self) { readout(issue, tags: tags, shown: $0) }
         }

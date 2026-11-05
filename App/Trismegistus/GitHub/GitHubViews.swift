@@ -85,11 +85,14 @@ struct MarkdownTableView: View {
     private func cell(_ text: String, column: Int, role: TypeRole, color: Color) -> some View {
         let text = clean(text)
         let alignment = alignments[column]
-        return Text((try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text))
-            .typeRole(role).foregroundStyle(color).textSelection(.enabled)
-            .multilineTextAlignment(alignment == .trailing ? .trailing : alignment == .center ? .center : .leading)
-            .frame(maxWidth: Size.chatColumn / 3, alignment: alignment == .trailing ? .trailing : alignment == .center ? .center : .leading)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, Space.s).padding(.vertical, Space.xs)
+        // CappedWidth, not .frame(maxWidth:): in the horizontal scroll view a frame reports the unwrapped line's height and
+        // a wrapped cell overlapped the next row.
+        return CappedWidth(max: Size.chatColumn / 3) {
+            Text((try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text))
+                .typeRole(role).foregroundStyle(color).textSelection(.enabled)
+                .multilineTextAlignment(alignment == .trailing ? .trailing : alignment == .center ? .center : .leading)
+        }
+        .padding(.horizontal, Space.s).padding(.vertical, Space.xs)
+        .gridColumnAlignment(alignment == .trailing ? .trailing : alignment == .center ? .center : .leading)
     }
 }

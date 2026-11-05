@@ -60,16 +60,19 @@ public enum MarkdownText {
         return styled
     }
 
-    /// shortcut: the chip's 4 pt sides are three-per-em spaces in its background, so a selection across a chip copies
-    /// them; a `TextRenderer` could draw real padding if that ever bothers anyone.
+    /// shortcut: the chip's sides are no-break spaces in its background (≈4 pt), so a selection across a chip copies
+    /// them; a `TextRenderer` could draw real padding if that ever bothers anyone. No-break: a line can't end between a
+    /// side and its code, which left a lone grey box at a line's end (three-per-em spaces break).
+    static let chipSide = "\u{00A0}"
+
     private static func chip(_ code: String, _ attributes: AttributeContainer) -> AttributedString {
         var attributes = attributes
         attributes.swiftUI.backgroundColor = Ink.surface.sunken
         var side = attributes
         side.swiftUI.font = TypeRole.body.spec.font()
         attributes.swiftUI.font = TypeRole.mono.spec.font()
-        return AttributedString("\u{2004}", attributes: side) + AttributedString(code, attributes: attributes)
-            + AttributedString("\u{2004}", attributes: side)
+        return AttributedString(chipSide, attributes: side) + AttributedString(code, attributes: attributes)
+            + AttributedString(chipSide, attributes: side)
     }
 
     private static func linked(_ text: String, _ url: URL, _ attributes: AttributeContainer) -> AttributedString {
@@ -144,8 +147,10 @@ private struct MarkdownLine: View {
     var color = Ink.text.primary
 
     var body: some View {
+        // fixedSize: in an HStack with a marker a lazy chat can measure the item at one line and truncate it with "…".
         Text(text)
             .typeRole(role).lineSpacing(Space.xxs).foregroundStyle(color).tint(Ink.text.link).textSelection(.enabled)
+            .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

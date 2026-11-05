@@ -52,6 +52,7 @@ import Testing
         #expect(["agent:", "agent: opus"].agentValue == "opus")
         #expect(["area: app", "agents", "reagent: x"].agentValue == nil)
         #expect([String]().agentValue == nil)
+        #expect(["area: app", "Agent: opus", "agents"].withoutAgent == ["area: app", "agents"])
     }
 
     // MARK: Ticks

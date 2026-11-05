@@ -81,6 +81,7 @@ public enum AgentRun {
     public static func relative(_ text: String, to cwd: String?) -> String {
         guard let cwd, !cwd.isEmpty else { return text }
         let prefix = cwd.hasSuffix("/") ? cwd : cwd + "/"
+        if text + "/" == prefix || text == prefix { return "." }  // a Grep or Glob over the whole worktree
         var out = ""
         var rest = Substring(text)
         while let hit = rest.range(of: prefix) {
