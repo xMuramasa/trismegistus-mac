@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trismegistus.invalid/protocol/terminal.schema.json",
+  "title": "Trismegistus terminal protocol: the text frames of /api/terminal (binary frames carry PTY bytes)",
+  "oneOf": [
+    { "$ref": "#/$defs/auth" },
+    { "$ref": "#/$defs/open" },
+    { "$ref": "#/$defs/resize" },
+    { "$ref": "#/$defs/opened" },
+    { "$ref": "#/$defs/exit" },
+    { "$ref": "#/$defs/error" }
+  ],
+  "$defs": {
+    "size": { "type": "integer", "minimum": 1, "maximum": 1000 },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "token"],
+      "properties": {
+        "type": { "const": "auth" },
+        "token": { "type": "string" }
+      }
+    },
+    "open": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "cols", "rows"],
+      "properties": {
+        "type": { "const": "open" },
+        "cols": { "$ref": "#/$defs/size" },
+        "rows": { "$ref": "#/$defs/size" }
+      }
+    },
+    "resize": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "cols", "rows"],
+      "properties": {
+        "type": { "const": "resize" },
+        "cols": { "$ref": "#/$defs/size" },
+        "rows": { "$ref": "#/$defs/size" }
+      }
+    },
+    "opened": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "host", "shell"],
+      "properties": {
+        "type": { "const": "opened" },
+        "host": { "type": "string" },
+        "shell": { "type": "string" }
+      }
+    },
+    "exit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "status"],
+      "properties": {
+        "type": { "const": "exit" },
+        "status": { "type": "integer" }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "code", "message"],
+      "properties": {
+        "type": { "const": "error" },
+        "code": {
+          "enum": ["unauthorized", "forbidden", "not_configured", "unavailable", "busy", "bad_request"]
+        },
+        "message": { "type": "string" }
+      }
+    }
+  }
+}
