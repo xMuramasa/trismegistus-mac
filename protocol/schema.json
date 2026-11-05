@@ -74,7 +74,8 @@
         "run.cancelled",
         "steer.queued",
         "reconnected",
-        "unknown"
+        "unknown",
+        "user.message"
       ]
     },
     "short": { "type": "string", "maxLength": 128 },
@@ -217,7 +218,8 @@
         { "if": { "properties": { "kind": { "const": "run.cancelled" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/data_run_cancelled" } } } },
         { "if": { "properties": { "kind": { "const": "steer.queued" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/data_empty" } } } },
         { "if": { "properties": { "kind": { "const": "reconnected" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/data_reconnected" } } } },
-        { "if": { "properties": { "kind": { "const": "unknown" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/data_unknown" } } } }
+        { "if": { "properties": { "kind": { "const": "unknown" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/data_unknown" } } } },
+        { "if": { "properties": { "kind": { "const": "user.message" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/data_user_message" } } } }
       ]
     },
     "run": {
@@ -381,6 +383,34 @@
         "event": { "type": "string", "maxLength": 64 },
         "data": { "type": "object" },
         "truncated": { "type": "boolean" }
+      }
+    },
+    "data_user_message": {
+      "description": "A user's message as the relay accepted it, so every subscribed device shows it at once (the history has it only once Hermes stores it). kind prompt: it started this run (client_msg_id is the prompt's); kind steer: it reached the running turn. device is the sender's name.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "text", "device"],
+      "properties": {
+        "kind": { "enum": ["prompt", "steer"] },
+        "text": { "type": "string", "maxLength": 32768 },
+        "device": { "$ref": "#/$defs/short" },
+        "client_msg_id": { "$ref": "#/$defs/id" },
+        "attachments": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "mime", "width", "height"],
+            "properties": {
+              "id": { "$ref": "#/$defs/attachment_id" },
+              "mime": { "type": "string", "maxLength": 64 },
+              "width": { "type": "integer", "minimum": 0 },
+              "height": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
       }
     }
   }

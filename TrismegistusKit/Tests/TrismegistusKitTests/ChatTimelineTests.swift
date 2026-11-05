@@ -109,4 +109,24 @@ import Testing
         let stored = state([], history: history(#"[{"id":9,"role":"user","display_kind":"steer","content":"with the camera"}]"#))
         #expect(ChatTimeline.items(stored, compact: false) == [.user(id: "h-9", text: "with the camera", time: nil, steer: true)])
     }
+
+    /// trismegistus#30: another device's message shows from the relay; this device's own and stored ones don't twice.
+    @Test func userMessagesShowOnceWhateverHasThem() {
+        let theirs = event("s1", 1, run: "run_9", .userMessage(UserMessage(kind: .prompt, text: "From the phone", device: "s21", clientMsgID: "c9")))
+        let answer = event("s1", 2, run: "run_9", .answer(Answer(text: "Hi.")))
+        #expect(ChatTimeline.items(state([theirs, answer]), compact: true).map(\.id) == ["e-1", "e-2"])
+        let mine = OutgoingPrompt(id: "c9", text: "From the phone", status: .sent(runID: "run_9"))
+        #expect(ChatTimeline.items(state([theirs, answer], outbox: [mine]), compact: true).map(\.id) == ["o-c9", "e-2"])
+        // The history has it (a reload during the run), stamped at or after the event: the same message.
+        let stored = history(#"[{"id":7,"role":"user","content":"From the phone","timestamp":1792801005}]"#)
+        #expect(ChatTimeline.items(state([theirs, answer], history: stored), compact: true).map(\.id) == ["h-7", "e-2"])
+        // The same words sent long before are another message.
+        let older = history(#"[{"id":3,"role":"user","content":"From the phone","timestamp":1792800000}]"#)
+        #expect(ChatTimeline.items(state([theirs, answer], history: older), compact: true).map(\.id) == ["h-3", "e-1", "e-2"])
+        let steer = event("s1", 3, run: "run_9", .userMessage(UserMessage(kind: .steer, text: "faster", device: "macbook")))
+        guard case .user(_, "faster", _, _, true)? = ChatTimeline.items(state([steer]), compact: false).first else {
+            Issue.record("a steer from another device shows as YOU // STEER")
+            return
+        }
+    }
 }

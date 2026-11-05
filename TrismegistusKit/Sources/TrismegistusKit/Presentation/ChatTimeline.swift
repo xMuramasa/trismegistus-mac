@@ -62,7 +62,7 @@ public enum ChatTimeline {
             }
             let steers = s.outbox.filter { $0.isSteer && $0.status == .sent(runID: runID) }
             placed.formUnion(steers.map(\.id))
-            items += run(events, steers: steers, compact: compact)
+            items += run(events, steers: steers, compact: compact, shows: { e, m in shows(s, e, m) })
         }
         items += s.outbox.filter { !placed.contains($0.id) }.map { .prompt($0, time: nil) }
         return items
@@ -144,7 +144,34 @@ public enum ChatTimeline {
         return row
     }
 
-    private static func run(_ events: [Event], steers: [OutgoingPrompt] = [], compact: Bool) -> [ChatItem] {
+    /// How far before a `user.message` the history's copy of it may be stamped (same host clock; Hermes stores later).
+    static let historySlack: TimeInterval = 10
+
+    /// A relay's `user.message` (trismegistus#30) shows unless something else already does: this device's outbox (its
+    /// prompt by client_msg_id, its steer by run and text) or the history, which has it once Hermes stored it (same
+    /// text, or the same images for an image-only prompt, stamped at or after it).
+    static func shows(_ s: SessionState, _ e: Event, _ m: UserMessage) -> Bool {
+        if let id = m.clientMsgID, s.outbox.contains(where: { !$0.isSteer && $0.id == id }) { return false }
+        if s.outbox.contains(where: { $0.isSteer && $0.text == m.text && $0.status == .sent(runID: e.runID) }) { return false }
+        let text = bare(m.text)
+        let images = (m.attachments ?? []).map(\.id)
+        let at = Double(e.ts) / 1000 - historySlack
+        return !s.history.contains { h in
+            h.role == .user && bare(h.content) == text && (!text.isEmpty || h.attachments.map(\.id) == images)
+                && (h.timestamp ?? 0) >= at
+        }
+    }
+
+    /// Hermes keeps a `[screenshot]` line per image in the prompt it stores.
+    private static func bare(_ text: String) -> String {
+        text.split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { $0.trimmingCharacters(in: .whitespaces) != "[screenshot]" }
+            .joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func run(
+        _ events: [Event], steers: [OutgoingPrompt] = [], compact: Bool, shows: (Event, UserMessage) -> Bool = { _, _ in true }
+    ) -> [ChatItem] {
         let entries = TerminalTranscript.entries(from: events)
         let entryAt = Dictionary(entries.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         var subagentEnd: [String: (seq: Int, data: SubagentCompleted)] = [:]
@@ -185,6 +212,10 @@ public enum ChatTimeline {
                 items.append(.subagent(
                     id: id, name: name.count > 40 ? String(name.prefix(39)) + "…" : name, toolCount: tools,
                     duration: end.map { $0.data.duration.map(seconds) ?? "" } ?? "…"))
+            case .userMessage(let m) where shows(e, m):
+                items.append(.user(
+                    id: id, text: m.text, time: date(ms: e.ts), images: (m.attachments ?? []).map { .attachment($0.ref) },
+                    steer: m.kind == .steer))
             case .answer(let a):
                 items.append(.answer(id: id, text: a.text, time: date(ms: e.ts)))
                 if a.truncated == true {

@@ -62,6 +62,8 @@ public enum EventPayload: Sendable, Equatable {
     case reconnected(reason: ReconnectReason)
     /// A Hermes event the relay doesn't map; safe to ignore.
     case unknown(UnknownEvent)
+    /// A user's prompt or steer as the relay accepted it (trismegistus#30), so every device shows it at once.
+    case userMessage(UserMessage)
 
     public var kind: String {
         switch self {
@@ -78,6 +80,7 @@ public enum EventPayload: Sendable, Equatable {
         case .steerQueued: "steer.queued"
         case .reconnected: "reconnected"
         case .unknown: "unknown"
+        case .userMessage: "user.message"
         }
     }
 
@@ -100,6 +103,7 @@ public enum EventPayload: Sendable, Equatable {
         case "approval.resolved": self = .approvalResolved(try .init(strict: d))
         case "answer": self = .answer(try .init(strict: d))
         case "unknown": self = .unknown(try .init(strict: d))
+        case "user.message": self = .userMessage(try .init(strict: d))
         case "run.completed":
             try c.only([])
             self = .runCompleted
@@ -131,6 +135,7 @@ public enum EventPayload: Sendable, Equatable {
         case .approvalResolved(let v): try v.encode(to: e)
         case .answer(let v): try v.encode(to: e)
         case .unknown(let v): try v.encode(to: e)
+        case .userMessage(let v): try v.encode(to: e)
         case .runCompleted, .steerQueued: break
         case .runFailed(let error): try c.encodeIfPresent(error, forKey: "error")
         case .runCancelled(let reason): try c.encodeIfPresent(reason, forKey: "reason")
@@ -200,6 +205,40 @@ public struct Answer: StrictCodable, Sendable, Equatable {
     public var text: String
     public var truncated: Bool?
     enum CodingKeys: String, CodingKey, CaseIterable { case text, truncated }
+}
+
+/// `user.message`: a prompt (its run's first event; `clientMsgID` is the prompt's) or a steer (right before
+/// `steer.queued`), as the relay accepted it from `device`.
+public struct UserMessage: StrictCodable, Sendable, Equatable {
+    public enum Kind: String, Codable, Sendable { case prompt, steer }
+
+    public struct Image: StrictCodable, Sendable, Equatable {
+        public var id: String
+        public var mime: String
+        public var width: Int
+        public var height: Int
+        enum CodingKeys: String, CodingKey, CaseIterable { case id, mime, width, height }
+
+        public var ref: AttachmentRef { AttachmentRef(id: id, mime: mime, width: width, height: height) }
+    }
+
+    public var kind: Kind
+    public var text: String
+    public var device: String
+    public var clientMsgID: String?
+    public var attachments: [Image]?
+    enum CodingKeys: String, CodingKey, CaseIterable {
+        case kind, text, device, attachments
+        case clientMsgID = "client_msg_id"
+    }
+
+    public init(kind: Kind, text: String, device: String, clientMsgID: String? = nil, attachments: [Image]? = nil) {
+        self.kind = kind
+        self.text = text
+        self.device = device
+        self.clientMsgID = clientMsgID
+        self.attachments = attachments
+    }
 }
 
 public struct UnknownEvent: StrictCodable, Sendable, Equatable {

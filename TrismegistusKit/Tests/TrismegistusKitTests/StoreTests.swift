@@ -102,16 +102,14 @@ let answeredHistory = history(#"""
         #expect(s.run == nil) // replayed: the run may be long over
     }
 
-    /// #54: a run this device didn't start means a prompt only the history has; its first event asks again.
+    /// #54 with a relay older than trismegistus#30: another device's run's first event asks for the history.
     @Test func anotherDevicesRunAsksForTheHistory() {
         var s = SessionState(id: "s1")
         s.applyHistory(answeredHistory)
         s.apply(.run(runID: "run_9", sessionID: "s1", status: .running))
-        #expect(s.historyStale && s.historyLoaded) // the chat stays on screen while it reloads
-        s.applyHistory(answeredHistory)
-        #expect(!s.historyStale)
+        #expect(!s.historyStale) // the prompt may not be stored yet: wait for the run's first event
         s.apply(.event(event("s1", 1, run: "run_9", .toolStarted(ToolStarted(tool: "terminal")))))
-        #expect(s.historyStale) // Hermes stores the prompt a few ms after the relay announces the run
+        #expect(s.historyStale && s.historyLoaded) // the chat stays on screen while it reloads
         s.applyHistory(answeredHistory)
         s.apply(.event(event("s1", 2, run: "run_9", .answer(Answer(text: "Hi.")))))
         #expect(!s.historyStale)
@@ -151,6 +149,19 @@ let answeredHistory = history(#"""
         s.apply(.event(event("s1", 5, .runCompleted)))
         s.applyHistory(answeredHistory)
         #expect(s.outbox.isEmpty)
+    }
+
+    /// trismegistus#30: the relay's user.message is the prompt itself, so no reload; our own steer's replaces its entry.
+    @Test func userMessageNeedsNoReloadAndTakesOverOurSteer() {
+        var s = SessionState(id: "s1")
+        s.applyHistory(answeredHistory)
+        s.apply(.run(runID: "run_9", sessionID: "s1", status: .running))
+        s.apply(.event(event("s1", 1, run: "run_9", .userMessage(UserMessage(kind: .prompt, text: "Draw it", device: "s21", clientMsgID: "c9")))))
+        s.apply(.event(event("s1", 2, run: "run_9", .toolStarted(ToolStarted(tool: "terminal")))))
+        #expect(!s.historyStale && s.run == ActiveRun(id: "run_9", status: .running))
+        s.steerSent(id: "st", runID: "run_9", text: "with the camera")
+        s.apply(.event(event("s1", 3, run: "run_9", .userMessage(UserMessage(kind: .steer, text: "with the camera", device: "macbook")))))
+        #expect(s.outbox.isEmpty && s.events.count == 3)
     }
 
     @Test func hermesSteersAreUnwrappedAndHiddenMessagesSkipped() {
@@ -260,13 +271,24 @@ struct SessionStoreTests {
     @Test func anotherDevicesRunReloadsTheHistory() async {
         await store.open("s1")
         await store.handle(.message(.run(runID: "run_9", sessionID: "s1", status: .running)))
-        #expect(historyLoads("s1") == 2)
+        #expect(historyLoads("s1") == 1)
         await store.handle(.message(.event(event("s1", 1, run: "run_9", .toolStarted(ToolStarted(tool: "terminal"))))))
         await store.handle(.message(.event(event("s1", 2, run: "run_9", .answer(Answer(text: "Hi."))))))
-        #expect(historyLoads("s1") == 3)
+        #expect(historyLoads("s1") == 2)
         await store.handle(.message(.event(event("s1", 3, run: "run_9", .runCompleted))))
-        #expect(historyLoads("s1") == 4)
+        #expect(historyLoads("s1") == 3)
         #expect(store.sessions["s1"]?.historyStale == false)
+    }
+
+    /// trismegistus#30: with user.message the prompt arrives live; only the run's end reloads.
+    @Test func userMessageArrivesWithoutAReload() async {
+        await store.open("s1")
+        await store.handle(.message(.run(runID: "run_9", sessionID: "s1", status: .running)))
+        await store.handle(.message(.event(event("s1", 1, run: "run_9", .userMessage(UserMessage(kind: .prompt, text: "Draw it", device: "s21", clientMsgID: "c9"))))))
+        await store.handle(.message(.event(event("s1", 2, run: "run_9", .toolStarted(ToolStarted(tool: "terminal"))))))
+        #expect(historyLoads("s1") == 1)
+        await store.handle(.message(.event(event("s1", 3, run: "run_9", .runCompleted))))
+        #expect(historyLoads("s1") == 2)
     }
 
     @Test func aSteerNeedsTheSocket() async {

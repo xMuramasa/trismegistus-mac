@@ -49,12 +49,11 @@ public struct SessionState: Sendable, Equatable {
     public var run: ActiveRun?
     public var approvals: [PendingApproval] = []
     public var outbox: [OutgoingPrompt] = []
-    /// The history misses something another device sent or a run just finished: SessionStore reloads it, keeping the
-    /// chat on screen meanwhile (unlike `historyLoaded` false). The relay's stream carries no event for a prompt or a
-    /// steer, so a run this device didn't start is the only sign of one (trismegistus-mac #54).
+    /// The history misses something: a run just finished, or (with a relay older than trismegistus#30, which sends no
+    /// `user.message`) a run this device didn't start began (#54). SessionStore reloads it, keeping the chat on screen
+    /// meanwhile (unlike `historyLoaded` false).
     public var historyStale = false
-    /// The run this device didn't start whose first event already asked for a reload (Hermes stores its prompt a few
-    /// ms after the relay announces the run).
+    /// The run this device didn't start whose first event was checked: `user.message`, or else a reload once.
     public var rechecked: String?
 
     public static let maxEvents = 1000
@@ -79,8 +78,7 @@ public struct SessionState: Sendable, Equatable {
             if status.isTerminal {
                 end(runID)
             } else {
-                // A run that appears without our ack: another device's prompt, which only the history has.
-                if run?.id != runID && !isOwnRun(runID) { historyStale = true }
+                // Another device's prompt arrives as the run's first event (user.message); see apply(_ e:).
                 run = ActiveRun(id: runID, status: status)
             }
         case .ack(let clientMsgID, let runID, let replayed):
@@ -122,11 +120,21 @@ public struct SessionState: Sendable, Equatable {
             return
         case .toolStarted, .toolCompleted, .subagentStarted, .subagentCompleted, .steerQueued:
             if run?.id != e.runID { run = ActiveRun(id: e.runID, status: .running) }
+        case .userMessage(let m):
+            if run?.id != e.runID { run = ActiveRun(id: e.runID, status: .running) }
+            // Our own steer, back from the relay at its place in the run: the event shows it from now on.
+            if m.kind == .steer,
+                let i = outbox.firstIndex(where: { $0.isSteer && $0.text == m.text && $0.status == .sent(runID: e.runID) })
+            {
+                outbox.remove(at: i)
+            }
+            rechecked = e.runID // the prompt itself came: no reload needed
+            return
         case .answer, .reconnected, .unknown:
             break
         }
-        // The first event of a run this device didn't start asks for the history once more: the reload its
-        // announcement caused may have come before Hermes stored the prompt.
+        // The first event of a run this device didn't start, when it isn't user.message (an older relay), asks for the
+        // history: it has the prompt by then (Hermes stores it a few ms after the run starts).
         if rechecked != e.runID && !isOwnRun(e.runID) {
             rechecked = e.runID
             historyStale = true
