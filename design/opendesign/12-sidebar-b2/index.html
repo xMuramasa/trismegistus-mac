@@ -282,6 +282,82 @@ button, input { font:inherit; color:inherit; }
 .cards .row.g-card .open, .cards .row.g-card .ttl { color:var(--yellow); }
 .cards .row.g-card .chip { border-color:var(--on-steel); }
 
+/* new screens: scoped to their own wrappers, the sidebar hashes don't use any of this */
+.screen { font-variant-numeric:tabular-nums; }
+
+/* settings window: 380x520 pt, calm paper, one card for the notification table */
+.win { position:relative; display:flex; flex-direction:column; width:380px; height:520px; overflow:hidden; background:var(--paper); color:var(--ink); }
+.win-head { flex:none; height:40px; padding:0 16px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--ink); }
+.win-head h1 { margin:0; font:900 18px/24px var(--ui); letter-spacing:-.01em; }
+.win-head p, .hint { margin:0; font:400 11px/16px var(--ui); color:var(--secondary); }
+.win-body { flex:1 1 0; min-height:0; overflow-y:auto; scrollbar-width:none; }
+.win-body::-webkit-scrollbar { display:none; }
+.win .sec { margin:0; }
+.group { display:grid; gap:4px; padding:8px 16px; }
+.status { display:flex; align-items:center; gap:8px; height:16px; }
+.status .host { font:400 12px/16px var(--ui); color:var(--secondary); }
+.dot { flex:none; width:7px; height:7px; border-radius:50%; background:var(--green); outline:1px solid var(--ink); }
+.dot.off { background:none; }
+.line { display:flex; align-items:center; gap:8px; min-height:24px; }
+.line > label, .line > .name { flex:none; width:96px; font:400 12px/16px var(--ui); }
+.line > .name.wide { width:auto; flex:1 1 0; }
+.line input { flex:1 1 0; min-width:0; height:24px; padding:0 8px; border:var(--edge); border-radius:0; background:var(--raised); color:var(--ink); font:400 12px/16px var(--ui); }
+.line input:focus-visible, .btn:focus-visible, .sw:focus-visible, .pop:focus-visible, .play:focus-visible { outline:1px solid var(--ink); outline-offset:1px; }
+.btn { flex:none; height:24px; padding:0 8px; border:var(--edge); border-radius:0; background:var(--raised); color:var(--ink); font:600 12px/16px var(--ui); cursor:pointer; }
+.btn:hover { background:var(--ink); color:#FFFFFF; }
+.btn.danger { border-color:var(--terminal-red); color:var(--terminal-red); }
+.btn.danger:hover { background:var(--terminal-red); color:#FFFFFF; }
+.btn:disabled { border-color:var(--muted); background:none; color:var(--secondary); cursor:default; }
+.sw { position:relative; display:block; flex:none; width:28px; height:16px; padding:0; border:var(--edge); border-radius:0; background:var(--raised); cursor:pointer; }
+.sw::after { content:""; position:absolute; top:1px; left:1px; width:12px; height:12px; background:var(--ink); transition:transform 150ms ease-out; }
+.sw[aria-checked="true"] { background:var(--ink); }
+.sw[aria-checked="true"]::after { background:var(--yellow); transform:translateX(12px); }
+@media (prefers-reduced-motion:reduce) { .sw::after { transition:none; } }
+.ntable { background:var(--raised); border:var(--edge); box-shadow:var(--block) var(--shade-ink); }
+.nrow { display:grid; grid-template-columns:minmax(0,1fr) 44px 104px 20px; gap:8px; align-items:center; height:28px; padding:0 8px; border-top:1px solid var(--rule); }
+.nrow.nhead { height:20px; border-top:0; background:var(--muted); color:var(--ink); }
+.nrow.nhead .t-label { font-weight:800; }
+.nrow .ev { font:400 13px/16px var(--ui); white-space:nowrap; }
+.ntable::after { content:""; display:block; height:4px; background:var(--dark-panel); }
+.pop { display:flex; align-items:center; justify-content:space-between; gap:4px; width:104px; height:20px; padding:0 4px 0 8px; border:var(--edge); border-radius:0; background:var(--raised); color:var(--ink); font:400 12px/16px var(--ui); cursor:pointer; --od-icon-size:12px; }
+.play { display:grid; place-items:center; width:20px; height:20px; padding:0; border:var(--edge); border-radius:0; background:var(--raised); color:var(--ink); cursor:pointer; --od-icon-size:12px; }
+.play:hover, .play.is-playing { background:var(--ink); color:var(--yellow); }
+.caps { display:grid; gap:0; margin-top:4px; }
+.win-keys { flex:none; height:24px; padding:0 16px; display:flex; align-items:center; gap:12px; border-top:1px solid var(--ink); }
+.win-keys span { display:flex; align-items:center; gap:4px; font:400 11px/16px var(--ui); color:var(--secondary); }
+.win-keys kbd { padding:0 4px; border:var(--edge); background:var(--raised); color:var(--ink); font:600 11px/14px var(--ui); }
+
+/* sound pop-up: the checked item opens over the button, like a native pop-up menu */
+.snd { position:absolute; z-index:5; width:168px; padding:4px; overflow-y:auto; scrollbar-width:none; background:var(--raised); border:var(--edge); box-shadow:var(--block) var(--shade-ink); }
+.snd::-webkit-scrollbar { display:none; }
+.snd button { display:flex; align-items:center; gap:4px; width:100%; height:20px; padding:0 8px 0 4px; border:0; background:none; color:var(--ink); font:400 13px/16px var(--ui); text-align:left; cursor:pointer; --od-icon-size:12px; }
+.snd button .tick { flex:none; width:12px; height:12px; display:block; }
+.snd button:hover, .snd button:focus-visible { background:var(--ink); color:#FFFFFF; outline:none; }
+.snd hr { border:0; border-top:1px solid var(--rule); margin:4px 0; }
+.snd .arrow { position:sticky; bottom:-4px; display:grid; place-items:center; height:12px; background:var(--raised); color:var(--ink); --od-icon-size:12px; }
+
+/* menu bar glyph sheet: 760x520, one row per state, template image so one colour only */
+.mb { --bar-light:#F6F6F6; --bar-dark:#1E1E1E; display:grid; grid-template-columns:164px 104px 194px 104px 194px; grid-template-rows:16px repeat(7,72px); width:760px; height:520px; overflow:hidden; background:var(--paper); color:var(--ink); }
+.mb .h { display:flex; align-items:center; padding:0 12px; color:var(--secondary); }
+.mb .lab { padding:0 12px; display:grid; align-content:center; }
+.mb .lab b { font:600 13px/16px var(--ui); }
+.mb .lab small { font:400 11px/16px var(--ui); color:var(--secondary); }
+.mb .c { display:grid; place-items:center; }
+.mb .l { background:var(--bar-light); color:var(--ink); }
+.mb .d { background:var(--bar-dark); color:#FFFFFF; }
+.mb svg { display:block; }
+.mb .x1 { width:22px; height:18px; }
+.mb .x4 { width:88px; height:72px; }
+
+/* footer sheet: B2's footer, with a square sticker on Chat */
+.footlab { width:304px; background:var(--paper); }
+.footlab .fcap { display:block; height:24px; padding:8px 12px 0; color:var(--ink); }
+.footlab .i { position:relative; }
+.nb .fbadge.chip { position:absolute; top:2px; right:2px; width:16px; height:16px; margin:0; padding:0; box-shadow:none; border-color:var(--on-steel); }
+.nb .i.on .fbadge.chip { border-color:var(--ink); }
+.nb .fbadge .chip-cell { width:100%; }
+.nb .fbadge .mark { --od-icon-size:10px; }
+
 .nb.strip h1 { font:900 24px/28px var(--ui); letter-spacing:-.02em; text-transform:uppercase; }
 .nb .key.white { border:var(--edge); }
 .gutter strong { font-weight:800; }
@@ -538,18 +614,182 @@ const root = document.getElementById('app');
 function parse() {
   const h = (location.hash || '').replace('#','') || 'all';
   const m = h.match(/^(b2|b)(-states|-narrow)?$/);
-  if (h === 'all' || h === 'today') return { view:h };
+  if (['all','today','settings','settings-menu','menubar','footer'].includes(h)) return { view:h };
   if (m) return { view: m[2] ? m[2].slice(1) : 'column', v:m[1] };
   return { view:'all' };
 }
+/* ---- settings window ---- */
+const SOUNDS = ['None','Default',null,'Basso','Blow','Bottle','Frog','Funk','Glass','Hero','Morse','Ping','Pop','Purr','Sosumi','Submarine','Tink'];
+const EVENTS = [['approval','Approval requests'],['finished','Run finished'],['failed','Run failed']];
+const S = { linked:true, confirm:false, login:true, relay:'https://hermes.lab.x-muramasa.dev', device:'macbook',
+  banner:{ approval:true, finished:true, failed:true }, sound:{ approval:'Default', finished:'Glass', failed:'Basso' } };
+ICON.play = svg(12,'<path d="M3 2l7 4-7 4z" fill="currentColor" stroke="none"/>');
+ICON.updown = svg(12,'<path d="M3.500 4.500L6 2l2.500 2.500M3.500 7.500L6 10l2.500-2.500"/>');
+ICON.tick = svg(12,'<path d="M2 6.500l3 3 5-7" stroke-width="2"/>');
+const sw = (key, on, label) => `<button class="sw" type="button" role="switch" aria-checked="${on}" aria-label="${label}" data-sw="${key}"></button>`;
+function unpairHTML() {
+  if (!S.linked) return `<div class="line"><button class="btn" type="button" disabled>Unpaired</button><span class="hint">the token was removed from this Mac</span></div>`;
+  if (S.confirm) return `<div class="line"><button class="btn danger" type="button" data-do="unpair">Remove token</button><button class="btn" type="button" data-do="cancel">Cancel</button></div>`;
+  return `<div class="line"><button class="btn danger" type="button" data-do="ask">Unpair</button><span class="hint">removes the token from this Mac</span></div>`;
+}
+function connectionHTML() {
+  return `<div class="status">${S.linked
+      ? '<span class="dot"></span><span class="t-label">Linked</span><span class="host">hermes.lab.x-muramasa.dev</span>'
+      : '<span class="dot off"></span><span class="t-label">Not linked</span>'}</div>
+    <div class="line"><label for="s-relay">Relay</label><input id="s-relay" data-field="relay" value="${esc(S.relay)}" spellcheck="false"></div>
+    <div class="line"><label for="s-device">Device name</label><input id="s-device" data-field="device" value="${esc(S.device)}" spellcheck="false"></div>
+    ${unpairHTML()}`;
+}
+function settingsHTML() {
+  const rows = EVENTS.map(([k, name]) => `<div class="nrow"><span class="ev">${name}</span>${sw('banner:' + k, S.banner[k], name + ' banner')}
+    <button class="pop" type="button" aria-haspopup="menu" aria-label="${name} sound" data-pop="${k}"><span>${S.sound[k]}</span>${ICON.updown}</button>
+    <button class="play" type="button" title="Play" aria-label="Play ${name} sound" data-play="${k}">${ICON.play}</button></div>`).join('');
+  return `<section class="win nb screen" aria-label="Settings">
+    <header class="win-head"><h1>SETTINGS</h1><p>trismegistus-mac dev</p></header>
+    <div class="win-body">
+      <div class="sec t-label"><span>Connection</span>${contour(0)}</div>
+      <div class="group" id="s-conn">${connectionHTML()}</div>
+      <div class="sec t-label"><span>General</span>${contour(1)}</div>
+      <div class="group">
+        <div class="line"><span class="name wide">Launch at login</span>${sw('login', S.login, 'Launch at login')}</div>
+        <div class="line"><button class="btn" type="button">Quit Trismegistus</button></div>
+      </div>
+      <div class="sec t-label"><span>Notifications</span>${contour(2)}</div>
+      <div class="group">
+        <div class="ntable"><div class="nrow nhead"><span></span><span class="t-label">Banner</span><span class="t-label">Sound</span><span></span></div>${rows}</div>
+        <div class="caps">
+          <p class="hint">Run banners show only while Trismegistus isn't on screen; sounds play unless you're looking at that chat.</p>
+          <p class="hint">Focus and System Settings › Notifications apply.</p>
+        </div>
+      </div>
+    </div>
+    <footer class="win-keys"><span><kbd>esc</kbd>close</span><span><kbd>⌘Q</kbd>quit</span></footer>
+  </section>`;
+}
+let snd = null;
+function closeSound(refocus = true) {
+  if (!snd) return;
+  const k = snd.k;
+  snd.el.remove();
+  snd = null;
+  const b = root.querySelector(`[data-pop="${k}"]`);
+  if (b && refocus) b.focus();
+}
+function openSound(k) {
+  closeSound(false);
+  const win = root.querySelector('.win'), btn = root.querySelector(`[data-pop="${k}"]`);
+  if (!win || !btn) return;
+  const el = document.createElement('div');
+  el.className = 'snd';
+  el.setAttribute('role', 'menu');
+  el.setAttribute('aria-label', 'Sound');
+  el.innerHTML = SOUNDS.map(n => n === null ? '<hr>' : `<button type="button" role="menuitemradio" aria-checked="${n === S.sound[k]}" data-snd="${n}"><span class="tick">${n === S.sound[k] ? ICON.tick : ''}</span><span>${n}</span></button>`).join('')
+    + `<div class="arrow" aria-hidden="true">${ICON.chev}</div>`;
+  win.appendChild(el);
+  const w = win.getBoundingClientRect(), b = btn.getBoundingClientRect();
+  const item = el.querySelector('[aria-checked="true"]') || el.querySelector('button');
+  const top = Math.max(4, b.top - w.top - item.offsetTop);
+  el.style.left = Math.max(4, Math.min(b.left - w.left - 21, 380 - 172)) + 'px';
+  el.style.top = top + 'px';
+  el.style.maxHeight = (520 - top) + 'px';
+  snd = { k, el };
+  item.focus();
+}
+function setSound(n) {
+  const k = snd.k;
+  S.sound[k] = n;
+  root.querySelector(`[data-pop="${k}"] span`).textContent = n;
+  closeSound();
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest) return;
+  const pick = e.target.closest('[data-snd]');
+  if (pick) return setSound(pick.dataset.snd);
+  if (snd && e.target.closest('.snd')) return;
+  if (snd) closeSound(false);
+  const toggle = e.target.closest('[data-sw]');
+  if (toggle) {
+    const [a, b] = toggle.dataset.sw.split(':');
+    const on = b ? (S.banner[b] = !S.banner[b]) : (S.login = !S.login);
+    toggle.setAttribute('aria-checked', on);
+    return;
+  }
+  const pop = e.target.closest('[data-pop]');
+  if (pop) return openSound(pop.dataset.pop);
+  const play = e.target.closest('[data-play]');
+  if (play) { play.classList.add('is-playing'); setTimeout(() => play.classList.remove('is-playing'), 300); return; }
+  const act = e.target.closest('[data-do]');
+  if (act) {
+    if (act.dataset.do === 'ask') S.confirm = true;
+    if (act.dataset.do === 'cancel') S.confirm = false;
+    if (act.dataset.do === 'unpair') { S.linked = false; S.confirm = false; }
+    root.querySelector('#s-conn').innerHTML = connectionHTML();
+    const next = root.querySelector('#s-conn .btn:not(:disabled)') || root.querySelector('#s-relay');
+    if (next) next.focus();
+  }
+});
+document.addEventListener('keydown', e => {
+  if (!snd) return;
+  const items = [...snd.el.querySelectorAll('button')], i = items.indexOf(document.activeElement);
+  if (e.key === 'Escape') { e.preventDefault(); closeSound(); }
+  if (e.key === 'Tab') closeSound(false);
+  if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+  if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+});
+document.addEventListener('input', e => {
+  if (e.target.dataset && e.target.dataset.field) S[e.target.dataset.field] = e.target.value;
+});
+
+/* ---- menu bar glyph: measured from MenuBarGlyph.png, 22x18 pt, the mark at (2,2) ---- */
+const MARK_SOLID = '<path fill-rule="evenodd" transform="translate(2 2)" d="M0 0H9.500L14 4.500V14H0ZM3 3h7v2H7.500v6h-2V5H3Z"/>';
+const MARK_LINE = '<g transform="translate(2 2)"><path d="M.25 .25H9.500L13.750 4.500V13.750H.25Z" fill="none" stroke="currentColor" stroke-width="1.500"/><path d="M3.500 3h7v2H8v5.500H6V5H3.500Z"/></g>';
+const GLYPH = {
+  disconnected: MARK_LINE,
+  idle: MARK_SOLID,
+  running: MARK_SOLID + '<path d="M18 10h1.500v6H18ZM20.500 5H22v11h-1.500Z"/>',
+  approval: MARK_SOLID + '<circle cx="19" cy="3.250" r="2.500"/>',
+  failed: MARK_SOLID + '<path d="M17 1.250l4 4M21 1.250l-4 4" fill="none" stroke="currentColor" stroke-width="1.500"/>',
+  done: MARK_SOLID + '<path d="M16.600 3.400l1.700 1.800 3.100-3.800" fill="none" stroke="currentColor" stroke-width="1.500"/>',
+  agents: MARK_SOLID + '<circle cx="20" cy="16" r="1.600"/>',
+};
+const glyphSVG = (k, cls, name) => `<svg class="${cls}" viewBox="0 0 22 18" fill="currentColor" role="img" aria-label="${name}">${GLYPH[k]}</svg>`;
+function menubarHTML() {
+  const rows = [['disconnected','Disconnected','1st, beats everything'],['idle','Idle','When nothing else applies'],['running','Running','3rd'],['approval','Approval','2nd'],['failed','Failed, unseen','4th'],['done','Done, unseen','5th'],['agents','Idle + background agents','Dot adds to idle']];
+  const cells = rows.map(([k, name, note]) => `<div class="lab"><b>${name}</b><small>${note}</small></div>
+    <div class="c l">${glyphSVG(k,'x1',name)}</div><div class="c l">${glyphSVG(k,'x4',name)}</div>
+    <div class="c d">${glyphSVG(k,'x1',name)}</div><div class="c d">${glyphSVG(k,'x4',name)}</div>`).join('');
+  return `<section class="mb screen" aria-label="Menu bar glyph states">
+    <span class="h t-label">State</span><span class="h t-label">Light 1x</span><span class="h t-label">Light 4x</span><span class="h t-label">Dark 1x</span><span class="h t-label">Dark 4x</span>
+    ${cells}</section>`;
+}
+
+/* ---- footer sheet ---- */
+function footerHTML(state, selected) {
+  const ic = ['chat','list','news','chip','cal','term'];
+  const badge = state ? `<span class="fbadge chip chip-${state} flooded st-${state}"><span class="chip-cell">${mark(state)}</span></span>` : '';
+  return `<div class="foot"><div class="who t-monos">macbook · paired</div>
+    <div class="icons">${ic.map((k, i) => `<span class="i ${i === selected ? 'on' : ''}">${ICON[k]}${i === 0 ? badge : ''}</span>`).join('')}</div></div>`;
+}
+function footerSheetHTML() {
+  const list = [['No badge',null,0],['Approval','approval',0],['Running','running',0],['Failed','failed',0],['Done','done',0],['Done, GitHub selected','done',1]];
+  return `<section class="footlab nb screen" aria-label="Footer states">${list.map(([cap, st, sel]) => `<span class="fcap t-label">${cap}</span>${footerHTML(st, sel)}`).join('')}</section>`;
+}
+
 function render() {
   closeMenu(false);
+  closeSound(false);
   const r = parse();
   root.dataset.view = r.view;
   if (r.view === 'today') root.innerHTML = todayHTML();
   else if (r.view === 'column') root.innerHTML = columnHTML(r.v, false);
   else if (r.view === 'narrow') root.innerHTML = columnHTML(r.v, true);
   else if (r.view === 'states') root.innerHTML = stripHTML(r.v);
+  else if (r.view === 'settings' || r.view === 'settings-menu') {
+    root.innerHTML = settingsHTML();
+    if (r.view === 'settings-menu') openSound('finished');
+  }
+  else if (r.view === 'menubar') root.innerHTML = menubarHTML();
+  else if (r.view === 'footer') root.innerHTML = footerSheetHTML();
   else {
     const gut = (k, name, line) => `<nav class="gutter" aria-label="${name}"><strong class="t-label">${name}</strong>
       ${line ? `<p class="t-caption">${line}</p>` : ''}

@@ -1,6 +1,6 @@
 # Trismegistus sidebar row: changes
 
-Open `index.html`. Hashes: `#all` (default: TODAY, B and B2 side by side, 1170x1122), `#today`, `#b`, `#b-states`, `#b-narrow`, `#b2`, `#b2-states`, `#b2-narrow`.
+Open `index.html`. Hashes: `#all` (default: TODAY, B and B2 side by side, 1170x1122), `#today`, `#b`, `#b-states`, `#b-narrow`, `#b2`, `#b2-states`, `#b2-narrow`, `#settings`, `#settings-menu`, `#menubar`, `#footer`.
 
 `index-clean.html` is the earlier quiet version with its A, B and C, kept unchanged.
 
@@ -113,6 +113,86 @@ The popover list is unchanged.
 - Every sticker still carries a word and a shape, so B doesn't rely on shape alone.
 - A sticker still overhangs the row above by a few pixels, so give it a higher draw order than the rows.
 - A and C are removed from the lab. TODAY stays as the reference.
+
+## Screens added after the B2 decision
+
+`#b`, `#b2`, `#b2-states`, `#b2-narrow` and `#all` are unchanged. All new screens use Inter with tabular figures. Everything below is sidebar-independent and reached by hash only.
+
+### #settings (380x520)
+
+- Sections sit under B2's ink slabs with fading contours: same language as the sidebar, without the cards.
+- Rows are compact, so all three sections fit at 520 without scrolling: Notifications is the point of the screen and must be visible on load. The body still scrolls if content grows.
+- Launch at login and Quit Trismegistus are on separate rows: the switch is a preference, Quit is an action.
+- Notifications is the only card: white with an ink edge, grey head band, dark foot bar and soft shadow. A table is the clearest way to read three rows by three controls.
+- Column heads are BANNER and SOUND; the ▶ column has none because its tooltip and accessible name say "Play".
+- Switch is square: ink track and yellow knob when on, white track and ink knob when off. Position and fill both change, so it doesn't rely on colour.
+- Green status dot has a 1 px ink edge: green alone is 1.19:1 on paper. The word LINKED sits beside it.
+- Unpair uses terminal-red for edge and text: #E5332A is 3.88:1 on paper, too weak for text. It asks for confirmation before removing the token.
+- ▶ only shows a pressed state in this lab: a browser can't play macOS system sounds.
+- Quit Trismegistus does nothing in this lab.
+
+| Mark | Ground | Ratio |
+| --- | --- | --- |
+| Ink edge, text | paper | 15.71 |
+| Ink edge, text | white | 17.58 |
+| Secondary captions | paper | 5.13 |
+| Green status dot, ink edge | paper | 15.71 (fill 1.19) |
+| Unpair, terminal-red | paper | 5.13 |
+| Switch on, ink track | paper / white | 15.71 / 17.58 |
+| Switch knob, yellow | ink | 15.85 |
+| Column heads, ink | muted band | 6.17 |
+| Slab label, yellow | ink | 15.85 |
+
+Departures: 1 px ink edges on fields are heavier than a default macOS field, by design for B2. The red outline in the brief is terminal-red, not red.
+
+### #settings-menu
+
+- The checked item (Glass) opens over the button: that's how a native pop-up menu behaves, so the current value doesn't move.
+- The menu runs past the window's bottom, clips at 520 and scrolls, with an arrow showing there's more: inside the frame as asked. In the real app it would extend past the window.
+- Hovered and focused items are ink with white text: a strong, single highlight. Yellow stays reserved for current and primary.
+- Check mark and separator follow the macOS menu layout.
+
+| Mark | Ground | Ratio |
+| --- | --- | --- |
+| Item text, check | white | 17.58 |
+| Highlighted text | ink | 17.58 |
+| Menu ink edge | paper | 15.71 |
+| Separator, rule | white | 1.41, decorative |
+
+Departure: the menu is square with an ink edge, not a rounded system menu. A real NSMenu will be rounded and system-styled unless it's custom drawn.
+
+### #menubar (760x520)
+
+- Mark, outline, bars and dots are measured from `MenuBarGlyph.png`: today's four are kept as they are.
+- Failed and done are a 4 pt cross and check, in the same spot as the approval dot: same shapes as the stickers, in the gap the clipped corner leaves, so they don't touch the mark.
+- One colour only: it's a template image and the OS tints it, so states differ by shape alone.
+- Priority is written in the label column: disconnected, approval, running, failed, done.
+- Rows touch at 72 px each: seven rows at 4x use 504 of the 520 px, so the page has one thin head line and no title.
+
+| Mark | Ground | Ratio |
+| --- | --- | --- |
+| Ink glyph | #F6F6F6 | 16.27 |
+| White glyph | #1E1E1E | 16.67 |
+
+Departures: #F6F6F6 and #1E1E1E are from the brief, not the token list. Today's sixth glyph (approval + background agents) stays as it is, but isn't shown: it isn't in the brief and there's no room. At 1x the cross and check are the smallest shapes here, so test them on a real menu bar.
+
+### #footer
+
+- Each footer is B2's footer: same ink bar, same yellow current block. The bar itself is unchanged.
+- The badge is a 16 px square sticker on Chat, using the tab badge's cells: same shape and colours as the sidebar, so the state reads the same everywhere.
+- Edge is on-steel on the ink bar and ink on the yellow block: ink would vanish on ink, and on-steel would vanish on yellow.
+- The second icon is treated as GitHub: `SectionBar.png` doesn't label one, so this is an assumption.
+
+| Mark | Ground | Ratio |
+| --- | --- | --- |
+| Badge edge, on-steel | ink bar | 14.48 |
+| Badge edge, ink | yellow block | 15.85 |
+| Approval diamond, magenta | ink cell | 5.02 |
+| Running ring, ink | yellow cell | 15.85 |
+| Failed cross, terminal-red | white cell | 5.74 |
+| Done check, green | ink cell | 13.25 |
+
+Departures: B2's footer icons are close to `SectionBar.png` but not exact, for example its second icon has a check and a circle. They're reused so `#b2` stays unchanged.
 
 ## Measured from the screenshot, or differing from the brief
 
