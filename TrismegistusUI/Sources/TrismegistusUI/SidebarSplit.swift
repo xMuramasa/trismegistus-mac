@@ -33,9 +33,11 @@ public struct SidebarSplit<Sidebar: View, Detail: View>: View {
         HStack(spacing: 0) {
             if isShown {
                 HStack(spacing: 0) {
+                    let column = min(max(width, Self.widths.lowerBound), Self.widths.upperBound)
                     sidebar
                         .environment(\.onSidebar, true)
-                        .frame(width: min(max(width, Self.widths.lowerBound), Self.widths.upperBound))
+                        .environment(\.sidebarNarrow, column < Size.sidebar.default)
+                        .frame(width: column)
                         // Not into the top safe area: the toolbar's strip stays steel above the column.
                         .background(Ink.surface.sidebar, ignoresSafeAreaEdges: [])
                     divider

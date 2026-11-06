@@ -9,11 +9,15 @@ public struct TypeSpec: Sendable {
     public let tracking: CGFloat
     public let uppercase: Bool
 
-    static let weights: [Font.Weight: Int] = [.regular: 400, .medium: 500, .semibold: 600, .bold: 700]
+    static let weights: [Font.Weight: Int] = [.regular: 400, .medium: 500, .semibold: 600, .bold: 700, .heavy: 800, .black: 900]
 
-    /// The bundled face, or its `weight` sibling (one of regular, medium, semibold, bold).
+    /// The families type roles asked for since the last reset (tests: the sidebar's text uses no mono face, #65).
+    nonisolated(unsafe) static var drawn: Set<FontFamily> = []
+
+    /// The bundled face, or its `weight` sibling (one of `weights`; JetBrains Mono stops at bold).
     public func font(weight: Font.Weight? = nil) -> Font {
         Fonts.register()
+        Self.drawn.insert(family)
         let face = weight.flatMap { Self.weights[$0] }.flatMap { family.faces[$0] } ?? family.faces[self.weight]!
         return .custom(face, fixedSize: size)
     }
@@ -70,6 +74,7 @@ public enum Symbol {
     public static let cron = "calendar"
     public static let cli = "apple.terminal"
     public static let lock = "lock.fill"
+    public static let pin = "pin.fill"
     public static let chevronRight = "chevron.right"
     public static let chevronDown = "chevron.down"
     public static let chevronUp = "chevron.up"

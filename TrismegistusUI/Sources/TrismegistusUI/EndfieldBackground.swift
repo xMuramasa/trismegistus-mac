@@ -42,40 +42,52 @@ public struct EndfieldBackground: View {
     }
 
     /// The topographic lines: 18 closed curves around (78%, 72%) of `size`, every fifth one stronger. `opacity` scales
-    /// both strengths (the terminal pane draws them faintly on ink).
-    static func drawContours(_ context: inout GraphicsContext, _ size: CGSize, color: Color, opacity: Double = 1) {
+    /// both strengths (the terminal pane draws them faintly on ink). `spread` is the length the radii step along, the
+    /// shorter side unless given (a 24 pt section head would shrink the field to nothing); `seed` shifts the wobble.
+    static func drawContours(
+        _ context: inout GraphicsContext, _ size: CGSize, color: Color, opacity: Double = 1, lineWidth: CGFloat = Stroke.hairline,
+        spread: CGFloat? = nil, seed: Double = 0
+    ) {
         let w = size.width, h = size.height
         let cx = w * 0.78, cy = h * 0.72
         for k in 1...18 {
-            let r0 = Double(k) * Double(min(w, h)) * 0.045
+            let r0 = Double(k) * Double(spread ?? min(w, h)) * 0.045
             var contour = Path()
             for i in 0...180 {
                 let t = Double(i) / 180 * 2 * .pi
-                let r = r0 * (1 + 0.10 * sin(3 * t + Double(k) * 0.35) + 0.06 * sin(5 * t - Double(k) * 0.2) + 0.04 * sin(2 * t + 1.3))
+                let r = r0 * (1 + 0.10 * sin(3 * t + Double(k) * 0.35 + seed) + 0.06 * sin(5 * t - Double(k) * 0.2 + seed * 2) + 0.04 * sin(2 * t + 1.3))
                 let p = CGPoint(x: cx + r * cos(t) * 1.35, y: cy + r * sin(t))
                 if i == 0 { contour.move(to: p) } else { contour.addLine(to: p) }
             }
             context.stroke(
                 contour, with: .color(color.opacity((k % 5 == 0 ? contourStrong : contourWeak) * opacity)),
-                lineWidth: Stroke.hairline)
+                lineWidth: lineWidth)
         }
     }
 }
 
-/// Endfield's contour lines alone, in one colour on a transparent ground (the terminal pane: `sunken` on ink). Put it
-/// inside a `settledWidth` so a pane animation doesn't redraw it every frame (#28).
+/// Endfield's contour lines alone, in one colour on a transparent ground (the terminal pane: `sunken` on ink; the
+/// sidebar's section heads). Put it inside a `settledWidth` so a pane animation doesn't redraw it every frame (#28).
 public struct EndfieldContours: View {
     let color: Color
     let opacity: Double
+    let lineWidth: CGFloat
+    let spread: CGFloat?
+    let seed: Double
 
-    public init(color: Color, opacity: Double = 1) {
+    public init(color: Color, opacity: Double = 1, lineWidth: CGFloat = Stroke.hairline, spread: CGFloat? = nil, seed: Double = 0) {
         self.color = color
         self.opacity = opacity
+        self.lineWidth = lineWidth
+        self.spread = spread
+        self.seed = seed
     }
 
     public var body: some View {
-        Canvas { context, size in EndfieldBackground.drawContours(&context, size, color: color, opacity: opacity) }
-            .accessibilityHidden(true)
+        Canvas { context, size in
+            EndfieldBackground.drawContours(&context, size, color: color, opacity: opacity, lineWidth: lineWidth, spread: spread, seed: seed)
+        }
+        .accessibilityHidden(true)
     }
 }
 

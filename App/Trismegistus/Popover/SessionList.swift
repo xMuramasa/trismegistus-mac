@@ -127,9 +127,9 @@ struct SessionList: View {
         return SessionRowView(
             name: PopoverFormat.title(session), source: PopoverFormat.source(session.source),
             activity: PopoverFormat.ago(overview?.lastActivity ?? session.lastActive.map(Date.init(timeIntervalSince1970:)), now: now),
-            isSelected: isSelected, isReadOnly: session.isReadOnly,
+            isSelected: isSelected, isReadOnly: session.isReadOnly, isPinned: session.isPinned,
             runElapsed: overview?.run.map { PopoverFormat.elapsed(since: $0.startedAt, now: now) },
-            needsApproval: overview?.isWaitingForApproval ?? false
+            needsApproval: overview?.isWaitingForApproval ?? false, tags: model.store?.tags[session.id] ?? []
         )
         .id(session.id)
         .contentShape(Rectangle())
@@ -137,7 +137,7 @@ struct SessionList: View {
             selection = session.id
             onOpen(session.id)
         }
-        .conversationChrome(session, tags: model.store?.tags[session.id] ?? [], isSelected: isSelected, actions: actions, store: model.store)
+        .conversationChrome(session, isSelected: isSelected, actions: actions, store: model.store)
     }
 
     private func move(_ delta: Int) -> KeyPress.Result {

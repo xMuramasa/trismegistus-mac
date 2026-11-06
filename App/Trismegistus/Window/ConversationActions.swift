@@ -137,12 +137,11 @@ extension View {
 
 // MARK: Rows
 
-/// `…` button (under the pointer and on the selected row only), pin glyph, tag chips, right-click menu with the same
-/// items and the inline rename, laid over a `SessionRowView`; light on the window sidebar's grey unless the row is the
-/// selected white card.
+/// `…` button on the tag line (under the pointer and on the selected row only; the sticker holds the title's line),
+/// right-click menu with the same items and the inline rename, laid over a `SessionRowView`; the `…` is light on the
+/// window sidebar's selected ink card. Tells the card when the pointer is on it.
 private struct ConversationChrome: ViewModifier {
     let info: SessionInfo
-    let tags: [String]
     let isSelected: Bool
     let actions: ConversationActions
     let store: SessionStore?
@@ -151,28 +150,15 @@ private struct ConversationChrome: ViewModifier {
     @State private var isHovered = false
 
     func body(content: Content) -> some View {
-        let onGrey = onSidebar && !isSelected
         let showsMenu = isHovered || isSelected
         content
-            .overlay(alignment: .topTrailing) {
-                HStack(alignment: .top, spacing: Space.xxs) {
-                    // Hidden, not removed: the pointer leaves the row for the open menu, and removing the button would close it.
-                    ConversationMenuButton(info: info, actions: actions, store: store)
-                        .opacity(showsMenu ? 1 : 0).allowsHitTesting(showsMenu)
-                    if info.isPinned {
-                        // On the title's line: the centred run timer starts below it.
-                        Image(systemName: "pin.fill").font(.system(size: Icon.s))
-                            .foregroundStyle(RowInk(onSidebar: onSidebar, isSelected: isSelected).meta)
-                            .padding(.top, Space.xxs)
-                            .accessibilityLabel("Pinned")
-                    }
-                }
-                .padding(.top, Space.xs).padding(.trailing, Space.s)
-                .environment(\.onSidebar, onGrey)
-            }
+            .environment(\.rowHovered, isHovered)
             .overlay(alignment: .bottomTrailing) {
-                TagChips(tags: tags).padding(.bottom, Space.s).padding(.trailing, Space.m)
-                    .environment(\.onSidebar, onGrey)
+                // Hidden, not removed: the pointer leaves the row for the open menu, and removing the button would close it.
+                ConversationMenuButton(info: info, actions: actions, store: store)
+                    .opacity(showsMenu ? 1 : 0).allowsHitTesting(showsMenu)
+                    .padding(.bottom, Space.xs).padding(.trailing, Space.s)
+                    .environment(\.onSidebar, onSidebar && isSelected)
             }
             .overlay {
                 if actions.renaming == info.id { RenameField(info: info, actions: actions, store: store) }
@@ -183,9 +169,8 @@ private struct ConversationChrome: ViewModifier {
 }
 
 extension View {
-    func conversationChrome(_ info: SessionInfo, tags: [String], isSelected: Bool = false, actions: ConversationActions,
-                            store: SessionStore?) -> some View {
-        modifier(ConversationChrome(info: info, tags: tags, isSelected: isSelected, actions: actions, store: store))
+    func conversationChrome(_ info: SessionInfo, isSelected: Bool = false, actions: ConversationActions, store: SessionStore?) -> some View {
+        modifier(ConversationChrome(info: info, isSelected: isSelected, actions: actions, store: store))
     }
 }
 
@@ -195,6 +180,7 @@ struct RenameField: View {
     @Bindable var actions: ConversationActions
     let store: SessionStore?
     @FocusState private var focused: Bool
+    @Environment(\.onSidebar) private var onSidebar
 
     var body: some View {
         HStack(spacing: Space.s) {
@@ -203,7 +189,7 @@ struct RenameField: View {
                 .focused($focused)
                 .onSubmit { actions.commitRename(info, store: store) }
                 .onExitCommand { actions.renaming = nil }
-            Text("↩ save · esc cancel").typeRole(.monoSmall).foregroundStyle(Ink.text.muted).fixedSize()
+            Text("↩ save · esc cancel").typeRole(onSidebar ? .caption : .monoSmall).foregroundStyle(onSidebar ? Ink.text.secondary : Ink.text.muted).fixedSize()
         }
         .padding(.horizontal, Space.m)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -217,42 +203,6 @@ struct RenameField: View {
 }
 
 // MARK: Tags
-
-struct TagChip: View {
-    let tag: String
-    var isOn = false
-
-    var body: some View {
-        Text(tag).typeRole(.monoSmall).lineLimit(1)
-            .foregroundStyle(isOn ? Ink.selection : Ink.text.secondary)
-            .padding(.horizontal, Space.s).padding(.vertical, 1)
-            .background(isOn ? Ink.surface.inverse : Ink.surface.sunken)
-            .overlay(Rectangle().strokeBorder(isOn ? Ink.line.strong : Ink.line.rule, lineWidth: Stroke.hairline))
-    }
-}
-
-/// Up to two chips, then `+N`.
-struct TagChips: View {
-    let tags: [String]
-    var limit = 2
-
-    @Environment(\.onSidebar) private var onSidebar
-
-    var body: some View {
-        if !tags.isEmpty {
-            HStack(spacing: Space.xs) {
-                ForEach(tags.prefix(limit), id: \.self) { TagChip(tag: $0) }
-                if tags.count > limit {
-                    Text(verbatim: "+\(tags.count - limit)").typeRole(.monoSmall)
-                        .foregroundStyle(onSidebar ? Ink.text.onSidebarSecondary : Ink.text.secondary)
-                }
-            }
-            .frame(maxWidth: Size.tagsMax, alignment: .trailing)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Tags: \(tags.joined(separator: ", "))")
-        }
-    }
-}
 
 /// The existing tags as toggles plus a field for a new one; every change goes to the relay at once.
 struct TagEditor: View {
@@ -365,16 +315,21 @@ struct ActionError: View {
     }
 }
 
-/// `PINNED` / `CONVERSATIONS` label above a group of rows.
+/// `PINNED` / `CONVERSATIONS` above a group of rows: on the window sidebar an ink slab across the whole column (over
+/// the list's 8 pt margins), 8 pt above the first card, whose cell brings 4; in the popover a plain label.
 struct SectionLabel: View {
     let title: String
 
     @Environment(\.onSidebar) private var onSidebar
 
     var body: some View {
-        Text(title).typeRole(.label).foregroundStyle(onSidebar ? Ink.text.onSidebarSecondary : Ink.text.secondary)
-            .padding(.horizontal, Space.l).padding(.vertical, Space.s)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityAddTraits(.isHeader)
+        if onSidebar {
+            SectionHead(title: title).padding(.horizontal, -Space.s).padding(.bottom, Space.xs)
+        } else {
+            Text(title).typeRole(.label).foregroundStyle(Ink.text.secondary)
+                .padding(.horizontal, Space.l).padding(.vertical, Space.s)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityAddTraits(.isHeader)
+        }
     }
 }

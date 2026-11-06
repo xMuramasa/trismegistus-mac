@@ -17,6 +17,23 @@ final class FontTests: XCTestCase {
         }
     }
 
+    /// B2's ExtraBold and Black (#65): Inter has them, JetBrains Mono doesn't, so a heavy sibling of a mono role stays
+    /// on the role's own face.
+    func testInterHasExtraBoldAndBlack() throws {
+        Fonts.register()
+        XCTAssertEqual(FontFamily.ui.faces[800], "Inter-ExtraBold")
+        XCTAssertEqual(FontFamily.ui.faces[900], "Inter-Black")
+        XCTAssertNil(FontFamily.mono.faces[800])
+        XCTAssertNil(FontFamily.mono.faces[900])
+        XCTAssertEqual(TypeSpec.weights[.heavy], 800)
+        XCTAssertEqual(TypeSpec.weights[.black], 900)
+        for name in ["Inter-ExtraBold", "Inter-Black"] {
+            let font = try XCTUnwrap(NSFont(name: name, size: 14), name)
+            XCTAssertEqual(font.fontName, name)
+        }
+        _ = TypeRole.mono.spec.font(weight: .black)  // no face at 900: must not crash
+    }
+
     func testEveryRoleResolvesToItsFamily() throws {
         for role in TypeRole.allCases {
             let spec = role.spec

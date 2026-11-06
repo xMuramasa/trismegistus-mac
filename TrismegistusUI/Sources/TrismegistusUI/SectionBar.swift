@@ -45,40 +45,48 @@ public enum WindowSection: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// The section icons at the bottom of the window sidebar, spread evenly (09f): unselected in `icon.on-sidebar`, the
-/// selected one in `text.on-sidebar` with a yellow bar under it. Each icon is at least a 28 pt square to click.
+/// The foot of the window sidebar, in every section (#65): an ink bar with the paired device over the section icons,
+/// the current one on a yellow block.
 public struct SectionBar: View {
     @Binding var selection: WindowSection
+    /// `macbook · paired`.
+    let device: String?
 
-    public init(selection: Binding<WindowSection>) {
+    @Environment(\.sidebarNarrow) private var narrow
+
+    public init(selection: Binding<WindowSection>, device: String? = nil) {
         self._selection = selection
+        self.device = device
     }
 
     public var body: some View {
-        HStack(spacing: 0) {
-            ForEach(WindowSection.allCases) { section in
-                let on = section == selection
-                Button { selection = section } label: {
-                    Image(systemName: section.symbol)
-                        .font(.system(size: Icon.section))
-                        .foregroundStyle(on ? Ink.text.onSidebar : Ink.icon.onSidebar)
-                        .overlay(alignment: .bottom) {
-                            if on {
-                                Rectangle().fill(Ink.selection).frame(width: Icon.section, height: Stroke.accent)
-                                    .offset(y: Space.xxs + Stroke.accent)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, minHeight: Size.sectionTarget)
-                        .frame(minWidth: Size.sectionTarget)
-                        .contentShape(Rectangle())
+        VStack(alignment: .leading, spacing: Space.s) {
+            if let device {
+                Text(device).typeRole(.data).monospacedDigit().foregroundStyle(Ink.text.onDark).lineLimit(1)
+                    .padding(.horizontal, Space.xs)
+            }
+            HStack(spacing: 0) {
+                ForEach(WindowSection.allCases) { section in
+                    let on = section == selection
+                    if section != WindowSection.allCases.first { Spacer(minLength: 0) }
+                    Button { selection = section } label: {
+                        Image(systemName: section.symbol)
+                            .font(.system(size: Icon.sectionBlock))
+                            .foregroundStyle(on ? Ink.text.primary : Ink.text.onSidebar)
+                            .frame(width: narrow ? Size.footerBlock.narrow : Size.footerBlock.width, height: Size.footerBlock.height)
+                            .background(on ? Ink.selection : .clear)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help(section.help)
+                    .accessibilityLabel(section.title)
+                    .accessibilityAddTraits(on ? .isSelected : [])
                 }
-                .buttonStyle(.plain)
-                .help(section.help)
-                .accessibilityLabel(section.title)
-                .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
-        .padding(.vertical, Space.m)
-        .padding(.horizontal, Space.xl)
+        .padding(.horizontal, Space.m)
+        .padding(.top, Space.m).padding(.bottom, Space.s)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Ink.surface.inverse)
     }
 }

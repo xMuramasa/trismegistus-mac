@@ -2,7 +2,7 @@ import SwiftUI
 import TrismegistusKit
 import TrismegistusUI
 
-/// The top of a section's sidebar (09f): `TITLE // n` with an icon-only action, the light filter field (⌘K), then
+/// The top of a section's sidebar (09f, #65): `TITLE // n` with an icon-only action, the filter field (⌘K), then
 /// whatever the section adds (pickers, tags, a refusal).
 struct SidebarHeader<Trailing: View, Extra: View>: View {
     let title: String
@@ -13,18 +13,46 @@ struct SidebarHeader<Trailing: View, Extra: View>: View {
     @ViewBuilder let extra: () -> Extra
 
     var body: some View {
-        VStack(spacing: Space.m) {
-            HStack(spacing: Space.s) {
-                Text(title).typeRole(.label).foregroundStyle(Ink.text.onSidebarSecondary).lineLimit(1)
-                Spacer(minLength: Space.s)
-                trailing()
-            }
-            // Every section's header the same height, with or without its button.
-            .frame(height: Size.control)
-            EndfieldTextField(prompt, text: $filter, ground: Ink.surface.window, focus: focus)
+        VStack(spacing: Space.s) {
+            SidebarTitleRow(title: title, trailing: trailing)
+                .padding(.bottom, -Space.s)
+            SidebarFilter(prompt, text: $filter, focus: focus)
+                .padding(.top, Space.s)
             extra()
         }
-        .padding(.horizontal, Space.l).padding(.vertical, Space.m)
+        .padding(.horizontal, Space.l).padding(.bottom, Space.m)
+    }
+}
+
+/// `APP // 10` and the action beside it. Every section's the same height, with or without its button.
+struct SidebarTitleRow<Trailing: View>: View {
+    let title: String
+    @ViewBuilder let trailing: () -> Trailing
+
+    var body: some View {
+        HStack(spacing: Space.s) {
+            SidebarTitle(title)
+            Spacer(minLength: Space.s)
+            trailing()
+        }
+        .frame(height: Size.sidebarHead)
+    }
+}
+
+/// A sidebar's filter field, its right edge pulled in so the soft shadow has the same margin as the rest of the column.
+struct SidebarFilter: View {
+    let prompt: String
+    @Binding var text: String
+    let focus: FocusState<Bool>.Binding
+
+    init(_ prompt: String, text: Binding<String>, focus: FocusState<Bool>.Binding) {
+        self.prompt = prompt
+        self._text = text
+        self.focus = focus
+    }
+
+    var body: some View {
+        EndfieldTextField(prompt, text: $text, focus: focus).padding(.trailing, Space.xs)
     }
 }
 
@@ -38,17 +66,6 @@ extension SidebarHeader where Extra == EmptyView {
 extension SidebarHeader where Trailing == EmptyView, Extra == EmptyView {
     init(title: String, prompt: String, filter: Binding<String>, focus: FocusState<Bool>.Binding) {
         self.init(title: title, prompt: prompt, filter: filter, focus: focus, trailing: { EmptyView() }, extra: { EmptyView() })
-    }
-}
-
-extension View {
-    /// A sidebar `List`: keyboard selection as before, no ground of its own.
-    func sidebarList() -> some View { listStyle(.plain).scrollContentBackground(.hidden) }
-
-    /// A row of a sidebar list, edge to edge. Every row sets `listRowBackground`: it replaces the row view's ground,
-    /// where macOS draws its selection highlight (a thin blue line showed past the rows otherwise).
-    func sidebarRow() -> some View {
-        listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Ink.surface.sidebar)
     }
 }
 

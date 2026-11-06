@@ -3,7 +3,7 @@ import TrismegistusKit
 import TrismegistusUI
 
 /// The Chat section's sidebar: `CONVERSATIONS // n`, icon-only new, the kind tabs (APP · TELEGRAM · TERMINAL · MORE, #48),
-/// filter field, tag chips, one row per conversation of the tab. On `SidebarSplit`'s grey ground: no row separators, rows without their own fill.
+/// filter field, tag chips, one card per conversation of the tab, the flare after the last. On `SidebarSplit`'s grey ground, no row separators.
 struct ConversationSidebar: View {
     @Binding var selection: String?
     /// The Filter field's focus (⌘K).
@@ -79,10 +79,12 @@ struct ConversationSidebar: View {
                     SectionLabel(title: "Pinned").sidebarRow()
                     ForEach(shown.pinned) { conversation($0) }
                     if !shown.rest.isEmpty {
-                        SectionLabel(title: "Conversations").sidebarRow()
+                        // 20 pt below the last card, whose cell brings 4.
+                        SectionLabel(title: "Conversations").padding(.top, Space.l).sidebarRow()
                     }
                 }
                 ForEach(shown.rest) { conversation($0) }
+                if count > 0 { SidebarFlare(count: count).sidebarRow() }
             }
             .sidebarList()
         }
@@ -137,29 +139,28 @@ struct ConversationSidebar: View {
                     onChange: { actions.setTags(overview.id, $0, store: store) }, onDone: { actions.tagging = nil })
                     // A white panel: its quiet buttons in ink.
                     .environment(\.onSidebar, false)
-                    .padding(Space.s)
+                    .padding(.top, Space.s)
             }
         }
+        .sidebarCardCell()
         .tag(overview.id)
         .sidebarRow()
     }
 
     /// `SidebarHeader`'s layout with the kind tabs between the title and the filter field.
     private func header(kind: ConversationKind, count: Int, summary: ConversationKind.Summary) -> some View {
-        VStack(spacing: Space.m) {
-            HStack(spacing: Space.s) {
-                Text(verbatim: "\(kind.name) // \(count)").typeRole(.label).foregroundStyle(Ink.text.onSidebarSecondary).lineLimit(1)
-                Spacer(minLength: Space.s)
+        VStack(spacing: Space.s) {
+            SidebarTitleRow(title: "\(kind.name) // \(count)") {
                 EndfieldButton("New conversation", symbol: Symbol.plus, kind: .quiet, iconOnly: true) { create() }
             }
-            .frame(height: Size.control)
+            .padding(.bottom, -Space.s)
             ChatKindTabs(summary: summary, kind: $storedKind)
-            EndfieldTextField("Filter conversations", text: $filter, ground: Ink.surface.window, focus: filterFocus)
+            SidebarFilter("Filter conversations", text: $filter, focus: filterFocus)
             if !tagCounts.isEmpty { tagFilterBar }
             ActionError(message: createFailed ? "Could not create a conversation. Try again." : nil)
             ActionError(message: actions.error)
         }
-        .padding(.horizontal, Space.l).padding(.vertical, Space.m)
+        .padding(.horizontal, Space.l).padding(.bottom, Space.m)
     }
 
     /// One chip per tag with its count; a second click clears it.
@@ -217,7 +218,7 @@ struct ChatKindTabs: View {
         }
     }
 
-    private static func mark(_ attention: ConversationKind.Attention) -> KindMark { attention == .approval ? .approval : .running }
+    private static func mark(_ attention: ConversationKind.Attention) -> StickerState { attention == .approval ? .approval : .running }
 
     var body: some View {
         KindTabs(tabs: ConversationKind.tabs.map(chip), more: summary.more.map(chip), moreMark: summary.moreAttention.map(Self.mark),
@@ -240,11 +241,11 @@ private struct ConversationRow: View {
             let row = SessionRowView(
                 name: overview.info.map(ConversationSidebar.title) ?? "New conversation",
                 source: source, activity: Self.age(overview.lastActivity, now: context.date), isSelected: isSelected,
-                isReadOnly: overview.isReadOnly,
+                isReadOnly: overview.isReadOnly, isPinned: overview.info?.isPinned == true,
                 runElapsed: overview.run.map { Self.clock(context.date.timeIntervalSince($0.startedAt)) },
-                needsApproval: overview.isWaitingForApproval)
+                needsApproval: overview.isWaitingForApproval, tags: tags)
             if let info = overview.info {
-                row.conversationChrome(info, tags: tags, isSelected: isSelected, actions: actions, store: store)
+                row.conversationChrome(info, isSelected: isSelected, actions: actions, store: store)
             } else {
                 row
             }

@@ -6,7 +6,8 @@ public enum EndfieldButtonKind: Sendable {
 
 /// Square chip with a 1 px edge and a trailing SF Symbol. `iconOnly` hides the word but keeps it as tooltip and
 /// accessibility label. Pressed inverts to ink with yellow text; disabled goes sunken and muted (dark-panel on steel).
-/// On steel a secondary button has no fill and a light edge and word (`.btn.steel`, #57).
+/// On steel a secondary button has no fill and a light edge and word (`.btn.steel`, #57). On the window sidebar a quiet
+/// icon-only button is an ink block with a yellow glyph (the header's `+`, #65).
 public struct EndfieldButtonStyle: ButtonStyle {
     let kind: EndfieldButtonKind
     let title: String
@@ -31,11 +32,13 @@ public struct EndfieldButtonStyle: ButtonStyle {
         @Environment(\.onSidebar) private var onSidebar
         @Environment(\.onSteel) private var onSteel
 
+        private var isBlock: Bool { onSidebar && style.kind == .quiet && style.iconOnly }
+
         private var palette: (fill: Color, edge: Color, text: Color) {
             if !isEnabled {
                 return onSteel ? (Ink.surface.darkPanel, Ink.text.secondary, Ink.text.onDark) : (Ink.surface.sunken, Ink.line.rule, Ink.text.muted)
             }
-            if configuration.isPressed { return (Ink.surface.inverse, Ink.line.strong, Ink.selection) }
+            if configuration.isPressed || isBlock { return (Ink.surface.inverse, Ink.line.strong, Ink.selection) }
             switch style.kind {
             case .primary: return (Ink.selection, Ink.line.strong, Ink.text.primary)
             case .secondary: return onSteel ? (.clear, Ink.text.onDark, Ink.text.onDark) : (Ink.surface.raised, Ink.line.strong, Ink.text.primary)
@@ -51,14 +54,17 @@ public struct EndfieldButtonStyle: ButtonStyle {
                 if !style.iconOnly { configuration.label.textCase(.uppercase).lineLimit(1) }
                 // Beside the word the symbol is decoration: as its own element it read the label twice to VoiceOver
                 // ("Looks good, Looks good"). Alone it carries the label and the tooltip.
-                if let symbol = style.symbol { Image(systemName: symbol).accessibilityHidden(!style.iconOnly) }
+                if let symbol = style.symbol {
+                    Image(systemName: symbol).font(isBlock ? .system(size: Icon.section) : nil).accessibilityHidden(!style.iconOnly)
+                }
             }
+            .frame(width: isBlock ? Icon.section : nil, height: isBlock ? Icon.section : nil)
             // A button never wraps its word: in a tight row it keeps its size and the row has to make room.
             .fixedSize()
             .typeRole(.button)
             .foregroundStyle(p.text)
-            .padding(.vertical, Space.s)
-            .padding(.horizontal, style.iconOnly ? Space.s : Space.m)
+            .padding(.vertical, isBlock ? Space.xs : Space.s)
+            .padding(.horizontal, isBlock ? Space.xs : style.iconOnly ? Space.s : Space.m)
             .background(p.fill)
             .edge(p.edge)
             .contentShape(Rectangle())
@@ -97,6 +103,7 @@ public struct EndfieldButton: View {
 }
 
 /// `.plain` text field in a square container: rest sunken with a rule edge, focused raised with an ink edge, error red.
+/// On the window sidebar: white with an ink edge and the soft ink shadow, yellow while focused (#65).
 public struct EndfieldTextField: View {
     let placeholder: String
     @Binding var text: String
@@ -108,6 +115,7 @@ public struct EndfieldTextField: View {
     var forceFocused = false  // snapshots and previews: focus can't be set from outside
     @FocusState private var focused: Bool
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.onSidebar) private var onSidebar
 
     public init(
         _ placeholder: String, text: Binding<String>, isError: Bool = false, ground: Color = Ink.surface.sunken,
@@ -124,13 +132,17 @@ public struct EndfieldTextField: View {
         let isFocused = (focus?.wrappedValue ?? focused) || forceFocused
         TextField(placeholder, text: $text, prompt: Text(placeholder).foregroundStyle(Ink.text.secondary))
             .textFieldStyle(.plain)
-            .typeRole(.body)
+            .typeRole(onSidebar ? .headline : .body)
             .foregroundStyle(isEnabled ? Ink.text.primary : Ink.text.muted)
             .focused(focus ?? $focused)
             .padding(.horizontal, Space.m)
             .frame(height: Size.control)
-            .background(isFocused ? Ink.surface.raised : ground)
-            .edge(isError ? Ink.text.error : isFocused ? Ink.line.strong : Ink.line.rule)
+            // The shadow on the ground alone: over the field it would blur the text's glyphs inside it.
+            .background {
+                (isFocused || onSidebar ? Ink.surface.raised : ground)
+                    .shadow(!onSidebar ? Shadow.none : isFocused ? Shadow.blockFocus : Shadow.block)
+            }
+            .edge(isError ? Ink.text.error : isFocused || onSidebar ? Ink.line.strong : Ink.line.rule)
     }
 }
 

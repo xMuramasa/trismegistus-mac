@@ -64,17 +64,18 @@ final class WindowChromeTests: XCTestCase {
             var body: some View {
                 List(selection: $selection) {
                     ForEach(0..<3, id: \.self) { i in
-                        SessionRowView(name: "Row \(i)", source: .trismegistus, activity: "now", isSelected: selection == i)
-                            .tag(i).listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Ink.surface.sidebar)
+                        // Not `isSelected`: the selected card's glow lies in those margins too.
+                        SessionRowView(name: "Row \(i)", source: .trismegistus, activity: "now")
+                            .sidebarCardCell().tag(i).sidebarRow()
                     }
                 }
-                .listStyle(.plain).scrollContentBackground(.hidden)
+                .sidebarList()
                 .environment(\.onSidebar, true)
                 .background(Ink.surface.sidebar)
-                .frame(width: 260, height: 170)
+                .frame(width: 260, height: 190)
             }
         }
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 260, height: 170), styleMask: [.borderless], backing: .buffered, defer: false)
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 260, height: 190), styleMask: [.borderless], backing: .buffered, defer: false)
         window.appearance = NSAppearance(named: .aqua)
         window.contentView = NSHostingView(rootView: Sidebar())
         window.orderFrontRegardless()
@@ -82,9 +83,9 @@ final class WindowChromeTests: XCTestCase {
         spin(1.0)
         let view = window.contentView!
         let rep = try bitmap(view)
-        let ground = rgb(rep, view, 130, 52 * 2 + 26)       // an unselected row
+        let ground = rgb(rep, view, 3, 60 * 2 + 30)         // beside an unselected row
         for x in [3.0, 257] {
-            let margin = rgb(rep, view, x, 52 + 26)             // beside the selected row
+            let margin = rgb(rep, view, x, 60 + 30)             // beside the selected row
             print("chrome: margin at x=\(x) \(margin), ground \(ground)")
             for i in 0..<3 { XCTAssertEqual(margin[i], ground[i], accuracy: 0.01, "the system highlight shows beside the selected row") }
         }

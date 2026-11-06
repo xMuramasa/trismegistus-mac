@@ -61,8 +61,7 @@ struct MainWindow: View {
         SidebarSplit(isShown: $sidebarShown, width: $sidebarWidth) {
             VStack(spacing: 0) {
                 sidebar
-                footer
-                SectionBar(selection: $section)
+                SectionBar(selection: $section, device: model.deviceName.map { "\($0) · paired" } ?? "not paired")
             }
         } detail: {
             detail
@@ -122,15 +121,6 @@ struct MainWindow: View {
         case .commands:
             CommandsView(conversation: commandsConversation, search: commandsSearch, sessions: $commandSessions, onOpen: open)
         }
-    }
-
-    /// The paired device, above the section bar.
-    private var footer: some View {
-        Text(model.deviceName.map { "\($0) · paired" } ?? "not paired")
-            .typeRole(.monoSmall).foregroundStyle(Ink.text.onSidebarSecondary)
-            .padding(.horizontal, Space.l).padding(.vertical, Space.s)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .overlay(alignment: .top) { Rectangle().fill(Ink.line.onSidebar).frame(height: Stroke.hairline) }
     }
 
     private func toggleSidebar() {

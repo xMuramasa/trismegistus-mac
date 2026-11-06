@@ -165,8 +165,8 @@ final class TopBarTests: XCTestCase {
                 assertDarker(ground, than: paper, "\(name): sidebar ground against the paper")
                 assertDarker(ground, than: rule, "\(name): sidebar rule against its ground")
                 assertDarker(rule, than: paper, "\(name): sidebar rule against the paper")
-                // The second row (selected) is white: under the 89 pt header and the first 52 pt row.
-                assertDarker(ground, than: rgb(rep, CGPoint(x: 200, y: top + 89 + 52 + 26), scale: scale), "\(name): selected row")
+                // The second row (selected) is the ink card (#65): under the 89 pt header and the first 52 pt row.
+                assertDarker(rgb(rep, CGPoint(x: 200, y: top + 89 + 52 + 26), scale: scale), than: ground, "\(name): selected row")
             } else {
                 assertSteel(rgb(rep, CGPoint(x: 150, y: top + 4), scale: scale), "\(name): header at the window's left")
             }

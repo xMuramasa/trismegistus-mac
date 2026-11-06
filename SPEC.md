@@ -20,7 +20,7 @@ commands, session list. Martin's laptop is the target; nothing is distributed.
   never quits it quietly while no window is open; Settings has Quit (⌘Q).
 - **Design:** the UI draft in Penpot (#5, exports in `design/ui-draft/`), approved by Martin on 2026-10-31 for the
   beta. Endfield design language (paper and ink, yellow for the one primary action, square edges, hairlines, key-hint
-  strip), **light mode only** (forced at launch with `NSApp.appearance = .aqua`, so a Mac in dark mode doesn't turn system-colored text white on paper), **Inter and JetBrains Mono**, bundled (SIL OFL; #33). Every colour, spacing, type role, size, radius, stroke, opacity, shadow and motion value comes from `design/tokens.json` through `scripts/gen-tokens.py` into TrismegistusUI's generated `Tokens.swift` (`Ink.*` roles, `Palette.*`, `Space.*`, `.typeRole(_:)`, `Size.*`, …); `scripts/check-tokens.sh` fails on a stale `Tokens.swift` or a raw literal in a view. Spacing is a strict scale (2, 4, 8, 12, 16, 20, 24, 32, 40). Native controls
+  strip), **light mode only** (forced at launch with `NSApp.appearance = .aqua`, so a Mac in dark mode doesn't turn system-colored text white on paper), **Inter and JetBrains Mono**, bundled (SIL OFL; #33; Inter up to Black for the B2 sidebar, #65). Every colour, spacing, type role, size, radius, stroke, opacity, shadow and motion value comes from `design/tokens.json` through `scripts/gen-tokens.py` into TrismegistusUI's generated `Tokens.swift` (`Ink.*` roles, `Palette.*`, `Space.*`, `.typeRole(_:)`, `Size.*`, …); `scripts/check-tokens.sh` fails on a stale `Tokens.swift` or a raw literal in a view. Spacing is a strict scale (2, 4, 8, 12, 16, 20, 24, 32, 40). Native controls
   with an Endfield surface; custom views only for content and identity (see the Controls page). Colors come from the
   Endfield palette (`endfield-dotfiles/theme/palette.json`), copied into an asset catalog. Buttons carry a trailing SF
   Symbol; obvious actions (copy, new, send, stop, retry, open window, terminal) are icon-only with the word as tooltip
@@ -88,7 +88,7 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
 
 - **Menu bar icon:** state in the glyph: disconnected, connected idle, a run in progress, an approval waiting
   (badge). Click opens the popover.
-- **Popover:** session list (name, source icon, read-only lock, last activity, RUN / APPROVAL marks) → chat view:
+- **Popover:** session list (name, source icon, read-only lock, last activity, RUN / APPROVAL stickers) → chat view:
   messages, foldable tool rows with duration and error flag, subagent rows, the answer rendered as Markdown, a working
   indicator, a composer; `⌘↩` sends. One run per session: a prompt during a run offers "send as steer". Header:
   connection status, open window, settings. Empty and reconnecting states as drawn.
@@ -114,8 +114,8 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   calls (the filter is the log's search) and the log (failed-only in its header). Each section keeps its own selection
   (`window.section`, `window.selection.<section>`; Chat keeps `window.selectedSession`). Opening a conversation from
   GitHub, Agents, Jobs, Commands or a notification switches to Chat with it selected. The sidebar ground is `surface.sidebar` (the palette's secondary grey)
-  with light text (`text.on-sidebar`, `text.on-sidebar-secondary`, ≈4.7:1, nothing dimmer); the selected row is a
-  white card with a yellow outline and ink text; the filter fields stay light. The daily feed runs are ordinary read-only
+  with light text (`text.on-sidebar`, `text.on-sidebar-secondary`, ≈4.7:1, nothing dimmer); its look is the next
+  paragraph, and rows outside Chat keep theirs for now (a white selected card with a yellow outline). The daily feed runs are ordinary read-only
   cron conversations, listed like every other cron run (the news itself is read at news.lab.x-muramasa.dev).
   The GitHub issue (#59): the steel header with `done/total` of the body's task list, a readout row (Status and
   Priority menus for a manager, Tags, Agent, Close/Reopen), then body and comments through the Markdown renderer in a
@@ -123,16 +123,17 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   tick list (ticks are a local aid, kept per issue while the app runs, never sent and never required) above Looks
   good / Not right; after either it folds to one line until the issue leaves Needs check.
   **Chat kind tabs** (#48): under the header, which names the tab (`TELEGRAM // 4`), above the filter, a row of bare
-  icon tabs in the section bar's look: APP `macwindow`, TELEGRAM `paperplane`, TERMINAL `terminal`, MORE
-  `ellipsis.circle` ▾, each with its count in mono; the selected one with the yellow bar (ink in the popover); a
-  badge on the icon, magenta while an approval waits, green while a run goes. Tooltips carry the full name.
+  icon tabs: APP `macwindow`, TELEGRAM `paperplane`, TERMINAL `terminal`, MORE `ellipsis.circle` ▾, each with its
+  count. On the sidebar outlined blocks, the current one solid yellow, with a small sticker of the strongest state; in
+  the popover bare icons with an ink bar and a dot on the icon (magenta while an approval waits, green while a run
+  goes). Tooltips carry the full name.
   The list shows the chosen kind only, by Hermes' `source`: **APP** `api_server` (the default), **TELEGRAM**
   `telegram`, **TERMINAL** `cli` and `tui`; the **MORE** menu has One-shots (`oneshot`), Cron, any other source by its
   name and All (with a MORE entry chosen its icon and count take MORE's place, `⚡ 6 ▾`). The header count is the tab's; an
   empty tab says `No conversations from the terminal`. A pinned conversation shows only in its own tab (pinned first
   there). ⌘K filters within the tab; when it finds nothing there but matches elsewhere a row `2 more in TELEGRAM ›`
-  switches tab. A tab's icon gets a badge while its conversations need you: magenta while an approval waits, green while a run
-  goes (approval wins; MORE shows the strongest among its entries); notifications are unchanged. Opening a conversation
+  switches tab. A tab is marked while its conversations need you (approval wins; MORE shows the strongest among its entries);
+  notifications are unchanged. Opening a conversation
   from a notification, Jobs, GitHub, Agents or Commands switches to its kind's tab (All stays All), + New makes an app
   conversation and switches to APP, and a tab switch keeps the open conversation in the detail until another is
   picked. A Telegram chat continued in the app is an app conversation (APP, its Telegram part folded above). The
@@ -154,6 +155,32 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   `[terminal closed by the server: access ended]`) and the next Return or the next open starts a new one; the app never
   reconnects a shell on its own. A refusal shows the relay's message as it is, plus the `systemctl --user start
   trismegistus-term` fix for `unavailable` and `not_configured`.
+- **Window sidebar, B2** (#65, `design/opendesign/12-sidebar-b2/`): Inter only, with tabular figures for data
+  (`.monospacedDigit()`), so the ticking clock keeps its width; Martin doesn't want mono, elsewhere it goes later. In
+  every section: a header `APP // 10` (24/900 white, yellow slashes), an icon-only action as a 24 pt ink block with a yellow
+  glyph, a white filter with a 1 pt ink edge and the soft ink shadow (yellow while focused), and the footer, an ink bar
+  with `macbook · paired` in on-steel over the section icons, the current one on a yellow block. In Chat: `PINNED` and
+  `CONVERSATIONS` are 24 pt ink slabs across the column: an 8 pt yellow square, a yellow 12/900 label and Endfield contour lines
+  (`line.contour`, 0.5 pt, every fifth stronger, each title its own wobble) fading in towards the right. A conversation
+  is a 52 pt paper card, 8 pt from the next (60 pt pitch), with a 4 pt `muted` head band and a 4 pt `dark-panel` foot
+  bar: a 14/800 uppercase ink title over `secondary` meta (source, age, the lock after the age; no pin, the head says
+  it). Bold is for titles and active things: a row with no state and not selected drops title, age and tags to regular.
+  Tags are white chips with a 1 pt ink edge, at most 2 + `+N`. Hover adds a 1 pt ink edge and the soft shadow. The
+  selected card is ink: a yellow title after an 8 pt yellow square, `on-steel` meta, the soft shadow, a 1 pt yellow frame 4 pt
+  outside with 4 pt square corner nodes and a soft glow, no chevron. `…` sits on the tag line. A **sticker** says the state:
+  square, on the card's top-right corner and inside it (a `List` clips each row), 24 pt tall with a 1 pt ink edge (`on-steel` on
+  the ink card), a 20 pt glyph cell, then the word: RUN ink with a yellow cell, white word and time; APPROVAL magenta
+  with an ink cell and hard ink and magenta stripes at its end; FAILED and DONE exist (terminal-red with a white cell,
+  green with an ink cell; a done sticker has no shadow) for the run alerts. Word plus shape always; VoiceOver reads the row as
+  `Android app, approval waiting, 2 h, read-only, pinned`. After the last card the list's count, 88/900 at 16%, beside
+  crosshairs, a dot grid and a hatch at 32%: not selectable, not in the accessibility tree. Below the default width
+  (260 pt) stickers drop the word (a run keeps its clock), a row shows one tag, the tabs and footer tighten.
+  The popover stays white with its yellow bar and its fonts, with the same stickers on its rows' corners, the `…` on the
+  tag line and the pin after the age.
+  Departures from the token rules, by design: rows have fills; shadows (`shadow.block`, 4, 4, 8 pt blur, ink 40%;
+  `sticker`, `block-focus`, `selection-glow`); the contours' gradient mask; hard stripes; the 60 pt pitch.
+  A `List` clips each row, so a card's shadow shows only in the 4 pt under it, and a `.shadow` goes on the fill alone: on a stack it
+  is one shadow per child, a band's on the paper or a blur on a field's text.
 - **Markdown:** prose with `AttributedString(markdown:)`; fenced code blocks are split out and drawn as views with a
   language label and a copy button.
 - **Images** (#43, #44, #45; relay trismegistus#25, #26): a message takes up to 4 images by drop onto the chat column, the

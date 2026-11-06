@@ -166,14 +166,16 @@ out += ["}", ""]
 
 # Fonts: each family's faces are the bundled TTFs <Family without spaces>-<Weight>.ttf, named by their PostScript name.
 weights = {400: "Regular", 500: "Medium", 600: "SemiBold", 700: "Bold"}
+heavy = {800: "ExtraBold", 900: "Black"}  # Inter only
 families = leaves(tokens["font"]["family"])
+family_weights = {n: weights | heavy if n == "ui" else weights for n, _ in families}
 out += ["/// `font.family`: the bundled families (Resources/Fonts, SIL OFL 1.1).", "public enum FontFamily: String, CaseIterable, Sendable {"]
 out += [f"    case {ident(n)} = \"{t['$value']}\"" for n, t in families]
 out += ["", "    /// PostScript names of the bundled faces, by weight.", "    var faces: [Int: String] {", "        switch self {"]
 for n, t in families:
     stem = t["$value"].replace(" ", "")
     faces = []
-    for w, wname in weights.items():
+    for w, wname in family_weights[n].items():
         ps = f"{stem}-{wname}"
         if not (fonts / f"{ps}.ttf").exists():
             sys.exit(f"missing font file {fonts / (ps + '.ttf')}")
@@ -187,7 +189,7 @@ out += ["/// `font.role`: the type roles (`View.typeRole(_:)`).", "public enum T
 out += [f"    case {', '.join(ident(n) for n, _ in roles)}", "", "    public var spec: TypeSpec {", "        switch self {"]
 for n, t in roles:
     v = t["$value"]
-    if v["family"] not in family_names or v["weight"] not in weights:
+    if v["family"] not in family_names or v["weight"] not in family_weights[v["family"]]:
         sys.exit(f"font.role.{n}: unknown family or weight")
     out += [f"        case .{ident(n)}: TypeSpec(family: .{ident(v['family'])}, size: {num(v['size'])}, weight: {v['weight']}, "
             f"tracking: {num(v['tracking'])}, uppercase: {'true' if v['uppercase'] else 'false'})"]

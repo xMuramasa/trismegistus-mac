@@ -134,8 +134,8 @@ public struct SegmentRule: View {
 
 public extension EnvironmentValues {
     /// True in the window's sidebar (`SidebarSplit` sets it): rows sit on its `secondary` grey ground (#41) with light
-    /// text, the selected one a white card with a 1 pt yellow border and ink text. Off (the popover): white rows, a
-    /// yellow bar on the selected one, meta in `muted`.
+    /// text, the selected one a white card with a 1 pt yellow border and ink text; conversations are `SessionRowView`'s
+    /// cards. Off (the popover): white rows, a yellow bar on the selected one, meta in `muted`.
     @Entry var onSidebar = false
 }
 
@@ -157,7 +157,7 @@ public struct RowInk: Sendable {
 }
 
 public extension View {
-    /// The ground and selection mark of a list row (`SessionRowView`, the window sidebar's rows); see `onSidebar`.
+    /// The ground and selection mark of a list row (the popover's, the other sections' on the sidebar); see `onSidebar`.
     /// On the sidebar the fill is opaque so the list's own selection highlight never shows through.
     func rowGround(isSelected: Bool) -> some View { modifier(RowGround(isSelected: isSelected)) }
 }
@@ -186,62 +186,147 @@ private struct RowGround: ViewModifier {
     }
 }
 
-/// A conversation row: 52 high, marker, name, source + activity, RUN / APPROVAL / lock marks.
+/// A conversation row, 52 high. On the window sidebar a card (B2, #65): paper with a head band and a foot bar, ink when
+/// selected, a quiet row in regular weight, a sticker on its top-right corner; a run's clock and the tags in Inter. In
+/// the popover a white row with the yellow bar, and the pin after the age (it has no PINNED head to say so on the sidebar).
 public struct SessionRowView: View {
     let name: String
     let source: SessionSource
     let activity: String
     let isSelected: Bool
     let isReadOnly: Bool
+    let isPinned: Bool
     let runElapsed: String?
     let needsApproval: Bool
+    let tags: [String]
 
     public init(
         name: String, source: SessionSource, activity: String, isSelected: Bool = false, isReadOnly: Bool = false,
-        runElapsed: String? = nil, needsApproval: Bool = false
+        isPinned: Bool = false, runElapsed: String? = nil, needsApproval: Bool = false, tags: [String] = []
     ) {
         self.name = name
         self.source = source
         self.activity = activity
         self.isSelected = isSelected
         self.isReadOnly = isReadOnly
+        self.isPinned = isPinned
         self.runElapsed = runElapsed
         self.needsApproval = needsApproval
+        self.tags = tags
     }
 
     @Environment(\.onSidebar) private var onSidebar
+    @Environment(\.sidebarNarrow) private var narrow
+    @Environment(\.rowHovered) private var isHovered
+
+    /// Approval wins over the run it holds up.
+    private var state: StickerState? { needsApproval ? .approval : runElapsed != nil ? .running : nil }
+
+    /// What VoiceOver reads (the design's `spoken`).
+    var spoken: String {
+        ([name, state?.spoken, activity, isReadOnly ? "read-only" : nil, isPinned ? "pinned" : nil, tags.isEmpty ? nil : "tags \(tags.joined(separator: ", "))"] as [String?])
+            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
+    }
 
     public var body: some View {
-        let ink = RowInk(onSidebar: onSidebar, isSelected: isSelected)
-        HStack(spacing: Space.s) {
-            VStack(alignment: .leading, spacing: Space.xs) {
-                Text(name).typeRole(.headline).foregroundStyle(ink.title).lineLimit(1)
-                HStack(spacing: Space.s) {
-                    SourceIcon(source)
-                    if isReadOnly { Image(systemName: Symbol.lock).font(.system(size: Icon.s)) }
-                    Text(isReadOnly ? "\(activity) · read-only" : activity).typeRole(.monoSmall)
+        // Bold is for titles and active things: a row with nothing to say drops to regular.
+        let quiet = onSidebar && state == nil && !isSelected
+        let ink: RowInk? = onSidebar ? nil : RowInk(onSidebar: false, isSelected: isSelected)
+        let meta = ink?.meta ?? (isSelected ? Ink.text.onDark : Ink.text.secondary)
+        let data: TypeRole = onSidebar ? .data : .monoSmall
+        let lines = VStack(alignment: .leading, spacing: Space.xs) {
+            HStack(spacing: Space.s) {
+                if onSidebar && isSelected {
+                    Rectangle().fill(Ink.selection).frame(width: Size.marker, height: Size.marker)
                 }
-                .foregroundStyle(ink.meta)
-            }
-            Spacer(minLength: Space.s)
-            if needsApproval {
-                Text("Approval").typeRole(.label).foregroundStyle(Ink.text.primary)
-                    .padding(.horizontal, Space.s).padding(.vertical, Space.xxs).background(Ink.marker)
-            } else if let runElapsed {
-                HStack(spacing: Space.s) {
-                    Text("Run").typeRole(.label).foregroundStyle(ink.link)
-                    Text(runElapsed).typeRole(.monoSmall).foregroundStyle(ink.title)
+                Text(name).typeRole(onSidebar ? .cardTitle : .headline, weight: quiet ? .regular : nil)
+                    .foregroundStyle(ink?.title ?? (isSelected ? Ink.selection : Ink.text.primary)).lineLimit(1)
+                Spacer(minLength: 0)
+                if let state {
+                    // In the line, so a long title stops short of it; out to the row's corner, inside the card (a `List`
+                    // clips each row, so it can't hang over the card above).
+                    Sticker(state, time: state == .running ? runElapsed : nil, showsWord: !(onSidebar && narrow),
+                            edge: onSidebar && isSelected ? Ink.text.onDark : Ink.line.strong)
+                        .padding(.trailing, -Space.m)
+                        .offset(y: -Space.xs)
                 }
-            } else if isSelected {
-                Image(systemName: Symbol.chevronRight).font(.system(size: Icon.s)).foregroundStyle(Ink.text.primary)
             }
+            .frame(height: Space.l)
+            HStack(spacing: Space.xs) {
+                SourceIcon(source)
+                    .foregroundStyle(source == .trismegistus && onSidebar ? (isSelected ? Ink.text.onDark : Ink.text.primary) : meta)
+                    .padding(.trailing, Space.xs)
+                Text(activity).typeRole(data, weight: quiet ? .regular : nil).monospacedDigit().lineLimit(1)
+                if isReadOnly { Image(systemName: Symbol.lock).font(.system(size: Icon.s)) }
+                if isPinned && !onSidebar { Image(systemName: Symbol.pin).font(.system(size: Icon.s)) }
+                Spacer(minLength: Space.s)
+                TagChips(tags: tags, limit: onSidebar && narrow ? 1 : 2, weight: quiet ? .regular : nil, overflow: onSidebar ? meta : Ink.text.secondary)
+                    // The `…` takes this place on the selected row and the one under the pointer.
+                    .padding(.trailing, isSelected || isHovered ? Size.menuButton : 0)
+            }
+            .foregroundStyle(meta)
+            .frame(height: Space.l)
         }
         .padding(.horizontal, Space.m)
         .frame(height: Size.row)
-        .rowGround(isSelected: isSelected)
-        .accessibilityElement(children: .combine)
+        Group {
+            if onSidebar {
+                lines.modifier(CardGround(isSelected: isSelected, isHovered: isHovered))
+            } else {
+                lines.rowGround(isSelected: isSelected)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spoken)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
+}
+
+/// A sidebar card's ground. Selected: ink, a 1 pt yellow frame 4 pt outside it with square corner nodes and a soft glow.
+private struct CardGround: ViewModifier {
+    let isSelected: Bool
+    let isHovered: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                ZStack {
+                    if isSelected { frame.shadow(Shadow.selectionGlow) }
+                    // On the fill alone: a shadow on a stack is one per child, so the head band would cast one on the paper.
+                    (isSelected ? Ink.surface.inverse : Ink.surface.paperCard)
+                        .shadow(isHovered || isSelected ? Shadow.block : Shadow.none)
+                    if !isSelected { bands }
+                }
+            }
+            .overlay {
+                if isSelected {
+                    frame
+                } else if isHovered {
+                    Rectangle().strokeBorder(Ink.line.strong, lineWidth: Stroke.hairline)
+                }
+            }
+    }
+
+    private var bands: some View {
+        VStack(spacing: 0) {
+            Rectangle().fill(Ink.surface.cardHead).frame(height: Stroke.rule)
+            Spacer(minLength: 0)
+            Rectangle().fill(Ink.surface.cardFoot).frame(height: Stroke.rule)
+        }
+        .padding(Stroke.hairline)
+    }
+
+    private var frame: some View {
+        Rectangle().strokeBorder(Ink.selection, lineWidth: Stroke.hairline)
+            .overlay(alignment: .topLeading) { node }
+            .overlay(alignment: .topTrailing) { node }
+            .overlay(alignment: .bottomLeading) { node }
+            .overlay(alignment: .bottomTrailing) { node }
+            .padding(-Space.xs)
+            .allowsHitTesting(false)
+    }
+
+    private var node: some View { Rectangle().fill(Ink.selection).frame(width: Space.xs, height: Space.xs) }
 }
 
 /// A tool call: collapsed or expanded (output on sunken); a failed one gets a red edge and `EXIT n`.

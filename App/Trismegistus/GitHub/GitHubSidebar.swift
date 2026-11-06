@@ -137,16 +137,9 @@ struct GitHubSidebar: View {
         let groups = board.needsCheck(repo: repo, matching: filter)
         if groups.isEmpty { SidebarNote(text: "Nothing needs your check.").sidebarRow() }
         ForEach(groups, id: \.repo) { group in
-            HStack(spacing: Space.s) {
-                Text(GitHubInbox.shortName(group.repo)).typeRole(.label)
-                Text(verbatim: "\(group.items.count)").typeRole(.monoSmall)
-                Spacer(minLength: 0)
-            }
-            .foregroundStyle(Ink.text.onSidebarSecondary)
-            .padding(.horizontal, Space.l).padding(.top, Space.m).padding(.bottom, Space.xs)
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isHeader)
-            .sidebarRow()
+            SectionHead(title: "\(GitHubInbox.shortName(group.repo)) \(group.items.count)")
+                .padding(.horizontal, -Space.s).padding(.vertical, Space.xs)
+                .sidebarRow()
             ForEach(group.items) { item in
                 IssueRow(ref: "#\(item.number)", title: item.title, priority: item.priority, isClosed: item.state == "closed",
                          isRunning: running.contains(item.id), isSelected: selection == item.id,
@@ -162,16 +155,13 @@ struct GitHubSidebar: View {
             Button {
                 if toggled.contains(group.status) { toggled.remove(group.status) } else { toggled.insert(group.status) }
             } label: {
-                HStack(spacing: Space.s) {
-                    Image(systemName: Symbol.fold(isOpen: !folded))
-                        .font(.system(size: Icon.xxs, weight: .bold)).frame(width: Icon.xxs)
-                    Text(group.status.isEmpty ? "No status" : group.status).typeRole(.label)
-                    Text(verbatim: "\(group.items.count)").typeRole(.monoSmall)
-                    Spacer(minLength: 0)
-                }
-                .foregroundStyle(Ink.text.onSidebarSecondary)
-                .padding(.horizontal, Space.l).padding(.top, Space.m).padding(.bottom, Space.xs)
-                .contentShape(Rectangle())
+                SectionHead(title: "\(group.status.isEmpty ? "No status" : group.status) \(group.items.count)")
+                    .overlay(alignment: .trailing) {
+                        Image(systemName: Symbol.fold(isOpen: !folded)).font(.system(size: Icon.xxs, weight: .bold))
+                            .foregroundStyle(Ink.selection).padding(.trailing, Space.l)
+                    }
+                    .padding(.horizontal, -Space.s).padding(.vertical, Space.xs)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityAddTraits(.isHeader)

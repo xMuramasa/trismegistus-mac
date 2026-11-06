@@ -65,6 +65,12 @@ public enum Ink {
         public let inverse = Palette.ink
         /// the warn status chip; a disabled button on steel; the terminal drawer's ground
         public let darkPanel = Palette.darkPanel
+        /// a conversation card on the window sidebar (B2, #65)
+        public let paperCard = Palette.paper
+        /// the band along the top of a conversation card
+        public let cardHead = Palette.muted
+        /// the bar along the bottom of a conversation card
+        public let cardFoot = Palette.darkPanel
     }
     public static let surface = Surface()
     public struct Line: Sendable {
@@ -78,6 +84,8 @@ public enum Ink {
         public let onSidebar = Palette.onSteel.opacity(Opacity.ruleOnSidebar)
         /// the crosses on the paper ground
         public let paperCross = Palette.ink.opacity(Opacity.paperCrosses)
+        /// the contour lines on an ink section head (decorative)
+        public let contour = Palette.borderInactive
     }
     public static let line = Line()
     public struct Mark: Sendable {
@@ -133,6 +141,10 @@ public enum Opacity {
     public static let paperCrosses: Double = 0.55
     /// the paper veil over the chat while images are dragged over it
     public static let dropVeil: Double = 0.85
+    /// the big count after a sidebar list's last row
+    public static let flareCount: Double = 0.16
+    /// the crosshairs, dots and hatch beside that count
+    public static let flareArt: Double = 0.32
 }
 
 /// `space`: the strict spacing scale; literals round up to the next step.
@@ -160,6 +172,10 @@ public enum Icon {
     public static let section: CGFloat = 16
     /// an empty state's symbol
     public static let empty: CGFloat = 28
+    /// a sticker's state shape
+    public static let sticker: CGFloat = 12
+    /// a section icon on the sidebar's ink footer
+    public static let sectionBlock: CGFloat = 20
 }
 
 /// `size`: fixed sizes of rows, cards, panes and windows.
@@ -167,6 +183,32 @@ public enum Size {
     /// a conversation row; also the unit of the terminal card cap
     public static let row: CGFloat = 52
     public static let rowCompact: CGFloat = 40
+    /// the sidebar's `APP // 10` line
+    public static let sidebarHead: CGFloat = 52
+    /// an ink section head on the sidebar
+    public static let sectionHead: CGFloat = 24
+    /// the ink block of a sidebar header's icon-only action
+    public static let headAction: CGFloat = 24
+    /// a state sticker: its height on a row, its glyph cell's width, its height as a tab badge
+    public struct Sticker: Sendable {
+        public let height: CGFloat = 24
+        public let cell: CGFloat = 20
+        public let badge: CGFloat = 20
+    }
+    public static let sticker = Sticker()
+    /// a section icon's block on the sidebar's footer
+    public struct FooterBlock: Sendable {
+        public let width: CGFloat = 40
+        public let narrow: CGFloat = 32
+        public let height: CGFloat = 40
+    }
+    public static let footerBlock = FooterBlock()
+    /// the decoration after the conversation list's last row
+    public struct Flare: Sendable {
+        public let height: CGFloat = 96
+        public let art: CGFloat = 272
+    }
+    public static let flare = Flare()
     public static let cardHeader: CGFloat = 24
     public static let cardMaxRows: CGFloat = 8
     public static let chatColumn: CGFloat = 700
@@ -347,6 +389,16 @@ public enum Shadow {
     public static let card = ShadowToken(color: Palette.ink.opacity(0.16), radius: 5, x: 0, y: 1)
     /// the approval banner (Endfield's hairline panel style)
     public static let panel = ShadowToken(color: Palette.ink.opacity(0.12), radius: 12, x: 0, y: 4)
+    /// no shadow, for a view whose shadow comes and goes
+    public static let none = ShadowToken(color: Palette.ink.opacity(0), radius: 0, x: 0, y: 0)
+    /// B2's soft offset shadow (the design's 8 px blur: SwiftUI's radius is half a CSS blur)
+    public static let block = ShadowToken(color: Palette.ink.opacity(0.4), radius: 4, x: 4, y: 4)
+    /// the sidebar filter while focused
+    public static let blockFocus = ShadowToken(color: Palette.yellow.opacity(0.4), radius: 4, x: 4, y: 4)
+    /// a sticker on a row; a done sticker has none
+    public static let sticker = ShadowToken(color: Palette.ink.opacity(0.4), radius: 3, x: 3, y: 3)
+    /// the soft glow of the selected card's yellow frame
+    public static let selectionGlow = ShadowToken(color: Palette.yellow.opacity(0.4), radius: 4, x: 0, y: 0)
 }
 
 /// `motion`: an `Animation` where the token has a curve, else a `Duration` to wait (a value settling).
@@ -369,7 +421,7 @@ public enum FontFamily: String, CaseIterable, Sendable {
     /// PostScript names of the bundled faces, by weight.
     var faces: [Int: String] {
         switch self {
-        case .ui: [400: "Inter-Regular", 500: "Inter-Medium", 600: "Inter-SemiBold", 700: "Inter-Bold"]
+        case .ui: [400: "Inter-Regular", 500: "Inter-Medium", 600: "Inter-SemiBold", 700: "Inter-Bold", 800: "Inter-ExtraBold", 900: "Inter-Black"]
         case .mono: [400: "JetBrainsMono-Regular", 500: "JetBrainsMono-Medium", 600: "JetBrainsMono-SemiBold", 700: "JetBrainsMono-Bold"]
         }
     }
@@ -377,7 +429,7 @@ public enum FontFamily: String, CaseIterable, Sendable {
 
 /// `font.role`: the type roles (`View.typeRole(_:)`).
 public enum TypeRole: CaseIterable, Sendable {
-    case heading, title, headline, body, callout, caption, label, button, mono, monoSmall
+    case heading, title, headline, body, callout, caption, label, button, cardTitle, data, sticker, sectionHead, display, flare, mono, monoSmall
 
     public var spec: TypeSpec {
         switch self {
@@ -389,6 +441,12 @@ public enum TypeRole: CaseIterable, Sendable {
         case .caption: TypeSpec(family: .ui, size: 11, weight: 400, tracking: 0, uppercase: false)
         case .label: TypeSpec(family: .ui, size: 10, weight: 600, tracking: 0.8, uppercase: true)
         case .button: TypeSpec(family: .ui, size: 12, weight: 600, tracking: 0.3, uppercase: false)
+        case .cardTitle: TypeSpec(family: .ui, size: 14, weight: 800, tracking: -0.14, uppercase: true)
+        case .data: TypeSpec(family: .ui, size: 11, weight: 700, tracking: 0, uppercase: false)
+        case .sticker: TypeSpec(family: .ui, size: 11, weight: 800, tracking: 0.4, uppercase: true)
+        case .sectionHead: TypeSpec(family: .ui, size: 12, weight: 900, tracking: 0.8, uppercase: true)
+        case .display: TypeSpec(family: .ui, size: 24, weight: 900, tracking: -0.48, uppercase: false)
+        case .flare: TypeSpec(family: .ui, size: 88, weight: 900, tracking: -3.52, uppercase: false)
         case .mono: TypeSpec(family: .mono, size: 12, weight: 400, tracking: 0, uppercase: false)
         case .monoSmall: TypeSpec(family: .mono, size: 11, weight: 400, tracking: 0, uppercase: false)
         }
