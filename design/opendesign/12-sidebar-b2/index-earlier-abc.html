@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trismegistus: sidebar row lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+/* OD-LAYOUT-PRIMITIVES v1 — structure only: display, flex/grid, overflow, wrapping, ratio, geometry.
+   Put this @layer first; product CSS outside the layer wins ordinary layout rules.
+   Native hidden and closed-dialog states take precedence over component display rules. */
+@layer od-layout {
+  [hidden]:not([hidden="until-found" i]) { display: none !important; }
+  dialog:not([open]) { display: none !important; }
+
+  :where(.od-stack,.od-row,.od-row-top,.od-cluster,.od-grid,.od-field,.od-stat,.od-cell,.od-tile) > :where(*) { min-width: 0; }
+
+  .od-row     { display: flex; align-items: center; gap: var(--od-gap, 8px); }
+  .od-fill    { flex: 1 1 0; min-width: 0; }
+  .od-fixed   { flex: none; }
+
+  /* functional inline SVG icons opt into bounded geometry; content SVGs keep their own */
+  .od-icon { display: inline-block; inline-size: var(--od-icon-size, 1em); block-size: var(--od-icon-size, 1em); flex: none; }
+
+  /* data text only — authored copy is rewritten to its budget instead */
+  .od-truncate { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .od-nowrap  { white-space: nowrap; }
+}
+:root [hidden]:where(:not([hidden="until-found" i])) { display: none; }
+/* /OD-LAYOUT-PRIMITIVES v1 */
+
+:root {
+  /* tokens from the brief: nothing outside this list */
+  --paper:#F2F2F2; --raised:#FFFFFF; --sunken:#E5E5E5; --rule:#D9D9D9; --ink:#191919;
+  --dark-panel:#35373C; --secondary:#666666; --muted:#999999; --yellow:#FFFA00; --blue:#0040E8;
+  --green:#00FFA2; --magenta:#FF1AAC; --red:#E5332A; --terminal-green:#00875A; --terminal-red:#C4271F;
+  --on-steel:#E9E9E9; --accent-cyan:#1FE5E0;
+  --sidebar:var(--secondary);
+  --ui:"Inter",-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --row:52px; --row-gap:2px;
+}
+* { box-sizing:border-box; }
+html, body { margin:0; background:var(--paper); color:var(--ink); }
+body { font:400 13px/16px var(--ui); -webkit-font-smoothing:antialiased; }
+button, input { font:inherit; color:inherit; }
+
+/* type roles */
+.t-label { font:600 10px/16px var(--ui); letter-spacing:.8px; text-transform:uppercase; }
+.t-mono { font:400 12px/16px var(--mono); }
+.t-monos { font:400 11px/16px var(--mono); }
+.t-caption { font:400 11px/16px var(--ui); }
+
+/* routes */
+#app[data-view="all"] { display:grid; grid-template-columns:repeat(4,304px 86px); width:1560px; height:1122px; overflow:hidden; }
+.gutter { padding:8px; display:grid; gap:4px; align-content:start; }
+.gutter strong { display:block; margin-bottom:4px; }
+.gutter p { margin:0 0 8px; color:var(--secondary); }
+.gutter a { display:block; color:var(--blue); text-decoration:underline; }
+.gutter a:focus-visible { outline:1px solid var(--ink); outline-offset:1px; }
+
+/* column shell */
+.col { display:flex; flex-direction:column; width:304px; height:1122px; background:var(--sidebar); color:#fff; overflow:hidden; position:relative; }
+.col.narrow { width:220px; }
+.bar { flex:none; height:52px; border-bottom:1px solid var(--ink); position:relative; }
+.col.today .bar { background:linear-gradient(90deg,#666666,#535456); }
+.light { position:absolute; top:19px; width:14px; height:14px; border-radius:50%; background:var(--dark-panel); border:1px solid var(--ink); }
+.toggle { position:absolute; left:110px; top:11px; width:30px; height:30px; border:1px solid var(--on-steel); display:grid; place-items:center; color:var(--on-steel); --od-icon-size:16px; }
+.logo { position:absolute; left:152px; top:18px; --od-icon-size:16px; }
+.word { position:absolute; left:182px; top:17px; font:700 14px/18px var(--ui); letter-spacing:.06em; color:var(--on-steel); }
+.narrow .word { display:none; }
+
+.head { flex:none; height:52px; padding:0 16px; display:flex; align-items:center; justify-content:space-between; color:var(--on-steel); }
+.head .od-icon { --od-icon-size:12px; }
+.tabs { flex:none; height:30px; margin:0 16px; display:flex; gap:12px; color:var(--on-steel); }
+.col.today .tabs { gap:14px; }
+.tab { display:flex; align-items:center; gap:8px; padding:0 4px 2px; border-bottom:2px solid transparent; --od-icon-size:14px; }
+.col.today .tab { padding-inline:6px; }
+.tab.on { border-bottom-color:var(--yellow); color:#fff; }
+.tab .od-icon.chev { --od-icon-size:12px; }
+.slot { display:flex; margin-left:-4px; }
+.tab-dot { width:7px; height:7px; border-radius:50%; background:var(--green); flex:none; }
+.filter { flex:none; display:block; margin:8px 16px 0; height:30px; width:calc(100% - 32px); padding:0 12px; background:var(--paper); border:1px solid var(--rule); color:var(--ink); border-radius:0; appearance:none; font:400 13px/16px var(--ui); }
+.col.today .filter { border-color:#C8C8C0; }
+.filter::placeholder { color:var(--secondary); opacity:1; }
+.filter:focus-visible { outline:1px solid var(--yellow); outline-offset:0; }
+.list { flex:1 1 0; min-height:0; overflow-y:auto; scrollbar-width:none; padding-top:12px; }
+.list::-webkit-scrollbar { display:none; }
+.sec { height:32px; padding:12px 24px 4px; color:var(--on-steel); }
+.empty { margin:0; padding:8px 24px; color:var(--on-steel); }
+.foot { flex:none; height:85px; border-top:1px solid var(--muted); padding:8px 12px 0; }
+.foot .who { padding:0 4px; color:var(--on-steel); height:16px; }
+.icons { display:flex; justify-content:space-between; margin-top:8px; color:#fff; }
+.icons .i { width:40px; height:40px; display:grid; place-items:center; border-bottom:2px solid transparent; --od-icon-size:16px; }
+.narrow .icons .i { width:32px; }
+.icons .i.on { border-bottom-color:var(--yellow); }
+
+/* TODAY reproduction: measured from the screenshot, not on the proposal spacing scale */
+.trow { position:relative; height:54px; margin:0 8px; padding:10px 17px 0; }
+.trow.sel { background:var(--raised); border:1px solid var(--yellow); padding:9px 16px 0; color:var(--ink); }
+.trow .tl { font:600 13px/16px var(--ui); }
+.trow .tm { display:flex; align-items:center; gap:8px; margin-top:2px; height:16px; color:var(--on-steel); --src-bg:var(--on-steel); --src-fg:var(--ink); }
+.trow.sel .tm { color:var(--ink); --src-bg:var(--ink); --src-fg:#fff; }
+.trow .pin { position:absolute; right:13px; top:9px; color:var(--on-steel); --od-icon-size:10px; }
+.trow.sel .pin { right:18px; top:12px; color:var(--ink); }
+.trun { position:absolute; right:16px; top:50%; transform:translateY(-50%); display:flex; gap:8px; }
+.trun .t-label { color:var(--blue); }
+
+/* row: three grounds. Every mark colour is resolved here so a glyph never decides its own ground */
+.col, .key, .row {
+  --t:#FFFFFF; --m:var(--on-steel); --g:var(--sidebar); --hl:var(--on-steel);
+  --src-bg:var(--on-steel); --src-fg:var(--ink);
+  --run:var(--accent-cyan); --done:var(--green);
+  --approval:var(--magenta); --approval-edge:#FFFFFF;
+  --fail:var(--red); --fail-edge:#FFFFFF; --fail-chip-edge:#FFFFFF;
+}
+.row {
+  height:var(--row); margin:0 8px var(--row-gap); border:1px solid transparent; color:var(--t); cursor:pointer;
+}
+.row.g-card, .row.g-pop {
+  --t:var(--ink); --m:var(--secondary); --g:var(--raised);
+  --src-bg:var(--ink); --src-fg:#FFFFFF;
+  --run:var(--blue); --done:var(--terminal-green);
+  --approval-edge:var(--ink);
+  --fail:var(--terminal-red); --fail-edge:transparent; --fail-chip-edge:transparent;
+  background:var(--raised);
+}
+.row.g-card { border-color:var(--yellow); }
+.row.g-pop { --hl:var(--rule); margin:0 0 var(--row-gap); }
+.row.g-pop.is-sel { border-color:var(--ink); }
+.row.is-hover:not(.g-card):not(.is-sel) { border-color:var(--hl); }
+@media (hover:hover) { .row:hover:not(.g-card):not(.is-sel) { border-color:var(--hl); } }
+.row.spec { cursor:default; }
+.row:has(.open:focus-visible), .row:has(.more:focus-visible) { outline:1px solid var(--t); outline-offset:-3px; }
+
+.body { display:grid; gap:4px; min-width:0; }
+.l1, .l2 { display:flex; align-items:center; height:16px; min-width:0; gap:8px; }
+.ttl { flex:1 1 0; min-width:0; font:600 13px/16px var(--ui); }
+.open { all:unset; display:block; flex:1 1 0; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font:600 13px/16px var(--ui); cursor:pointer; color:var(--t); }
+.rename { flex:1 1 0; min-width:0; height:16px; padding:0; border:0; outline:1px solid var(--ink); background:var(--raised); color:var(--ink); font:600 13px/16px var(--ui); }
+.meta { flex:1 1 0; min-width:0; display:flex; align-items:center; gap:4px; color:var(--m); white-space:nowrap; overflow:hidden; }
+.meta .src { margin-right:4px; --od-icon-size:12px; color:var(--m); }
+.meta .glyph { --od-icon-size:12px; }
+.meta .word-s { color:var(--t); }
+.tags { flex:none; display:flex; align-items:center; gap:4px; color:var(--m); }
+.tag { padding:0 4px; height:16px; background:var(--sunken); color:var(--ink); }
+.more { display:none; flex:none; width:20px; height:16px; padding:0; border:0; background:none; color:var(--t); place-items:center; cursor:pointer; --od-icon-size:12px; }
+.row.is-hover .more, .row.is-sel .more, .row:focus-within .more { display:inline-grid; }
+@media (hover:hover) {
+  .row:hover .more { display:inline-grid; }
+  button.more:hover { background:var(--t); color:var(--g); }
+}
+.mark { --od-icon-size:12px; }
+.spin { animation:spin 1600ms linear infinite; transform-origin:6px 6px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) { .spin { animation:none; } }
+
+/* A: left gutter */
+.va .row { display:grid; grid-template-columns:15px minmax(0,1fr); padding:7px 15px 7px 0; }
+.va .gut { display:grid; justify-items:center; align-content:start; padding-top:2px; }
+
+/* B: right column */
+.vb .row { display:block; padding:7px 15px; }
+.chip { flex:none; display:inline-flex; align-items:center; gap:4px; height:16px; padding:0 4px; --od-icon-size:10px; }
+.chip .mark { --od-icon-size:10px; }
+.chip-approval { background:var(--magenta); color:var(--ink); outline:1px solid var(--approval-edge); outline-offset:-1px; --approval:var(--ink); }
+.chip-approval .mark path { stroke:none; }
+.chip-running { background:var(--ink); color:#FFFFFF; --run:var(--yellow); }
+.chip-running .t-monos { color:var(--yellow); }
+.chip-failed { background:var(--terminal-red); color:#FFFFFF; outline:1px solid var(--fail-chip-edge); outline-offset:-1px; --fail:#FFFFFF; --fail-edge:transparent; }
+.chip-done { outline:1px solid var(--t); outline-offset:-1px; color:var(--t); --done:var(--t); }
+
+/* C: one tile */
+.vc .row { display:flex; align-items:center; gap:8px; padding:7px 15px; }
+.vc .body { flex:1 1 0; }
+.vc .l2 { justify-content:flex-start; }
+.vc .meta { flex:0 1 auto; }
+.side { flex:none; display:flex; align-items:center; gap:4px; }
+.side .more { height:20px; }
+.tile { flex:none; width:20px; height:20px; background:#FFFFFF; display:grid; place-items:center;
+  --run:var(--blue); --done:var(--terminal-green); --approval:var(--magenta); --approval-edge:transparent; --fail:var(--terminal-red); --fail-edge:transparent; }
+.g-card .tile, .g-pop .tile { outline:1px solid var(--ink); outline-offset:-1px; }
+.tile.sm { width:16px; height:16px; }
+
+/* menu */
+#menu { position:fixed; z-index:10; width:204px; background:var(--raised); color:var(--ink); border:1px solid var(--ink); padding:4px; display:grid; }
+#menu button { display:flex; justify-content:space-between; align-items:center; width:100%; height:24px; padding:0 8px; border:0; background:none; color:var(--ink); text-align:left; cursor:pointer; --od-icon-size:12px; }
+#menu button:hover, #menu button:focus-visible { background:var(--ink); color:#FFFFFF; outline:none; }
+#menu hr { border:0; border-top:1px solid var(--rule); margin:4px 0; width:100%; }
+#menu p { margin:0; padding:4px 8px 8px; }
+#menu .danger { color:var(--terminal-red); }
+#menu .danger:hover, #menu .danger:focus-visible { background:var(--terminal-red); color:#FFFFFF; }
+
+/* states strip */
+.strip { width:1064px; max-height:1122px; padding:16px; display:grid; grid-template-columns:104px repeat(3,304px); column-gap:8px; align-content:start; }
+.strip h1 { grid-column:1/-1; margin:0 0 12px; font:600 13px/16px var(--ui); }
+.strip .ch { color:var(--secondary); height:20px; }
+.strip .lab { height:calc(var(--row) + var(--row-gap)); display:grid; align-content:center; color:var(--ink); }
+.strip .lab small { font:400 11px/16px var(--ui); color:var(--secondary); text-transform:none; letter-spacing:0; }
+.strip .cell { height:calc(var(--row) + var(--row-gap)); background:var(--sidebar); }
+.strip .cell.pop { background:var(--raised); padding:0 8px; }
+.key-h { grid-column:1/-1; height:12px; }
+.key { height:40px; display:flex; align-items:center; justify-content:space-between; padding:0 16px; background:var(--sidebar); color:#FFFFFF; margin-bottom:2px; }
+.key.white { background:var(--raised); color:var(--ink); border:1px solid var(--rule); }
+.mono-set { --run:currentColor; --done:currentColor; --approval:currentColor; --approval-edge:transparent; --fail:currentColor; --fail-edge:transparent; }
+.mock { display:flex; align-items:center; gap:4px; color:var(--on-steel); --od-icon-size:12px; }
+.note { grid-column:2/-1; margin:8px 0 0; color:var(--secondary); max-width:75ch; }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<div id="menu" role="menu" hidden></div>
+
+<script>
+const VARIANTS = {
+  a: { name:'Left gutter', line:'Bare mark in the left padding, the state as a word on line 2.' },
+  b: { name:'Right column', line:'Labelled chip top-right, tags under it, weight falls with priority.' },
+  c: { name:'One tile', line:'One white tile, same glyph on every ground.' },
+};
+const RANK = ['approval','running','failed','done'];
+const WORD = { approval:'Approval', running:'Run', failed:'Failed', done:'Done' };
+const SPOKEN = { approval:'approval waiting', running:'running', failed:'failed, unseen', done:'done, unseen' };
+
+const SEED = () => [
+  { id:'swift',   title:'Swift app',            src:'T', age:'now',  pinned:true, state:'running', base:36 },
+  { id:'trism',   title:'Trismegistus',         src:'T', age:'1 h',  pinned:true, state:'done' },
+  { id:'android', title:'Android app',          src:'T', age:'2 h',  pinned:true, state:'approval' },
+  { id:'wflow',   title:'Workflow refiner',     src:'T', age:'2 d',  pinned:true, state:'failed' },
+  { id:'compare', title:'Compare Open Design vs Penpot', src:'T', age:'5 min' },
+  { id:'xmur',    title:'xMuramasa/homelab#1: Add the Trismegistus relay', src:'T', age:'1 h', tags:['homelab','relay','mac'] },
+  { id:'home',    title:'Homepage project',     src:'T', age:'2 h',  state:'done' },
+  { id:'brief',   title:'The briefing project', src:'T', age:'yesterday' },
+  { id:'mage',    title:'MAGE-SYS',             src:'T', age:'2 d' },
+  { id:'digest',  title:'Morning news digest',  src:'cron', age:'9 h', ro:true },
+  { id:'infra',   title:'Homelab infra research', src:'T', age:'2 d' },
+];
+const TODAY_ROWS = [
+  ['PINNED'],
+  ['Swift app','now',true,true],['Trismegistus','1 h',true],['Android app','2 h',true],['Workflow refiner','2 d',true],
+  ['CONVERSATIONS'],
+  ['Compare Open Design vs Penpot','5 min'],['xMuramasa/homelab#1: Add the Trismegistus relay','1 h'],['Homepage project','2 h'],
+  ['The briefing project','yesterday'],['MAGE-SYS','2 d'],['Homelab infra research','2 d'],
+];
+const TAG_POOL = ['homelab','relay','mac','ops','briefing'];
+const SPEC_BASE = { title:'Homepage project', src:'T', age:'2 h' };
+const SPEC = [
+  ['idle',{}],
+  ['hovered',{},{hover:true}],
+  ['selected',{},{sel:true}],
+  ['running',{state:'running',base:36}],
+  ['approval',{state:'approval'}],
+  ['failed-unseen',{state:'failed'}],
+  ['done-unseen',{state:'done'}],
+  ['pinned',{pinned:true},{},'No glyph: the PINNED head says it'],
+  ['read-only',{src:'cron',ro:true}],
+  ['tagged',{tags:['homelab','relay','mac']}],
+];
+
+const models = {};
+const model = v => models[v] || (models[v] = { rows:SEED(), selected:'swift', count:10, filter:'', hoverId:'compare' });
+
+/* glyphs */
+const svg = (vb, body, attrs='') => `<svg class="od-icon" viewBox="0 0 ${vb} ${vb}" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" ${attrs}>${body}</svg>`;
+const ICON = {
+  chat: svg(16,'<path d="M2 3h12v8H6.5L3.5 14v-3H2z"/>'),
+  arrow: svg(16,'<path d="M2 8h11M9 4l4 4-4 4"/>'),
+  term: svg(16,'<rect x="1.5" y="3" width="13" height="10"/><path d="M4 6l2 2-2 2M8 10h3"/>'),
+  chev: svg(16,'<path d="M4 6l4 4 4-4"/>').replace('od-icon','od-icon chev'),
+  panel: svg(16,'<rect x="2" y="3" width="12" height="10"/><path d="M6 3v10"/>'),
+  plus: svg(16,'<path d="M8 2v12M2 8h12"/>'),
+  list: svg(16,'<path d="M2 4l1.5 1.5L6 3M2 11l1.5 1.5L6 10M8 4.500h6M8 11.500h6"/>'),
+  news: svg(16,'<path d="M2 3h9v10H2zM11 6h3v7h-3M4 6h5M4 9h5"/>'),
+  chip: svg(16,'<rect x="4" y="4" width="8" height="8"/><path d="M6 1v3M10 1v3M6 12v3M10 12v3M1 6h3M1 10h3M12 6h3M12 10h3"/>'),
+  cal: svg(16,'<rect x="2" y="3" width="12" height="11"/><path d="M2 6.500h12M5 1.500v3M11 1.500v3"/>'),
+  plane: svg(12,'<path d="M1 6l10-4.500L8.500 10.500 5.500 8 4 10V7.500z" fill="currentColor" stroke="none"/>'),
+  lock: svg(12,'<rect x="2.500" y="5.500" width="7" height="5" fill="currentColor" stroke="none"/><path d="M4 5.500V4a2 2 0 0 1 4 0v1.500"/>'),
+  pin: svg(12,'<path d="M4 1.500h4M4.800 1.500v4L3 7.500h6L7.200 5.500v-4M6 7.500V11"/>'),
+  dots: svg(16,'<g fill="currentColor" stroke="none"><circle cx="3" cy="8" r="1.200"/><circle cx="8" cy="8" r="1.200"/><circle cx="13" cy="8" r="1.200"/></g>'),
+  srcT: `<svg class="od-icon" viewBox="0 0 12 12" aria-hidden="true"><rect width="12" height="12" fill="var(--src-bg)"/><path d="M2.500 2.500h7v2H7v5H5v-5H2.500z" fill="var(--src-fg)"/></svg>`,
+  logo: `<svg class="od-icon" viewBox="0 0 16 16" aria-hidden="true"><rect width="16" height="16" fill="#FFFFFF"/><path d="M3 3h10v3H10v7H6V6H3z" fill="#191919"/></svg>`,
+};
+const SRC = { T:ICON.srcT, cron:ICON.cal, telegram:ICON.plane, terminal:ICON.term };
+
+/* the four state shapes: diamond, ring, cross, check */
+const SHAPE = {
+  approval:`<path d="M6 1l5 5-5 5-5-5z" fill="var(--approval)" stroke="var(--approval-edge)" stroke-width="1"/>`,
+  running:`<path class="spin" d="M6 2a4 4 0 1 1-4 4" fill="none" stroke="var(--run)" stroke-width="2"/>`,
+  failed:`<path d="M3 3l6 6M9 3l-6 6" fill="none" stroke="var(--fail-edge)" stroke-width="4"/><path d="M3 3l6 6M9 3l-6 6" fill="none" stroke="var(--fail)" stroke-width="2"/>`,
+  done:`<path d="M2 6.500l3 3 5-7" fill="none" stroke="var(--done)" stroke-width="2"/>`,
+};
+const mark = s => `<svg class="od-icon mark" viewBox="0 0 12 12" role="img" aria-label="${SPOKEN[s]}">${SHAPE[s]}</svg>`;
+
+/* helpers */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let tick = 0;
+const fmt = n => `${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;
+const timer = (it, cls='t-monos') => `<span class="${cls} od-nowrap" data-run="${it.base||0}">${fmt((it.base||0)+tick)}</span>`;
+const strongest = rows => RANK.find(s => rows.some(r => r.state === s)) || null;
+
+function tagsHTML(it, o) {
+  const tags = it.tags || [];
+  if (!tags.length) return '';
+  const max = o.narrow ? 1 : 2;
+  const shown = tags.slice(0, max).map(t => `<span class="tag t-monos">${esc(t)}</span>`).join('');
+  const rest = tags.length - max;
+  return `<span class="tags">${shown}${rest > 0 ? `<span class="t-monos">+${rest}</span>` : ''}</span>`;
+}
+function metaHTML(v, it, o) {
+  const src = `<span class="src od-row">${SRC[it.src]}</span>`;
+  const s = it.state;
+  let age = `<span class="t-monos">${esc(it.age)}</span>`;
+  if (v === 'a' && s === 'running') age = `<span class="t-label word-s">${WORD[s]}</span>${timer(it)}`;
+  else if (v === 'a' && s) age = `<span class="t-label word-s">${WORD[s]}</span><span class="t-monos">· ${esc(it.age)}</span>`;
+  const lock = it.ro ? `<span class="glyph od-row" title="Read-only">${ICON.lock}</span>` : '';
+  const pin = o.showPin && it.pinned ? `<span class="glyph od-row" title="Pinned">${ICON.pin}</span>` : '';
+  return `<span class="meta">${src}${age}${lock}${pin}</span>`;
+}
+function chipHTML(it, o) {
+  const s = it.state;
+  if (!s) return '';
+  const label = o.narrow ? '' : `<span class="t-label">${WORD[s]}</span>`;
+  const time = s === 'running' ? timer(it) : '';
+  return `<span class="chip chip-${s}">${mark(s)}${label}${time}</span>`;
+}
+function tileHTML(s, cls='') { return `<span class="tile ${cls}">${mark(s)}</span>`; }
+
+function rowHTML(v, it, o) {
+  const cls = ['row', `g-${o.ground}`];
+  if (o.sel) cls.push('is-sel');
+  if (o.hover) cls.push('is-hover');
+  if (o.spec) cls.push('spec');
+  const spoken = [it.title, it.state && SPOKEN[it.state], it.age, it.ro && 'read-only', it.pinned && 'pinned'].filter(Boolean).join(', ');
+  const title = o.spec ? `<span class="ttl od-truncate">${esc(it.title)}</span>`
+    : o.renaming ? `<input class="rename" value="${esc(it.title)}" aria-label="Rename conversation">`
+    : `<button class="open" type="button" ${o.sel ? 'aria-current="true"' : ''} aria-label="${esc(spoken)}">${esc(it.title)}</button>`;
+  const more = o.spec ? `<span class="more">${ICON.dots}</span>`
+    : `<button class="more" type="button" aria-label="More actions for ${esc(it.title)}" aria-haspopup="menu">${ICON.dots}</button>`;
+  const meta = metaHTML(v, it, o), tags = tagsHTML(it, o), s = it.state;
+  let inner;
+  if (v === 'a') {
+    inner = `<div class="gut">${s ? mark(s) : ''}</div>
+      <div class="body"><div class="l1">${title}${more}</div><div class="l2">${meta}${tags}</div></div>`;
+  } else if (v === 'b') {
+    inner = `<div class="body"><div class="l1">${title}${chipHTML(it, o)}</div><div class="l2">${meta}${tags}${more}</div></div>`;
+  } else {
+    inner = `<div class="body"><div class="l1">${title}</div><div class="l2">${meta}${tags}</div></div>
+      <div class="side">${more}${s === 'running' ? timer(it, 't-mono') : ''}${s ? tileHTML(s) : ''}</div>`;
+  }
+  return `<div class="${cls.join(' ')}" data-id="${it.id || ''}">${inner}</div>`;
+}
+
+function badgeHTML(v, s) {
+  if (!s) return '';
+  if (v === 'a') return `<span class="tab-badge od-row">${mark(s)}</span>`;
+  if (v === 'b') return `<span class="tab-badge chip chip-${s}">${mark(s)}</span>`;
+  return `<span class="tab-badge od-row">${tileHTML(s,'sm')}</span>`;
+}
+
+function listHTML(v, narrow) {
+  const m = model(v), q = m.filter.trim().toLowerCase();
+  const hit = r => !q || r.title.toLowerCase().includes(q) || (r.tags||[]).some(t => t.includes(q));
+  const rows = m.rows.filter(hit);
+  const one = r => rowHTML(v, r, { ground: r.id === m.selected ? 'card' : 'grey', sel: r.id === m.selected,
+    hover: r.id === m.hoverId || (menu && menu.v === v && menu.id === r.id), narrow, renaming: renaming && renaming.v === v && renaming.id === r.id });
+  const pinned = rows.filter(r => r.pinned), rest = rows.filter(r => !r.pinned);
+  if (!rows.length) return `<p class="empty">No conversation matches “${esc(m.filter)}”. Clear the filter to see all.</p>`;
+  return (pinned.length ? `<div class="sec t-label">Pinned</div>${pinned.map(one).join('')}` : '')
+       + (rest.length ? `<div class="sec t-label">Conversations</div>${rest.map(one).join('')}` : '');
+}
+
+function chromeTop() {
+  return `<div class="bar">
+      <span class="light" style="left:20px"></span><span class="light" style="left:43px"></span><span class="light" style="left:66px"></span>
+      <span class="toggle">${ICON.panel}</span><span class="logo">${ICON.logo}</span><span class="word">TRISMEGISTUS</span>
+    </div>`;
+}
+function chromeFoot() {
+  const ic = ['chat','list','news','chip','cal','term'];
+  return `<div class="foot"><div class="who t-monos">macbook · paired</div>
+    <div class="icons">${ic.map((k,i) => `<span class="i ${i?'':'on'}">${ICON[k]}</span>`).join('')}</div></div>`;
+}
+function tabsHTML(badge) {
+  return `<div class="tabs">
+    <span class="tab on">${ICON.chat}<span class="t-monos">10</span><span class="slot">${badge}</span></span>
+    <span class="tab">${ICON.arrow}<span class="t-monos">4</span></span>
+    <span class="tab">${ICON.term}<span class="t-monos">9</span></span>
+    <span class="tab">${ICON.dots}${ICON.chev}</span>
+  </div>`;
+}
+
+function columnHTML(v, narrow) {
+  const m = model(v);
+  return `<section class="col v${v} ${narrow?'narrow':''}" data-v="${v}" data-narrow="${narrow?1:''}" aria-label="Variant ${v.toUpperCase()}: ${VARIANTS[v].name}">
+    ${chromeTop()}
+    <div class="head"><span class="t-label">APP // <span class="n">${m.count}</span></span>${ICON.plus}</div>
+    ${tabsHTML(badgeHTML(v, strongest(m.rows)))}
+    <input class="filter" type="search" placeholder="Filter conversations" aria-label="Filter conversations" value="${esc(m.filter)}">
+    <div class="list">${listHTML(v, narrow)}</div>
+    ${chromeFoot()}
+  </section>`;
+}
+function todayHTML() {
+  const rows = TODAY_ROWS.map(r => {
+    if (r.length === 1) return `<div class="sec t-label">${r[0]}</div>`;
+    const [title, age, pin, run] = r;
+    return `<div class="trow ${run?'sel':''}"><div class="tl od-truncate">${esc(title)}</div>
+      <div class="tm">${ICON.srcT}<span class="t-monos">${age}</span></div>
+      ${pin ? `<span class="pin od-row">${ICON.pin}</span>` : ''}
+      ${run ? `<span class="trun"><span class="t-label">RUN</span>${timer({base:36},'t-mono')}</span>` : ''}</div>`;
+  }).join('');
+  return `<section class="col today" aria-label="Today, reproduced from the screenshot">
+    ${chromeTop()}
+    <div class="head"><span class="t-label">APP // 10</span>${ICON.plus}</div>
+    ${tabsHTML('<span class="tab-dot"></span>')}
+    <input class="filter" type="search" placeholder="Filter conversations" aria-label="Filter conversations" readonly>
+    <div class="list">${rows}</div>
+    ${chromeFoot()}
+  </section>`;
+}
+function stripHTML(v) {
+  const rows = SPEC.map(([name, patch, flags={}, note]) => {
+    const it = { ...SPEC_BASE, ...patch };
+    const grey = rowHTML(v, it, { spec:true, ground:flags.sel?'card':'grey', sel:flags.sel, hover:flags.hover });
+    const card = rowHTML(v, it, { spec:true, ground:'card', sel:true });
+    const pop  = rowHTML(v, it, { spec:true, ground:'pop', sel:flags.sel, hover:flags.hover, showPin:true });
+    return `<div class="lab"><span class="t-label">${name}</span>${note?`<small>${note}</small>`:''}</div>
+      <div class="cell">${grey}</div><div class="cell">${card}</div><div class="cell pop">${pop}</div>`;
+  }).join('');
+  const shapes = RANK.map(s => `<span class="od-row mono-set">${mark(s)}</span>`).join('');
+  const tabs = RANK.map(s => `<span class="mock">${ICON.chat}<span class="t-monos">10</span>${badgeHTML(v,s)}</span>`).join('');
+  return `<section class="strip v${v}" aria-label="Variant ${v.toUpperCase()} states">
+    <h1>${v.toUpperCase()} // ${VARIANTS[v].name}</h1>
+    <span></span><span class="ch t-label">On grey</span><span class="ch t-label">As selected card</span><span class="ch t-label">On white popover</span>
+    ${rows}
+    <div class="key-h"></div>
+    <div class="lab"><span class="t-label">Tab badge</span></div>
+    <div class="key">${tabs}</div>
+    <div class="key white"><span class="od-row mono-set" style="--od-gap:32px">${RANK.map(s=>mark(s)).join('')}</span><span class="t-label">Menu bar, ink</span></div>
+    <div class="key"><span class="od-row mono-set" style="--od-gap:32px">${RANK.map(s=>mark(s)).join('')}</span><span class="t-label">Menu bar, white</span></div>
+    <p class="note t-caption">Order is priority: approval, running, failed, done. Failed and done on the selected card are shown as asked, but they can't occur in the app, because opening a conversation clears them.</p>
+  </section>`;
+}
+
+/* routes */
+const root = document.getElementById('app');
+function parse() {
+  const h = (location.hash || '').replace('#','') || 'all';
+  const m = h.match(/^([abc])(-states|-narrow)?$/);
+  if (h === 'all' || h === 'today') return { view:h };
+  if (m) return { view: m[2] ? m[2].slice(1) : 'column', v:m[1] };
+  return { view:'all' };
+}
+function render() {
+  closeMenu(false);
+  const r = parse();
+  root.dataset.view = r.view;
+  if (r.view === 'today') root.innerHTML = todayHTML();
+  else if (r.view === 'column') root.innerHTML = columnHTML(r.v, false);
+  else if (r.view === 'narrow') root.innerHTML = columnHTML(r.v, true);
+  else if (r.view === 'states') root.innerHTML = stripHTML(r.v);
+  else {
+    const gut = (k, name, line) => `<nav class="gutter" aria-label="${name}"><strong class="t-label">${name}</strong>
+      ${line ? `<p class="t-caption">${line}</p>` : ''}
+      <a class="t-caption" href="#${k}" data-route="${k}">Column</a>
+      ${k === 'today' ? '' : `<a class="t-caption" href="#${k}-states" data-route="${k}-states">States</a><a class="t-caption" href="#${k}-narrow" data-route="${k}-narrow">220 px</a>`}</nav>`;
+    root.innerHTML = todayHTML() + gut('today','Today','From the screenshot.')
+      + Object.keys(VARIANTS).map(k => columnHTML(k,false) + gut(k, `${k.toUpperCase()} // ${VARIANTS[k].name}`, VARIANTS[k].line)).join('');
+  }
+}
+function go(route) {
+  try { history.pushState(null, '', '#' + route); render(); }
+  catch { render(); }
+}
+
+function refresh(v) {
+  const col = root.querySelector(`.col[data-v="${v}"]`);
+  if (!col) return;
+  const m = model(v);
+  col.querySelector('.list').innerHTML = listHTML(v, !!col.dataset.narrow);
+  col.querySelector('.slot').innerHTML = badgeHTML(v, strongest(m.rows));
+  col.querySelector('.n').textContent = m.count;
+}
+const rowOf = (v, id) => root.querySelector(`.col[data-v="${v}"] .row[data-id="${id}"]`);
+function focusRow(v, id) {
+  const el = rowOf(v, id);
+  const target = el && el.querySelector('.open');
+  if (target) target.focus();
+  else { const f = root.querySelector(`.col[data-v="${v}"] .filter`); if (f) f.focus(); }
+}
+
+/* opening a conversation clears failed/done; approval and running stay until the agent changes them */
+function openRow(v, id) {
+  const m = model(v), it = m.rows.find(r => r.id === id);
+  if (!it) return;
+  m.selected = id;
+  if (it.state === 'failed' || it.state === 'done') it.state = null;
+  refresh(v);
+  focusRow(v, id);
+}
+
+/* menu */
+let menu = null, renaming = null;
+const box = document.getElementById('menu');
+function menuHTML() {
+  const it = model(menu.v).rows.find(r => r.id === menu.id);
+  const item = (act, label, extra='', cls='') => `<button type="button" role="menuitem" class="${cls}" data-act="${act}"><span>${label}</span>${extra}</button>`;
+  const next = ICON.chev.replace('<svg','<svg style="transform:rotate(-90deg)"');
+  if (menu.page === 'tags') return TAG_POOL.map(t => item('tag:'+t, t, (it.tags||[]).includes(t) ? '<span class="t-monos">on</span>' : '')).join('') + '<hr>' + item('back','Back');
+  if (menu.page === 'hand') return item('hand:telegram','Telegram') + item('hand:terminal','Terminal') + '<hr>' + item('back','Back');
+  if (menu.page === 'del') return `<p class="t-caption">Delete “${esc(it.title)}”? This can't be undone.</p>` + item('delete','Delete','','danger') + item('back','Cancel');
+  return item('pin', it.pinned ? 'Unpin' : 'Pin') + item('rename','Rename') + item('page:tags','Tags',next) + item('page:hand','Hand off',next) + '<hr>' + item('page:del','Delete','','danger');
+}
+function drawMenu() {
+  box.innerHTML = menuHTML();
+  box.hidden = false;
+  const r = box.getBoundingClientRect();
+  box.style.left = Math.max(0, Math.min(menu.x, innerWidth - r.width)) + 'px';
+  box.style.top = Math.max(0, Math.min(menu.y, innerHeight - r.height)) + 'px';
+  box.querySelector('button').focus();
+}
+function openMenu(v, id, x, y) {
+  closeMenu(false);
+  menu = { v, id, x, y, page:'main' };
+  const el = rowOf(v, id);
+  if (el) el.classList.add('is-hover');
+  drawMenu();
+}
+function closeMenu(refocus = true) {
+  if (!menu) return;
+  const { v, id } = menu;
+  menu = null;
+  box.hidden = true;
+  box.innerHTML = '';
+  const el = rowOf(v, id);
+  if (el && model(v).hoverId !== id) el.classList.remove('is-hover');
+  if (refocus) focusRow(v, id);
+}
+function act(a) {
+  const { v, id } = menu, m = model(v), it = m.rows.find(r => r.id === id);
+  if (a === 'back') { menu.page = 'main'; return drawMenu(); }
+  if (a.startsWith('page:')) { menu.page = a.slice(5); return drawMenu(); }
+  if (a.startsWith('tag:')) {
+    const t = a.slice(4), tags = it.tags || [];
+    it.tags = tags.includes(t) ? tags.filter(x => x !== t) : [...tags, t];
+    refresh(v);
+    return drawMenu();
+  }
+  if (a.startsWith('hand:')) { it.src = a.slice(5); refresh(v); return closeMenu(); }
+  if (a === 'pin') { it.pinned = !it.pinned; refresh(v); return closeMenu(); }
+  if (a === 'rename') {
+    closeMenu(false);
+    renaming = { v, id };
+    refresh(v);
+    const input = rowOf(v, id).querySelector('.rename');
+    input.focus(); input.select();
+    return;
+  }
+  if (a === 'delete') {
+    m.rows = m.rows.filter(r => r.id !== id);
+    m.count = Math.max(0, m.count - 1);
+    if (m.selected === id) m.selected = m.rows[0] ? m.rows[0].id : null;
+    closeMenu(false);
+    refresh(v);
+    if (m.selected) focusRow(v, m.selected);
+  }
+}
+function endRename(commit, value) {
+  if (!renaming) return;
+  const { v, id } = renaming;
+  renaming = null;
+  const it = model(v).rows.find(r => r.id === id), t = (value || '').trim();
+  if (commit && t && it) it.title = t;
+  refresh(v);
+  focusRow(v, id);
+}
+
+/* one delegated listener set: lists are re-rendered, the root is not */
+document.addEventListener('click', e => {
+  const route = e.target.closest('[data-route]');
+  if (route) { e.preventDefault(); return go(route.dataset.route); }
+  const item = e.target.closest('#menu [data-act]');
+  if (item) return act(item.dataset.act);
+  if (e.target.closest('#menu')) return;
+  if (menu) closeMenu(false);
+  const col = e.target.closest('.col[data-v]');
+  const row = e.target.closest('.row[data-id]');
+  if (!col || !row || e.target.closest('.rename')) return;
+  const v = col.dataset.v, id = row.dataset.id;
+  const more = e.target.closest('button.more');
+  if (more) { const r = more.getBoundingClientRect(); return openMenu(v, id, r.right - 204, r.bottom + 4); }
+  openRow(v, id);
+});
+document.addEventListener('contextmenu', e => {
+  const col = e.target.closest('.col[data-v]'), row = e.target.closest('.row[data-id]');
+  if (!col || !row) return;
+  e.preventDefault();
+  openMenu(col.dataset.v, row.dataset.id, e.clientX, e.clientY);
+});
+document.addEventListener('keydown', e => {
+  if (e.target.classList && e.target.classList.contains('rename')) {
+    if (e.key === 'Enter') endRename(true, e.target.value);
+    if (e.key === 'Escape') endRename(false);
+    return;
+  }
+  if (menu) {
+    const items = [...box.querySelectorAll('button')], i = items.indexOf(document.activeElement);
+    if (e.key === 'Escape') { e.preventDefault(); closeMenu(); }
+    if (e.key === 'Tab') closeMenu(false);
+    if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+    return;
+  }
+  if ((e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) && e.target.closest) {
+    const col = e.target.closest('.col[data-v]'), row = e.target.closest('.row[data-id]');
+    if (col && row) {
+      e.preventDefault();
+      const r = row.getBoundingClientRect();
+      openMenu(col.dataset.v, row.dataset.id, r.left + 16, r.bottom);
+    }
+  }
+});
+document.addEventListener('focusout', e => {
+  if (e.target.classList && e.target.classList.contains('rename')) endRename(true, e.target.value);
+});
+document.addEventListener('input', e => {
+  if (!e.target.classList.contains('filter')) return;
+  const col = e.target.closest('.col[data-v]');
+  if (!col) return;
+  model(col.dataset.v).filter = e.target.value;
+  refresh(col.dataset.v);
+});
+/* the row shown hovered on load hands over to the real pointer */
+document.addEventListener('pointerover', e => {
+  const col = e.target.closest && e.target.closest('.col[data-v]');
+  if (!col || !e.target.closest('.list')) return;
+  const m = model(col.dataset.v);
+  if (!m.hoverId) return;
+  const el = rowOf(col.dataset.v, m.hoverId);
+  m.hoverId = null;
+  if (el) el.classList.remove('is-hover');
+});
+window.addEventListener('hashchange', render);
+window.addEventListener('popstate', render);
+setInterval(() => {
+  tick++;
+  document.querySelectorAll('[data-run]').forEach(el => { el.textContent = fmt(+el.dataset.run + tick); });
+}, 1000);
+render();
+</script>
+</body>
+</html>

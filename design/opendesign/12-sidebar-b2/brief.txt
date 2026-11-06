@@ -1,0 +1,41 @@
+Prototype: improve ONE component of Trismegistus, a native macOS (SwiftUI) control panel for the AI agent "Hermes": the conversation row in the window's sidebar (the "card"). Build ONE self-contained index.html, a component lab, no device frame and no presentation chrome.
+
+ATTACHED: sidebar-today.png (the sidebar as it ships today, 304x1122 at 1x, real content) and row-states-today.png (today's row states on white, 2x). Reuse their real titles, ages and counts.
+
+TODAY'S ROW (anatomy): 52 px tall. Line 1: title (13/600, one line, tail-truncated). Line 2: a source glyph (a 12 px square with a letter: T = this app, also Telegram / cron / terminal glyphs) + age in mono ("now", "5 min", "1 h", "yesterday", "2 d"). Right side, vertically centred: `RUN 00:36` (label + mono elapsed time, ticking) while a run goes, or a magenta `APPROVAL` chip while an approval waits, or a chevron on the selected row. Top-right corner: a `…` menu button (only under the pointer and on the selected row) and a pin glyph on pinned rows. Bottom-right: up to two tag chips (mono, sunken) then `+N`. A lock glyph after the age on read-only rows (cron).
+
+PROBLEMS seen today:
+1. The top-right corner is crowded: `…` and the pin glyph sit above the RUN timer, and on the selected row the pin overlaps the timer's digits (`00:3̶6`).
+2. Pinned rows sit under a PINNED head and still repeat a pin glyph on every row.
+3. State is weak on the grey rows: `RUN` turns plain white there, so a running conversation doesn't stand out unless it is selected.
+4. There is no "finished while you weren't looking" state yet (new, see below).
+5. The row is busy for what it says: three corners hold separate marks (…/pin, status, tags).
+
+NEW STATES TO DESIGN (agreed with the owner, priority order, highest wins on a row and on the tab badge):
+a. APPROVAL WAITING: magenta is the app's approval marker.
+b. RUNNING: elapsed time ticking.
+c. FAILED, UNSEEN: the last run failed and the owner hasn't opened the conversation since.
+d. DONE, UNSEEN: the last run finished and the owner hasn't opened it since. Opening the conversation clears c and d.
+The tab row above the list (icon + count per tab: APP 10, TELEGRAM 4, TERMINAL 9, MORE ▾) carries the same badge for the strongest state inside it; today it is a small green dot after the count while a run goes.
+
+CONTRAST FACTS (WCAG, computed): on the sidebar grey #666666, blue #0040E8 is 1.26:1, red #E5332A 1.32:1, magenta #FF1AAC 1.64:1, terminal-green #00875A 1.26:1 — all invisible as small marks. What works on the grey: white 5.7, yellow #FFFA00 5.2, on-steel #E9E9E9 4.7, green #00FFA2 4.3, cyan #1FE5E0 3.7, ink #191919 3.1. On the white selected card: blue 7.2, red 4.3, terminal-green 4.6, ink 17.6; yellow, green and cyan fail. Every mark must reach 3:1 against the ground it sits on (grey row AND white selected card AND the white popover row), and the four states must differ by SHAPE as well as colour (the menu bar's monochrome icon carries the same states by shape only). Coloured marks on grey need a light or ink edge, or a light chip behind them.
+
+FIXED (owner decisions; keep them):
+- Light mode only. Fonts: Inter (UI) and JetBrains Mono (data: ages, times, counts), from Google Fonts. Not the design system's Space Grotesk / Outfit / Archivo.
+- Sidebar ground #666666, rows without fills or separators, titles #FFFFFF, meta #E9E9E9. The selected row is a white #FFFFFF card with a 1 px yellow #FFFA00 inner border and ink text (refine it, keep the idea). Rows 52 px. Sections PINNED and CONVERSATIONS stay.
+- Flat, buildable natively in SwiftUI: flat fills, 1 px and 0.5 px hairlines, no blur, no glass, no shadows, radius 0, no colours outside the list. Icons: SF Symbols look-alikes (simple line glyphs).
+- The `…` menu and right-click menu stay (Pin/Unpin, Rename, Tags, Hand off, Delete). Tags stay visible on the row (max 2 + `+N`).
+
+TOKENS (use only these):
+- Colours: paper #F2F2F2, raised #FFFFFF, sunken #E5E5E5, rule #D9D9D9, ink #191919, dark-panel #35373C, secondary #666666, muted #999999, yellow #FFFA00, blue #0040E8 (links), green #00FFA2 (online), magenta #FF1AAC (marker), red #E5332A (errors), terminal-green #00875A (exit 0), terminal-red #C4271F (failed), on-steel #E9E9E9, accent-cyan #1FE5E0. Yellow and magenta are fills and marks, never text on light grounds.
+- Type roles (size/weight): headline 13/600; body 13/400; callout 12/400; caption 11/400; label 10/600 uppercase tracking 0.8; mono 12/400; mono-small 11/400.
+- Spacing scale only: 2, 4, 8, 12, 16, 20, 24, 32, 40. Status dot 7 px, marker square 8 px.
+
+WHAT TO BUILD:
+- Three proposal variants A, B and C of the row (different ideas for where status, pin, menu and tags live, and for the four state marks), plus TODAY reproduced faithfully from the screenshot for comparison.
+- Each variant is a full sidebar column exactly 304 px wide x 1122 px tall on #666666, same content as sidebar-today.png: header `APP // 10`, the tab row, the filter field, PINNED: Swift app (selected, RUNNING 00:36), Trismegistus (DONE, UNSEEN), Android app (APPROVAL WAITING), Workflow refiner (FAILED, UNSEEN); CONVERSATIONS: Compare Open Design vs Penpot (shown hovered, with its `…` visible), xMuramasa/homelab#1: Add the Trism… (tags `homelab`, `relay`, +1), Homepage project (DONE, UNSEEN), The briefing project, MAGE-SYS, Morning news digest (cron, read-only), Homelab infra research. The APP tab shows the strongest badge (approval). Bottom: `macbook · paired` and the section icon bar.
+- Each variant also renders a STATES STRIP hash: the same row in every state (idle, hovered, selected, running, approval, failed-unseen, done-unseen, pinned, read-only, tagged) twice: on the grey ground and as the white selected card, plus once on a white popover list (rows on white, ink text, no yellow border).
+- Each variant also at the minimum sidebar width, 220 px.
+- URL hashes, each must render on load (I screenshot them headless): #today, #a, #b, #c (304x1122 column at the top-left), #a-states, #b-states, #c-states (a strip at most 1122 px tall), #a-narrow, #b-narrow, #c-narrow (220x1122), and #all (today, A, B, C side by side, 1560x1122). Default #all.
+
+Also write CHANGES.md next to index.html: per variant, each change in one line with its reason, the contrast ratio of every new mark against grey and white, and which variant you would pick and why.
