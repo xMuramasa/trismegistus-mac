@@ -28,6 +28,8 @@ final class WindowA2Tests: XCTestCase {
 
         /// The first y in `ys` where the pixel at `x` is `color`.
         func first(_ color: Color, x: CGFloat, ys: StrideTo<CGFloat>) -> CGFloat? { ys.first { isColor(x, $0, color) } }
+        /// The first x along row `y` drawn in `color` (loose: icons are antialiased).
+        func firstX(_ color: Color, y: CGFloat, xs: StrideTo<CGFloat>) -> CGFloat? { xs.first { isColor($0, y, color, tolerance: 0.15) } }
 
         /// Some pixel in the box is `color`.
         func contains(_ color: Color, in box: CGRect) -> Bool {
@@ -281,25 +283,31 @@ final class WindowA2Tests: XCTestCase {
     // MARK: Section panel
 
     /// In a real window: the panel scrolls, and `ImageRenderer` leaves scroll views blank.
+    /// A tree (Martin, 2026-11-10): Chats, its kinds indented under it, then the other sections; the yellow block is on
+    /// the deepest current row you can see.
     func testSectionPanel() throws {
+        let others = WindowSection.allCases.filter { $0 != .chat }
         for section in WindowSection.allCases {
             let shot = try shot("Panel-\(section.rawValue)", width: 316, height: 900) { Panel(section: section).padding(Space.s) }
-            let rows = stride(from: CGFloat(60), to: 300, by: 1)
+            let rows = stride(from: CGFloat(60), to: 700, by: 1)
             let current = try XCTUnwrap(shot.first(Ink.selection, x: 250, ys: rows), "\(section): no yellow row")
-            let index = WindowSection.allCases.firstIndex(of: section)!
-            // 40 pt rows 2 pt apart, after the top row.
+            // 40 pt rows 2 pt apart, after the top row: Chats, the kinds, then the others. In Chat the current kind
+            // (App, the first) is the yellow block, not Chats.
+            let index = section == .chat ? 1 : 1 + WindowA2Tests.kinds.count + others.firstIndex(of: section)!
             XCTAssertEqual(current, 64 + CGFloat(index) * 42, accuracy: 1.5, "\(section): the yellow block's row")
             XCTAssertTrue(shot.isColor(250, current + 38, Ink.selection), "\(section): a 40 pt row")
-            // The current kind (App) is marked only in Chat.
-            let app = shot.first(Ink.surface.panelRow, x: 250, ys: stride(from: CGFloat(320), to: 380, by: 1))
-            if section == .chat {
-                XCTAssertNotNil(app, "the current kind's dark-panel fill")
-                XCTAssertTrue(shot.contains(Ink.selection, in: CGRect(x: 180, y: (app ?? 0) + 12, width: 60, height: 16)), "the kind's yellow square")
-            }
+            XCTAssertNil(shot.first(Ink.selection, x: 250, ys: stride(from: current + 41, to: 700, by: 1)), "\(section): one yellow row")
         }
+        // The kinds are children: App's icon starts one icon column further in than Chats'.
+        let open = try shot("Panel-tree", width: 316, height: 900) { Panel(section: .github).padding(Space.s) }
+        let chatsIcon = try XCTUnwrap(open.firstX(Ink.text.onPanel, y: 64 + 20, xs: stride(from: CGFloat(Space.s), to: 80, by: 1)))
+        let appIcon = try XCTUnwrap(open.firstX(Ink.text.onPanel, y: 64 + 42 + 20, xs: stride(from: CGFloat(Space.s), to: 120, by: 1)))
+        XCTAssertEqual(appIcon - chatsIcon, SectionPanel<EmptyView>.childIndent, accuracy: 3, "the kinds are indented")
+        // Folded: no kinds, Chats carries the yellow block (in Chat) and GitHub follows it.
         let folded = try shot("Panel-folded", width: 316, height: 900) { Panel(chatsOpen: false).padding(Space.s) }
-        XCTAssertNil(folded.first(Ink.surface.panelRow, x: 250, ys: stride(from: CGFloat(330), to: 380, by: 1)), "no kinds while folded")
-        XCTAssertNotNil(folded.first(Ink.surface.panelRow, x: 250, ys: stride(from: CGFloat(280), to: 330, by: 1)), "the Chats head stays")
+        XCTAssertEqual(try XCTUnwrap(folded.first(Ink.selection, x: 250, ys: stride(from: CGFloat(60), to: 700, by: 1))), 64, accuracy: 1.5,
+                       "folded: Chats is the yellow row")
+        XCTAssertNil(folded.first(Ink.selection, x: 250, ys: stride(from: CGFloat(106), to: 700, by: 1)), "folded: one yellow row")
         XCTAssertFalse(folded.isColor(Space.s + 1, Space.s + 1, Ink.surface.panel), "xl corners")
         XCTAssertTrue(folded.isColor(Space.s + Radius.xl, Space.s + Radius.xl, Ink.surface.panel))
     }

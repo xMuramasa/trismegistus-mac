@@ -32,9 +32,10 @@ public struct DeviceStatus: Equatable, Sendable {
 }
 
 /// The floating section panel (#68, design 13 #a2): ink with `xl` corners and the soft B2 shadow. At the top the window's
-/// buttons (AppKit draws them there) and the sidebar toggle; the five sections as 40 pt rows, the current one a yellow
-/// block; the Chats group (a slab head that folds, then the kinds with their counts; the current kind in Chat on
-/// dark-panel with a yellow square); the device row at the bottom.
+/// buttons (AppKit draws them there) and the sidebar toggle; then a tree (Martin, 2026-11-10): Chats with its kinds
+/// indented under it (a chevron folds them), then GitHub, Agents, Jobs and Commands, all 40 pt rows. The yellow block is
+/// on the deepest current row you can see: the current kind in Chat, Chats itself while folded, else the section. The
+/// device row at the bottom.
 public struct SectionPanel<DeviceMenu: View>: View {
     @Binding var section: WindowSection
     let badges: [WindowSection: PanelBadge]
@@ -73,11 +74,11 @@ public struct SectionPanel<DeviceMenu: View>: View {
             .padding(.bottom, Space.s)
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: Space.xxs) {
-                    ForEach(WindowSection.allCases) { row($0) }
-                    chatsHead
+                    chatsRow
                     if chatsOpen {
                         ForEach(kinds) { kindRow($0) }
                     }
+                    ForEach(WindowSection.allCases.filter { $0 != .chat }) { row($0) }
                 }
             }
             .scrollIndicators(.never)
@@ -114,15 +115,13 @@ public struct SectionPanel<DeviceMenu: View>: View {
     private func kindRow(_ chip: KindChip) -> some View {
         let current = section == .chat && chip.id == kind
         return Button { onKind(chip.id) } label: {
-            PanelRow(symbol: chip.symbol, title: chip.title, fill: current ? Ink.surface.panelRow : nil, bold: current) {
-                if current {
-                    Rectangle().fill(Ink.selection).frame(width: Size.marker, height: Size.marker).accessibilityHidden(true)
-                }
-                if let mark = chip.mark { Sticker(mark, isBadge: true, edge: Ink.text.onDark) }
+            PanelRow(symbol: chip.symbol, title: chip.title, fill: current ? Ink.selection : nil, bold: current,
+                     indent: Self.childIndent) {
+                if let mark = chip.mark { Sticker(mark, isBadge: true, edge: current ? Ink.line.strong : Ink.text.onDark) }
                 Text(verbatim: "\(chip.count)").typeRole(.body, weight: current ? .bold : nil).monospacedDigit()
-                    .foregroundStyle(current ? Ink.text.onPanel : Ink.text.muted)
+                    .foregroundStyle(current ? Ink.text.primary : Ink.text.muted)
             }
-            .foregroundStyle(Ink.text.onPanel)
+            .foregroundStyle(current ? Ink.text.primary : Ink.text.onPanel)
         }
         .buttonStyle(.plain)
         .help(chip.described)
@@ -130,27 +129,42 @@ public struct SectionPanel<DeviceMenu: View>: View {
         .accessibilityAddTraits(current ? .isSelected : [])
     }
 
-    /// The group's head: B2's slab on the ink panel, with a chevron that turns as it folds.
-    private var chatsHead: some View {
-        Button { withAnimation(Motion.panel) { chatsOpen.toggle() } } label: {
-            HStack(spacing: Space.s) {
-                Rectangle().fill(Ink.selection).frame(width: Size.marker, height: Size.marker)
-                Text("Chats").typeRole(.sectionHead).foregroundStyle(Ink.text.onPanel)
-                Spacer(minLength: 0)
-                Image(systemName: Symbol.chevronDown).font(.system(size: Icon.l, weight: .semibold))
-                    .foregroundStyle(Ink.text.onPanel)
-                    .rotationEffect(.degrees(chatsOpen ? 0 : -90))
+    /// A kind's icon sits under the Chats label: the row's icon column and its gap.
+    public static var childIndent: CGFloat { Icon.panel + Space.m }
+
+    /// Chats, the tree's parent: picks Chat (its current kind); the chevron at the right folds the kinds. Chat's
+    /// strongest state shows here only while folded (open, the kinds carry their own).
+    private var chatsRow: some View {
+        let inChat = section == .chat
+        let filled = inChat && !chatsOpen
+        return Button { section = .chat } label: {
+            PanelRow(symbol: WindowSection.chat.symbol, title: "Chats", fill: filled ? Ink.selection : nil,
+                     bold: inChat) {
+                if !chatsOpen, case .mark(let state)? = badges[.chat] {
+                    Sticker(state, isBadge: true, edge: filled ? Ink.line.strong : Ink.text.onDark)
+                }
+                Color.clear.frame(width: Icon.panel, height: Icon.panel) // the chevron's place (an overlay: its own button)
             }
-            .padding(.horizontal, Space.m)
-            .frame(height: Size.sectionHead)
-            .rounded(Radius.m, fill: Ink.surface.panelRow)
-            .contentShape(Rectangle())
+            .foregroundStyle(filled ? Ink.text.primary : Ink.text.onPanel)
         }
         .buttonStyle(.plain)
-        .padding(.top, Space.l).padding(.bottom, Space.xs)
-        .accessibilityLabel("Chats")
+        .overlay(alignment: .trailing) {
+            Button { withAnimation(Motion.panel) { chatsOpen.toggle() } } label: {
+                Image(systemName: Symbol.chevronDown).font(.system(size: Icon.m, weight: .semibold))
+                    .rotationEffect(.degrees(chatsOpen ? 0 : -90))
+                    .frame(width: Icon.panel, height: Icon.panel)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(filled ? Ink.text.primary : Ink.text.onPanel)
+            .padding(.trailing, Space.m)
+            .help(chatsOpen ? "Hide the kinds" : "Show the kinds")
+            .accessibilityLabel(chatsOpen ? "Hide the kinds" : "Show the kinds")
+        }
+        .help(WindowSection.chat.help)
+        .accessibilityLabel("Chats" + (!chatsOpen ? badges[.chat].map { ", " + Self.spoken($0) } ?? "" : ""))
         .accessibilityValue(chatsOpen ? "Open" : "Folded")
-        .accessibilityAddTraits(.isHeader)
+        .accessibilityAddTraits(inChat ? .isSelected : [])
     }
 
     static func spoken(_ badge: PanelBadge) -> String {
@@ -168,6 +182,8 @@ private struct PanelRow<Trailing: View>: View {
     let title: String
     let fill: Color?
     let bold: Bool
+    /// A child row's leading inset (the kinds under Chats); the fill still spans the row.
+    var indent: CGFloat = 0
     @ViewBuilder let trailing: () -> Trailing
     @State private var hovered = false
 
@@ -178,7 +194,7 @@ private struct PanelRow<Trailing: View>: View {
             Spacer(minLength: Space.s)
             trailing()
         }
-        .padding(.horizontal, Space.m)
+        .padding(.leading, Space.m + indent).padding(.trailing, Space.m)
         .frame(height: Size.sectionPanel.row)
         .background {
             RoundedRectangle(cornerRadius: Radius.m, style: .continuous)

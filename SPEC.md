@@ -110,12 +110,13 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   (`.hiddenTitleBar`) and there is **no top bar**: the window's buttons sit in the panel's top row (moved there by
   `TrafficLights`), the sidebar toggle at its top-right; the link moved to the device row, the terminal toggle and
   Settings into the detail headers. The panel is ink with `xl` corners and the soft B2 shadow, 300 pt, 8 pt in from the
-  window's top, left and bottom: the five sections as 40 pt rows (icon, label; at the right Chat's strongest state as a
-  glyph-only sticker, GitHub's Needs-check count, Agents' running count, Jobs' failed mark), the current one a yellow
-  `m` block; the **Chats** group (an ink-slab head that folds, `window.chatsOpen`; the kinds App, Telegram, Terminal,
-  One-shots, Cron, any other source by name and All with counts and a glyph-only sticker of their strongest state; the
-  current kind, in Chat, on dark-panel, bold, with an 8 pt yellow square; picking a kind elsewhere switches to Chat);
-  the **device row** at the bottom (avatar, `macbook`, a dot with `linked · <host>`, `connecting · …` or `offline · …`,
+  window's top, left and bottom, holding a **tree** of 40 pt rows (icon, label, what it says at the right; Martin,
+  2026-11-10): **Chats** first, with a chevron at its right that folds its children (`window.chatsOpen`), then the kinds
+  indented under it (their icons under its label): App, Telegram, Terminal, One-shots, Cron, any other source by name
+  and All, with counts and a glyph-only sticker of their strongest state; picking a kind elsewhere switches to Chat. Then
+  GitHub (Needs-check count), Agents (running count), Jobs (failed mark) and Commands. The yellow `m` block is on the
+  deepest current row you can see: the current kind while in Chat, Chats itself while folded (it then shows Chat's
+  strongest state), else the section. The **device row** at the bottom (avatar, `macbook`, a dot with `linked · <host>`, `connecting · …` or `offline · …`,
   and `…` with Settings and Unpair, which opens Settings' confirmation through `settings.confirmUnpair`). Hiding the
   panel (its toggle, View menu, ⌃⌘S) leaves list and detail; the list header then keeps room for the window's buttons
   and the toggle. The list column is paper, 380–720 pt (520 by default, `window.listWidth`, dragged at its rule), and
