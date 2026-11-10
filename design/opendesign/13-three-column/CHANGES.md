@@ -1,6 +1,6 @@
 # Trismegistus — three-column window: changes
 
-`index.html` hashes: `#a`, `#b` (1560×1122), `#all` (default, both at 50 %, 1560×561), `#a-narrow`, `#b-narrow` (1180×1122, list column 380 px).
+`index.html` hashes: `#a`, `#a2`, `#b` (1560×1122); `#all` (default: #a and #a2 side by side at 50 %, 1560×561); `#a-narrow`, `#a2-narrow`, `#b-narrow` (1180×1122, list column 380 px); `#a2-states` (one list column, 520×1122, a card in every state).
 
 ## What moved where (both variants)
 
@@ -109,3 +109,30 @@ Yellow and magenta are never text on light grounds. Yellow text appears only on 
 - Selection is unmistakable (ink card + yellow frame), and the 60 px cards keep the B2 rhythm.
 
 Take from #b the white list column with the hairlines starting after the avatar if density matters: it fits about 2 more rows per screen than the cards.
+
+## #a2: rounder corners
+
+`#a2` is the owner's pick (#a, B2 skin) with one small radius scale applied everywhere. `#a` stays untouched for comparison. Colours, type, weights, spacing, sticker content and states are the same as in #a.
+
+### Radius per element
+
+| Radius | Elements |
+| --- | --- |
+| 16 px | Floating section panel; composer block |
+| 12 px | List cards (idle, hovered, selected); code blocks; message boxes (YOU, approval card); model picker; menus |
+| 16 px (12 + 4) | Selected card's yellow frame, 4 px outside the card |
+| 8 px | Filter field; all buttons (icon buttons, yellow "+", STEER, stop, Approve/Deny, composer input); section rows, so the current-section block and the kind-row highlight; `>_ 4 COMMANDS` chip; PINNED / CONVERSATIONS slabs; Chats group head; menu items; tooltip and toast |
+| 6 px | Stickers (full and glyph-only); tag chips; ⌘K / shortcut key hints; source avatars and the device avatar (rounded squares) |
+| 0 (unchanged) | Detail header, 4 px title rule, terminal drawer: they run edge to edge, so there are no free corners to round. The 8 px yellow identity squares stay square, because at 8 px a radius would turn them into dots. |
+
+### What the rounding forced
+
+- **Corner nodes become corner arcs.** The 4 px square nodes would stick out of a rounded frame. I replaced them with 3 px yellow arcs, 16 px long, laid over each corner of the frame. They keep B2's "targeted" reading of the selection, where dropping them would leave a plain focus-like ring, and they follow the 16 px curve instead of fighting it.
+- **Bands are clipped, not bent.** In #a, the card's 4 px muted head band and dark foot bar are borders. On a rounded box, top/bottom borders taper into the corners. In #a2 they are flat 4 px strips painted inside the card and clipped by its 12 px corners, so each band keeps full thickness and simply follows the card's curve at the ends. The card is still 56 px tall at a 60 px pitch.
+- **Stickers at the card's corner.** Stickers sit on the preview line, 12 px in from the card's right edge, so they never touch the 12 px corner. Their own 6 px corners clip the glyph cell, and the 1 px edge follows the curve.
+- **Composer becomes a block.** A 16 px radius on a full-width band at the window's bottom edge would show nothing, so the composer now floats 8 px in from the detail's sides and bottom, with a 1 px rule edge. That's the same 8 px inset as the section panel. Its contents and sizes are unchanged.
+- **Slabs are inset.** PINNED / CONVERSATIONS span the full column in #a. In #a2 they're inset 8 px to line up with the cards, so their 8 px corners don't touch the column edges.
+- **Yellow "+" is an 8 px rounded square, not a circle.** It then matches the rounded-square avatars and the other buttons; a single circle would be the only round shape in the window.
+- **Shadows** (panel 4/4/8 at ink 40 %, menus) are unchanged and follow the rounded shapes.
+
+No step on the scale needed adjusting.

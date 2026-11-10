@@ -1,0 +1,15 @@
+The owner picked #a (the B2 skin, with B2 cards in the list), with ROUNDER CORNERS. Keep #a exactly as it is for comparison, and ADD #a2: the same window, same content, same sizes, with rounded corners. Remove nothing else; #b can stay.
+
+Rounding for #a2 (a small scale, used consistently; adjust a step if something looks wrong, and say so in CHANGES.md):
+- 16 px: the floating section panel (like a macOS 26 sidebar), and the composer block.
+- 12 px: the cards in the list (idle and selected), the code block, message boxes, the detail header's model picker and menus.
+- 8 px: the filter field, buttons (including the yellow "+", which may also become a circle if that reads better), the current-section block and the kind rows' highlight in the panel, the `>_ 4 COMMANDS` chip, section slabs (PINNED / CONVERSATIONS) and the Chats group head.
+- 6 px: stickers, tag chips, the source "avatars" (rounded squares, not circles).
+- The cards' 4 px head band and foot bar follow the card's rounding (clipped by it).
+- The selected card's yellow frame sits 4 px outside the card, so its radius is the card's + 4 (16 px). The square corner nodes don't fit a rounded frame: either drop them or turn them into short yellow corner arcs/ticks; pick one and say why.
+- Shadows stay as in #a (soft, faded) and follow the rounded shapes.
+- Nothing else changes: colours, type, weights (no monospace outside code blocks), spacing, stickers' content, states.
+
+Hashes to add: #a2 (1560x1122), #a2-narrow (1180x1122), and #a2-states: one list column (520x1122) showing a card in every state (idle, hovered, selected, running, approval, failed, done, pinned, read-only, tagged) so the rounding of cards, stickers and the selected frame can be checked up close. Make #all show #a and #a2 side by side at 50%.
+
+Update CHANGES.md with an "#a2: rounder corners" section: the radius per element, and anything the rounding forced (the corner nodes, clipping of bands, stickers at the card's corner).
