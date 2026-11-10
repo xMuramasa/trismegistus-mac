@@ -77,7 +77,7 @@ public struct AgentStepsCard<Rows: View>: View {
     @ViewBuilder let rows: Rows
 
     /// Square but for the top-right corner, as `TerminalEntryView`.
-    private static var shape: UnevenRoundedRectangle { UnevenRoundedRectangle(topTrailingRadius: Radius.card, style: .continuous) }
+    private static var shape: UnevenRoundedRectangle { UnevenRoundedRectangle(topTrailingRadius: Radius.l, style: .continuous) }
 
     public init(line: String, isOpen: Binding<Bool>, @ViewBuilder rows: () -> Rows) {
         self.line = line

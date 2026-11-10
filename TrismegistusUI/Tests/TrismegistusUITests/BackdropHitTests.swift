@@ -22,7 +22,7 @@ final class BackdropHitTests: XCTestCase {
                         .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
                 }
                 .padding(Space.l)
-                .background { TopBarBackdrop() }
+                .background(Ink.surface.raised)
                 // Below the header, drawn after it: the chat with its backdrop.
                 Color.clear.frame(maxWidth: .infinity, maxHeight: .infinity).background { EndfieldBackdrop() }
             }

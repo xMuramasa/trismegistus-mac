@@ -8,6 +8,8 @@ struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @State private var login = LaunchAtLogin()
     @State private var confirmingUnpair = false
+    /// Set by the window's device row (Unpair…): Settings opens and asks at once.
+    @AppStorage("settings.confirmUnpair") private var confirmUnpair = false
     @State private var unpairError: String?
     /// Shown after unpairing: the relay still lists the device until this runs on the server.
     @State private var revokeCommand: String?
@@ -74,6 +76,9 @@ struct SettingsView: View {
                     .typeRole(.caption).foregroundStyle(Ink.text.secondary)
                 CodeBlockView(language: "bash", code: revokeCommand)
             }
+        }
+        .onChange(of: confirmUnpair, initial: true) { _, ask in
+            if ask { confirmingUnpair = true; confirmUnpair = false }
         }
         .confirmationDialog("Unpair this Mac?", isPresented: $confirmingUnpair) {
             Button("Unpair", role: .destructive) { Task { await unpair() } }

@@ -31,7 +31,7 @@ struct ContextMeter: View {
         let canHandOff = compressing && SessionCapabilities(info).canHandOff
         let label = HStack(spacing: Space.s) {
             Text(summary(window: window, percent: percent))
-                .typeRole(.monoSmall).foregroundStyle(color(band, text: true)).lineLimit(1).fixedSize()
+                .typeRole(.callout).monospacedDigit().foregroundStyle(color(band, text: true)).lineLimit(1).fixedSize()
             if let percent { SegmentBar(percent: percent, color: color(band, text: false)) }
         }
         .contentShape(Rectangle())

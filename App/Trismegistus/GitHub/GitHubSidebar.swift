@@ -121,9 +121,7 @@ struct GitHubSidebar: View {
                 }
                 TabChip(title: "Needs check", symbol: "eye", count: board.needsCheckCount, isOn: list == .needsCheck) { list = .needsCheck }
             }
-            // Ink on white: the chips' words don't read on the grey ground.
-            .background(Ink.surface.raised)
-            .overlay(Rectangle().strokeBorder(Ink.line.strong, lineWidth: Stroke.hairline))
+            .rounded(Radius.m, fill: Ink.surface.raised, edge: Ink.line.strong)
         }
     }
 
@@ -137,8 +135,8 @@ struct GitHubSidebar: View {
         let groups = board.needsCheck(repo: repo, matching: filter)
         if groups.isEmpty { SidebarNote(text: "Nothing needs your check.").sidebarRow() }
         ForEach(groups, id: \.repo) { group in
-            SectionHead(title: "\(GitHubInbox.shortName(group.repo)) \(group.items.count)")
-                .padding(.horizontal, -Space.s).padding(.vertical, Space.xs)
+            SectionHead(title: GitHubInbox.shortName(group.repo), count: group.items.count)
+                .padding(.vertical, Space.xs)
                 .sidebarRow()
             ForEach(group.items) { item in
                 IssueRow(ref: "#\(item.number)", title: item.title, priority: item.priority, isClosed: item.state == "closed",
@@ -155,12 +153,8 @@ struct GitHubSidebar: View {
             Button {
                 if toggled.contains(group.status) { toggled.remove(group.status) } else { toggled.insert(group.status) }
             } label: {
-                SectionHead(title: "\(group.status.isEmpty ? "No status" : group.status) \(group.items.count)")
-                    .overlay(alignment: .trailing) {
-                        Image(systemName: Symbol.fold(isOpen: !folded)).font(.system(size: Icon.xxs, weight: .bold))
-                            .foregroundStyle(Ink.selection).padding(.trailing, Space.l)
-                    }
-                    .padding(.horizontal, -Space.s).padding(.vertical, Space.xs)
+                SectionHead(title: group.status.isEmpty ? "No status" : group.status, count: group.items.count, folded: folded)
+                    .padding(.vertical, Space.xs)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -247,7 +241,7 @@ private struct IssueRow: View {
         VStack(alignment: .leading, spacing: Space.xxs) {
             HStack(spacing: Space.s) {
                 if isRunning { RunningTriangle().foregroundStyle(ink.meta) }
-                Text(ref).typeRole(.monoSmall).foregroundStyle(ink.meta).lineLimit(1).truncationMode(.middle)
+                Text(ref).typeRole(.callout).monospacedDigit().foregroundStyle(ink.meta).lineLimit(1).truncationMode(.middle)
                 if !priority.isEmpty { PriorityMark(priority: priority) }
                 if isClosed { Text("closed").typeRole(.label).foregroundStyle(ink.meta) }
             }
@@ -276,7 +270,7 @@ private struct TabChip: View {
         Button(action: action) {
             HStack(spacing: Space.s) {
                 Image(systemName: symbol)
-                if let count { Text(verbatim: "\(count)").typeRole(.monoSmall) }
+                if let count { Text(verbatim: "\(count)").typeRole(.data).monospacedDigit() }
             }
             .typeRole(.button)
             .padding(.horizontal, Space.m).padding(.vertical, Space.s)

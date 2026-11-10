@@ -10,14 +10,16 @@ import XCTest
 final class SettledWidthTests: XCTestCase {
     private final class Panes: ObservableObject {
         @Published var sidebar = true
-        @Published var width = 260.0
+        @Published var width = 520.0
         @Published var inspector = true
     }
 
     private struct Window: View {
         @ObservedObject var panes: Panes
         var body: some View {
-            SidebarSplit(isShown: $panes.sidebar, width: $panes.width) {
+            WindowColumns(isPanelShown: $panes.sidebar, listWidth: $panes.width) {
+                Color.black
+            } list: {
                 List(0..<20, id: \.self) { Text("Conversation \($0)") }
             } detail: {
                 VStack(spacing: 0) {
@@ -81,7 +83,7 @@ final class SettledWidthTests: XCTestCase {
         XCTAssertLessThanOrEqual(resize, 4)
         XCTAssertEqual(afterResize, 0, "settled width keeps changing after a resize")
 
-        // Closing and opening the inspector, then the sidebar (our own column, #32), with animation: a few settles
+        // Closing and opening the inspector, then the section panel (our own column, #32, #68), with animation: a few settles
         // each, not one per frame, then quiet.
         for (pane, toggle) in [("inspector", { panes.inspector.toggle() }), ("sidebar", { panes.sidebar.toggle() })] {
             for _ in 0..<2 {

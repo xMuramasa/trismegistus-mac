@@ -23,11 +23,10 @@ public struct KindChip: Identifiable, Equatable, Sendable {
     var spoken: String { described + (mark.map { ", \($0.spoken)" } ?? "") }
 }
 
-/// The chat list's kind tabs (#48). On the window sidebar outlined blocks, the selected one solid yellow, with a small
-/// sticker of the strongest state (#65). In the popover a bare row of icons with their counts, in the section bar's
-/// language: the selected tab is bright with an ink bar under it, and a dot on the icon's corner says its conversations
-/// need you. MORE is a menu of `more`; with one of its entries chosen it shows that entry's icon and count. The full
-/// name is the tooltip and what VoiceOver reads.
+/// The popover's kind tabs (#48): a bare row of icons with their counts, in the section bar's language: the selected tab
+/// is bright with an ink bar under it, and a dot on the icon's corner says its conversations need you. MORE is a menu of
+/// `more`; with one of its entries chosen it shows that entry's icon and count. The full name is the tooltip and what
+/// VoiceOver reads. The window has the section panel's Chats group instead (#68).
 public struct KindTabs: View {
     let tabs: [KindChip]
     let more: [KindChip]
@@ -35,9 +34,6 @@ public struct KindTabs: View {
     let moreMark: StickerState?
     let selection: String
     let onSelect: (String) -> Void
-
-    @Environment(\.onSidebar) private var onSidebar
-    @Environment(\.sidebarNarrow) private var narrow
 
     public init(tabs: [KindChip], more: [KindChip], moreMark: StickerState? = nil, selection: String, onSelect: @escaping (String) -> Void) {
         self.tabs = tabs
@@ -48,7 +44,7 @@ public struct KindTabs: View {
     }
 
     public var body: some View {
-        HStack(spacing: onSidebar && !narrow ? Space.xs : 0) {
+        HStack(spacing: 0) {
             ForEach(tabs) { tab in
                 Button { onSelect(tab.id) } label: { cell(tab, isOn: selection == tab.id) }
                     .buttonStyle(.plain)
@@ -57,7 +53,6 @@ public struct KindTabs: View {
                     .accessibilityAddTraits(selection == tab.id ? .isSelected : [])
             }
             moreMenu
-            if onSidebar { Spacer(minLength: 0) }
         }
     }
 
@@ -76,31 +71,12 @@ public struct KindTabs: View {
         .menuStyle(.button)
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
-        .fixedSize(horizontal: onSidebar, vertical: true)
+        .fixedSize(horizontal: false, vertical: true)
         .help(chosen?.described ?? "More conversations")
         .accessibilityLabel(chosen?.spoken ?? "More conversations")
     }
 
-    @ViewBuilder private func cell(_ chip: KindChip, isOn: Bool, menu: Bool = false) -> some View {
-        if onSidebar { block(chip, isOn: isOn, menu: menu) } else { bare(chip, isOn: isOn, menu: menu) }
-    }
-
-    /// A sidebar tab: the icon, the count (MORE with no entry chosen has none), the sticker and, for MORE, a chevron.
-    private func block(_ chip: KindChip, isOn: Bool, menu: Bool) -> some View {
-        HStack(spacing: Space.xs) {
-            Image(systemName: chip.symbol).font(.system(size: Icon.l))
-            if !(menu && !isOn) { Text(verbatim: "\(chip.count)").typeRole(.data).monospacedDigit() }
-            if let mark = chip.mark { Sticker(mark, isBadge: true).allowsHitTesting(false) }
-            if menu && !narrow { Image(systemName: Symbol.chevronDown).font(.system(size: Icon.xxs, weight: .bold)) }
-        }
-        .lineLimit(1).fixedSize()
-        .foregroundStyle(isOn ? Ink.text.primary : Ink.text.onSidebar)
-        .padding(.horizontal, narrow ? Space.xs : Space.s)
-        .frame(height: Size.control)
-        .background(isOn ? Ink.selection : .clear)
-        .edge(Ink.line.strong)
-        .contentShape(Rectangle())
-    }
+    private func cell(_ chip: KindChip, isOn: Bool, menu: Bool = false) -> some View { bare(chip, isOn: isOn, menu: menu) }
 
     /// One popover tab: the icon (with its dot), the count and, for MORE, a chevron; at least `Size.sectionTarget` tall
     /// and the whole cell clickable. MORE with no entry chosen has no count of its own.

@@ -70,14 +70,14 @@ public enum MarkdownText {
         attributes.swiftUI.backgroundColor = Ink.surface.sunken
         var side = attributes
         side.swiftUI.font = TypeRole.body.spec.font()
-        attributes.swiftUI.font = TypeRole.mono.spec.font()
+        // Inter on sunken (#68): mono is for code blocks and the terminal drawer.
+        attributes.swiftUI.font = TypeRole.body.spec.font()
         return AttributedString(chipSide, attributes: side) + AttributedString(code, attributes: attributes)
             + AttributedString(chipSide, attributes: side)
     }
 
     private static func linked(_ text: String, _ url: URL, _ attributes: AttributeContainer) -> AttributedString {
         var attributes = attributes
-        attributes.swiftUI.font = TypeRole.mono.spec.font()
         attributes.link = url
         return AttributedString(text, attributes: attributes)
     }
@@ -195,7 +195,7 @@ private struct MarkdownList: View {
             )
             .accessibilityHidden(true)
         case .number(let n):
-            Text(verbatim: "\(n)").typeRole(.monoSmall).foregroundStyle(Ink.text.secondary).padding(.trailing, Space.xs)
+            Text(verbatim: "\(n)").typeRole(.body).monospacedDigit().foregroundStyle(Ink.text.secondary).padding(.trailing, Space.xs)
         case .task(let done):
             onFirstLine(TaskBox(done: done))
         }

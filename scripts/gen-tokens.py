@@ -133,7 +133,7 @@ out += scalar_enum("opacity", "Opacity", "Double", "opacities.")
 out += scalar_enum("space", "Space", "CGFloat", "the strict spacing scale; literals round up to the next step.")
 out += scalar_enum("icon", "Icon", "CGFloat", "SF Symbol point sizes (and the square frames they sit in).")
 out += scalar_enum("size", "Size", "CGFloat", "fixed sizes of rows, cards, panes and windows.")
-out += scalar_enum("radius", "Radius", "CGFloat", "corner radii (Endfield is square; cards round one corner).")
+out += scalar_enum("radius", "Radius", "CGFloat", "the corner radius scale (#68): s, m, l, xl.")
 out += scalar_enum("stroke", "Stroke", "CGFloat", "line widths and bars.")
 
 out += [

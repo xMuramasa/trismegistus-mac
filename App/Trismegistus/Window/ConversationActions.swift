@@ -53,15 +53,17 @@ final class ConversationActions {
 
 // MARK: Menu
 
-/// Pin/Unpin, Rename, Tags, Hand off and Delete, as the relay allows them for the conversation's source.
+/// Pin/Unpin, Rename, Tags, Hand off and Delete, as the relay allows them for the conversation's source; the list
+/// header's `…` (#68) has Rename, Tags and Hand off only.
 struct ConversationMenuItems: View {
     let info: SessionInfo
     let actions: ConversationActions
     let store: SessionStore?
+    var headerOnly = false
 
     var body: some View {
         let capabilities = SessionCapabilities(info)
-        if capabilities.canPin {
+        if capabilities.canPin && !headerOnly {
             Button(info.isPinned ? "Unpin" : "Pin", systemImage: info.isPinned ? "pin.slash" : "pin") {
                 actions.togglePin(info, store: store)
             }
@@ -75,7 +77,7 @@ struct ConversationMenuItems: View {
         if capabilities.canHandOff {
             Button("Hand off", systemImage: Symbol.handoff) { actions.handingOff = info }
         }
-        if capabilities.canDelete {
+        if capabilities.canDelete && !headerOnly {
             Divider()
             Button("Delete", systemImage: "trash", role: .destructive) { actions.deleting = info }
         }
@@ -137,9 +139,10 @@ extension View {
 
 // MARK: Rows
 
-/// `…` button on the tag line (under the pointer and on the selected row only; the sticker holds the title's line),
-/// right-click menu with the same items and the inline rename, laid over a `SessionRowView`; the `…` is light on the
-/// window sidebar's selected ink card. Tells the card when the pointer is on it.
+/// The popover's `…` button on the tag line (under the pointer and on the selected row only; the sticker holds the
+/// title's line), right-click menu with the same items and the inline rename, laid over a `SessionRowView`. A card in
+/// the window's list column has no `…` of its own: the list header's acts on the open conversation (#68). Tells the
+/// card when the pointer is on it.
 private struct ConversationChrome: ViewModifier {
     let info: SessionInfo
     let isSelected: Bool
@@ -150,7 +153,7 @@ private struct ConversationChrome: ViewModifier {
     @State private var isHovered = false
 
     func body(content: Content) -> some View {
-        let showsMenu = isHovered || isSelected
+        let showsMenu = !onSidebar && (isHovered || isSelected)
         content
             .environment(\.rowHovered, isHovered)
             .overlay(alignment: .bottomTrailing) {
@@ -158,7 +161,6 @@ private struct ConversationChrome: ViewModifier {
                 ConversationMenuButton(info: info, actions: actions, store: store)
                     .opacity(showsMenu ? 1 : 0).allowsHitTesting(showsMenu)
                     .padding(.bottom, Space.xs).padding(.trailing, Space.s)
-                    .environment(\.onSidebar, onSidebar && isSelected)
             }
             .overlay {
                 if actions.renaming == info.id { RenameField(info: info, actions: actions, store: store) }
@@ -301,30 +303,29 @@ struct FlowLayout: Layout {
     }
 }
 
-/// A one-line refusal under a list or header (light on the window sidebar's grey, where red doesn't read).
+/// A one-line refusal under a list or header.
 struct ActionError: View {
     let message: String?
 
-    @Environment(\.onSidebar) private var onSidebar
-
     var body: some View {
         if let message {
-            Text(message).typeRole(.caption).foregroundStyle(onSidebar ? Ink.text.onSidebar : Ink.text.error)
+            Text(message).typeRole(.caption).foregroundStyle(Ink.text.error)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
 
-/// `PINNED` / `CONVERSATIONS` above a group of rows: on the window sidebar an ink slab across the whole column (over
-/// the list's 8 pt margins), 8 pt above the first card, whose cell brings 4; in the popover a plain label.
+/// `PINNED` / `CONVERSATIONS` above a group of rows: in the window's list column an ink slab with the group's count,
+/// inset 8 pt like the cards (#68); in the popover a plain label.
 struct SectionLabel: View {
     let title: String
+    var count: Int?
 
     @Environment(\.onSidebar) private var onSidebar
 
     var body: some View {
         if onSidebar {
-            SectionHead(title: title).padding(.horizontal, -Space.s).padding(.bottom, Space.xs)
+            SectionHead(title: title, count: count).padding(.vertical, Space.s)
         } else {
             Text(title).typeRole(.label).foregroundStyle(Ink.text.secondary)
                 .padding(.horizontal, Space.l).padding(.vertical, Space.s)

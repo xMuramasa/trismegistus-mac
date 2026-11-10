@@ -98,8 +98,8 @@ public struct IssueRunRow: View {
     }
 }
 
-/// The composer's top line: the run's state and clock, then the keys as sunken mono chips on the right. The chips go
-/// first when a pane narrows the column.
+/// The composer's top line: the run's state and clock (Inter, tabular figures, #68), then the keys as key caps on the
+/// right. The keys go first when a pane narrows the column.
 public struct RunLine: View {
     let state: String
     let isActive: Bool
@@ -119,7 +119,7 @@ public struct RunLine: View {
                 Rectangle().fill(Ink.status.online).frame(width: Size.marker, height: Size.marker).accessibilityHidden(true)
             }
             Text(state).typeRole(.label).foregroundStyle(Ink.text.primary).lineLimit(1).fixedSize()
-            if let clock { Text(verbatim: clock).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary).fixedSize() }
+            if let clock { Text(verbatim: clock).typeRole(.callout).monospacedDigit().foregroundStyle(Ink.text.secondary).fixedSize() }
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: Space.m) {
                     ForEach(hints, id: \.key) { hint($0.key, $0.action) }
@@ -133,9 +133,8 @@ public struct RunLine: View {
 
     private func hint(_ key: String, _ action: String) -> some View {
         HStack(spacing: Space.xs) {
-            Text(key).typeRole(.monoSmall).foregroundStyle(Ink.text.primary)
-                .padding(.horizontal, Space.xs).background(Ink.surface.sunken)
-            Text(action).typeRole(.caption).foregroundStyle(Ink.text.secondary)
+            KeyCap(key)
+            Text(action).typeRole(.callout).foregroundStyle(Ink.text.secondary)
         }
         .fixedSize()
         .accessibilityElement(children: .combine)
@@ -159,8 +158,8 @@ public struct CommandChip: View {
     public var body: some View {
         Button { isOpen.toggle() } label: {
             HStack(spacing: Space.s) {
-                Text(verbatim: ">_").typeRole(.monoSmall)
-                Text(verbatim: "\(commands) \(commands == 1 ? "command" : "commands") · \(duration)").typeRole(.label)
+                Text(verbatim: ">_").typeRole(.label)
+                Text(verbatim: "\(commands) \(commands == 1 ? "command" : "commands") · \(duration)").typeRole(.label).monospacedDigit()
                 if failed > 0 { Text(verbatim: "· \(failed) failed").typeRole(.label).foregroundStyle(Ink.text.error) }
                 Image(systemName: isOpen ? Symbol.chevronUp : Symbol.chevronDown).font(.system(size: Icon.xxs, weight: .bold))
                     .accessibilityHidden(true)
@@ -168,8 +167,8 @@ public struct CommandChip: View {
             .foregroundStyle(Ink.text.primary)
             .padding(.horizontal, Space.s)
             .frame(height: Size.cardHeader)
-            .background(Ink.surface.sunken)
-            .contentShape(Rectangle())
+            .rounded(Radius.m, fill: Ink.surface.sunken)
+            .contentShape(RoundedRectangle(cornerRadius: Radius.m, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityValue(isOpen ? "Open" : "Folded")
@@ -191,7 +190,7 @@ public struct WorkLine<Chip: View>: View {
             HStack(spacing: Space.m) {
                 chip
                 Text("Working").typeRole(.label).foregroundStyle(Ink.text.primary)
-                Text(verbatim: detail).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
+                Text(verbatim: detail).typeRole(.callout).monospacedDigit().foregroundStyle(Ink.text.secondary)
             }
             WorkTrack()
         }

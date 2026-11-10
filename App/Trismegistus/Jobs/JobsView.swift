@@ -112,7 +112,7 @@ private struct JobRow: View {
                     Spacer(minLength: Space.s)
                     if job.isPaused { Text("Paused").typeRole(.label).foregroundStyle(ink.meta) }
                 }
-                Text(meta(now: context.date, ink: ink)).typeRole(.monoSmall).foregroundStyle(ink.meta).lineLimit(1)
+                Text(meta(now: context.date, ink: ink)).typeRole(.callout).monospacedDigit().foregroundStyle(ink.meta).lineLimit(1)
             }
             .padding(.horizontal, Space.m).padding(.vertical, Space.s)
             .frame(maxWidth: .infinity, minHeight: Size.row, alignment: .leading)

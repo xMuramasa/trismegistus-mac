@@ -83,7 +83,7 @@ struct StickerGlyph: Shape {
     }
 }
 
-/// A square sticker: a glyph cell, then the word and (on a run) the time; approval ends in hard ink and magenta stripes.
+/// A sticker with `s` corners: a glyph cell, then the word and (on a run) the time; approval ends in hard ink and magenta stripes.
 /// `showsWord` off keeps the cell, the time and the stripes (a narrow sidebar). A badge is the cell alone, a little shorter.
 public struct Sticker: View {
     let state: StickerState
@@ -128,7 +128,9 @@ public struct Sticker: View {
         }
         .padding(Stroke.hairline)
         .frame(height: isBadge ? Size.sticker.badge : Size.sticker.height)
-        .edge(edge)
+        // `s` corners clip the glyph cell; the edge follows them (#68).
+        .clipShape(RoundedRectangle(cornerRadius: Radius.s, style: .continuous))
+        .edge(edge, radius: Radius.s)
         .compositingGroup()  // one shadow for the sticker, not one per word
         .shadow(isBadge || state == .done ? Shadow.none : Shadow.sticker)
         .accessibilityElement(children: .ignore)

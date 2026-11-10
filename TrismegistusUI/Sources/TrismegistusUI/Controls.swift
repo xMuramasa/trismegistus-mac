@@ -4,10 +4,10 @@ public enum EndfieldButtonKind: Sendable {
     case primary, secondary, danger, quiet
 }
 
-/// Square chip with a 1 px edge and a trailing SF Symbol. `iconOnly` hides the word but keeps it as tooltip and
-/// accessibility label. Pressed inverts to ink with yellow text; disabled goes sunken and muted (dark-panel on steel).
-/// On steel a secondary button has no fill and a light edge and word (`.btn.steel`, #57). On the window sidebar a quiet
-/// icon-only button is an ink block with a yellow glyph (the header's `+`, #65).
+/// A chip with `m` corners (#68), a 1 px edge and a trailing SF Symbol. `iconOnly` hides the word but keeps it as tooltip
+/// and accessibility label. Pressed inverts to ink with yellow text; disabled goes sunken and muted (dark-panel on steel).
+/// On steel a secondary button has no fill and a light edge and word (`.btn.steel`, #57). In the window's list column a
+/// quiet icon-only button is a sunken square with an ink glyph (`.ib`, a list header's action, #68).
 public struct EndfieldButtonStyle: ButtonStyle {
     let kind: EndfieldButtonKind
     let title: String
@@ -38,7 +38,8 @@ public struct EndfieldButtonStyle: ButtonStyle {
             if !isEnabled {
                 return onSteel ? (Ink.surface.darkPanel, Ink.text.secondary, Ink.text.onDark) : (Ink.surface.sunken, Ink.line.rule, Ink.text.muted)
             }
-            if configuration.isPressed || isBlock { return (Ink.surface.inverse, Ink.line.strong, Ink.selection) }
+            if isBlock { return (configuration.isPressed ? Ink.line.rule : Ink.surface.sunken, .clear, Ink.text.primary) }
+            if configuration.isPressed { return (Ink.surface.inverse, Ink.line.strong, Ink.selection) }
             switch style.kind {
             case .primary: return (Ink.selection, Ink.line.strong, Ink.text.primary)
             case .secondary: return onSteel ? (.clear, Ink.text.onDark, Ink.text.onDark) : (Ink.surface.raised, Ink.line.strong, Ink.text.primary)
@@ -58,16 +59,15 @@ public struct EndfieldButtonStyle: ButtonStyle {
                     Image(systemName: symbol).font(isBlock ? .system(size: Icon.section) : nil).accessibilityHidden(!style.iconOnly)
                 }
             }
-            .frame(width: isBlock ? Icon.section : nil, height: isBlock ? Icon.section : nil)
             // A button never wraps its word: in a tight row it keeps its size and the row has to make room.
             .fixedSize()
             .typeRole(.button)
             .foregroundStyle(p.text)
-            .padding(.vertical, isBlock ? Space.xs : Space.s)
-            .padding(.horizontal, isBlock ? Space.xs : style.iconOnly ? Space.s : Space.m)
-            .background(p.fill)
-            .edge(p.edge)
-            .contentShape(Rectangle())
+            .padding(.vertical, isBlock ? 0 : Space.s)
+            .padding(.horizontal, isBlock ? 0 : style.iconOnly ? Space.s : Space.m)
+            .frame(width: isBlock ? Size.control : nil, height: isBlock ? Size.control : nil)
+            .rounded(Radius.m, fill: p.fill, edge: p.edge)
+            .contentShape(RoundedRectangle(cornerRadius: Radius.m, style: .continuous))
             .help(style.title)
             .accessibilityLabel(style.title)
         }
@@ -102,8 +102,9 @@ public struct EndfieldButton: View {
     }
 }
 
-/// `.plain` text field in a square container: rest sunken with a rule edge, focused raised with an ink edge, error red.
-/// On the window sidebar: white with an ink edge and the soft ink shadow, yellow while focused (#65).
+/// `.plain` text field in an `m` container: rest sunken with a rule edge, focused raised with an ink edge, error red.
+/// In the window's list column: white with an ink edge and the soft ink shadow, yellow while focused (#65), and `hint`
+/// (`⌘K`) as a key cap at its end.
 public struct EndfieldTextField: View {
     let placeholder: String
     @Binding var text: String
@@ -112,6 +113,7 @@ public struct EndfieldTextField: View {
     let ground: Color
     /// Focus from outside (the window's ⌘K focuses the sidebar's Filter field).
     let focus: FocusState<Bool>.Binding?
+    let hint: String?
     var forceFocused = false  // snapshots and previews: focus can't be set from outside
     @FocusState private var focused: Bool
     @Environment(\.isEnabled) private var isEnabled
@@ -119,30 +121,49 @@ public struct EndfieldTextField: View {
 
     public init(
         _ placeholder: String, text: Binding<String>, isError: Bool = false, ground: Color = Ink.surface.sunken,
-        focus: FocusState<Bool>.Binding? = nil
+        focus: FocusState<Bool>.Binding? = nil, hint: String? = nil
     ) {
         self.placeholder = placeholder
         self._text = text
         self.isError = isError
         self.ground = ground
         self.focus = focus
+        self.hint = hint
     }
 
     public var body: some View {
         let isFocused = (focus?.wrappedValue ?? focused) || forceFocused
-        TextField(placeholder, text: $text, prompt: Text(placeholder).foregroundStyle(Ink.text.secondary))
-            .textFieldStyle(.plain)
-            .typeRole(onSidebar ? .headline : .body)
-            .foregroundStyle(isEnabled ? Ink.text.primary : Ink.text.muted)
-            .focused(focus ?? $focused)
-            .padding(.horizontal, Space.m)
-            .frame(height: Size.control)
-            // The shadow on the ground alone: over the field it would blur the text's glyphs inside it.
-            .background {
-                (isFocused || onSidebar ? Ink.surface.raised : ground)
-                    .shadow(!onSidebar ? Shadow.none : isFocused ? Shadow.blockFocus : Shadow.block)
-            }
-            .edge(isError ? Ink.text.error : isFocused || onSidebar ? Ink.line.strong : Ink.line.rule)
+        HStack(spacing: Space.s) {
+            TextField(placeholder, text: $text, prompt: Text(placeholder).foregroundStyle(Ink.text.secondary))
+                .textFieldStyle(.plain)
+                .typeRole(onSidebar ? .headline : .body)
+                .foregroundStyle(isEnabled ? Ink.text.primary : Ink.text.muted)
+                .focused(focus ?? $focused)
+            if let hint { KeyCap(hint) }
+        }
+        .padding(.leading, Space.m).padding(.trailing, hint == nil ? Space.m : Space.xs)
+        .frame(height: Size.control)
+        // The shadow on the ground alone: over the field it would blur the text's glyphs inside it.
+        .background {
+            RoundedRectangle(cornerRadius: Radius.m, style: .continuous)
+                .fill(isFocused || onSidebar ? Ink.surface.raised : ground)
+                .shadow(!onSidebar ? Shadow.none : isFocused ? Shadow.blockFocus : Shadow.block)
+        }
+        .edge(isError ? Ink.text.error : isFocused || onSidebar ? Ink.line.strong : Ink.line.rule, radius: Radius.m)
+    }
+}
+
+/// A shortcut as a key cap (`⌘K`, `kbd`): Inter on raised with a rule edge, `s` corners.
+public struct KeyCap: View {
+    let key: String
+
+    public init(_ key: String) { self.key = key }
+
+    public var body: some View {
+        Text(verbatim: key).typeRole(.caption, weight: .semibold).foregroundStyle(Ink.text.secondary).lineLimit(1).fixedSize()
+            .padding(.horizontal, Space.xs).padding(.vertical, Space.xxs)
+            .rounded(Radius.s, fill: Ink.surface.raised, edge: Ink.line.rule)
+            .accessibilityHidden(true)
     }
 }
 

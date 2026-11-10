@@ -60,6 +60,7 @@ struct AgentDetail: View {
                     EndfieldButton("Stop", symbol: Symbol.stop, kind: .danger) { confirmingStop = true }
                 }
             }
+            DetailTools(section: .agents)
         }
     }
 

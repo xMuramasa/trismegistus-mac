@@ -42,6 +42,7 @@ struct JobDetail: View {
                 Text(verbatim: isEditing ? "editing" : job?.subtitle ?? "")
             } trailing: {
                 actions
+                DetailTools(section: .jobs)
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: Space.l) {

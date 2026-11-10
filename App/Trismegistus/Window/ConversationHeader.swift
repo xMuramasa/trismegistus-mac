@@ -2,8 +2,9 @@ import SwiftUI
 import TrismegistusKit
 import TrismegistusUI
 
-/// Above the open conversation in the window: source, title, pin, tags, the subtitle (source · run · started) and the
-/// same actions menu as its row, in the `DetailHeader`; the tag editor and errors open under its rule on white.
+/// Above the open conversation in the window (#68): its avatar, title, pin, tags and the subtitle (source · run ·
+/// started) on the left; the token meter, the model, the terminal and Settings buttons and the actions menu on the
+/// right, in the `DetailHeader`; the tag editor and errors open under its rule on white.
 struct ConversationHeader: View {
     let sessionID: String
 
@@ -19,14 +20,14 @@ struct ConversationHeader: View {
             let tags = model.store?.tags[info.id] ?? []
             VStack(spacing: 0) {
                 DetailHeader {
-                    SourceIcon(PopoverFormat.source(info.source))
+                    SourceAvatar(PopoverFormat.source(info.source), size: Size.avatar.header)
                 } title: {
                     if actions.renaming == info.id {
                         RenameField(info: info, actions: actions, store: model.store).frame(height: Size.control)
                     } else {
                         Text(PopoverFormat.title(info))
                         if info.isPinned {
-                            Image(systemName: "pin.fill").font(.system(size: Icon.m)).opacity(Opacity.secondaryOnDark)
+                            Image(systemName: Symbol.pinOutline).font(.system(size: Icon.l)).foregroundStyle(Ink.text.secondary)
                                 .accessibilityLabel("Pinned")
                         }
                         TagChips(tags: tags, limit: 4)
@@ -36,13 +37,13 @@ struct ConversationHeader: View {
                 } trailing: {
                     ContextMeter(info: info) { actions.handingOff = info }
                     ModelMenu(info: info)
-                    // `ConversationMenuButton` with a light icon.
+                    DetailTools(section: .chat)
                     Menu {
                         ConversationMenuItems(info: info, actions: actions, store: model.store)
                     } label: {
-                        Image(systemName: "ellipsis").typeRole(.button).frame(width: Size.menuButton, height: Size.menuButton).contentShape(Rectangle())
+                        IconCell(symbol: Symbol.ellipsis)
                     }
-                    .menuStyle(.borderlessButton)
+                    .menuStyle(.button).buttonStyle(.plain)
                     .menuIndicator(.hidden)
                     .fixedSize()
                     .help("Actions")

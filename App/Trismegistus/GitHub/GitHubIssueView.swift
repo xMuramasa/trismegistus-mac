@@ -100,6 +100,7 @@ struct GitHubIssueView: View {
                 case .none: EmptyView()
                 }
             }
+            DetailTools(section: .github)
         }
     }
 
@@ -188,7 +189,7 @@ struct GitHubIssueView: View {
         VStack(alignment: .leading, spacing: Space.s) {
             HStack(alignment: .firstTextBaseline, spacing: Space.s) {
                 Text(author).typeRole(.label).foregroundStyle(Ink.text.primary)
-                Text(Self.age(date)).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
+                Text(Self.age(date)).typeRole(.callout).monospacedDigit().foregroundStyle(Ink.text.secondary)
             }
             GitHubMarkdown(text: text)
         }

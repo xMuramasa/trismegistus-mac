@@ -133,9 +133,9 @@ private struct AgentRow: View {
                     Spacer(minLength: Space.s)
                     Text(agent.statusWords).typeRole(.label).foregroundStyle(agent.failed ? ink.error : ink.meta)
                 }
-                Text(AgentFacts.line(agent, now: context.date)).typeRole(.monoSmall).foregroundStyle(ink.meta).lineLimit(1)
+                Text(AgentFacts.line(agent, now: context.date)).typeRole(.callout).monospacedDigit().foregroundStyle(ink.meta).lineLimit(1)
                 if let line = agent.progress ?? agent.command {
-                    Text(line).typeRole(.monoSmall).foregroundStyle(ink.meta).lineLimit(1).truncationMode(.tail)
+                    Text(line).typeRole(.callout).foregroundStyle(ink.meta).lineLimit(1).truncationMode(.tail)
                 }
             }
             .padding(.horizontal, Space.m).padding(.vertical, Space.s)

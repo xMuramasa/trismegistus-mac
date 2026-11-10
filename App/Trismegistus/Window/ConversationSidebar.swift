@@ -2,8 +2,9 @@ import SwiftUI
 import TrismegistusKit
 import TrismegistusUI
 
-/// The Chat section's sidebar: `CONVERSATIONS // n`, icon-only new, the kind tabs (APP · TELEGRAM · TERMINAL · MORE, #48),
-/// filter field, tag chips, one card per conversation of the tab, the flare after the last. On `SidebarSplit`'s grey ground, no row separators.
+/// The Chat section's list column (#68): `…` (Rename, Tags, Hand off for the open conversation), `APP // 10`, the yellow
+/// `+`; the filter (⌘K) and tag chips; PINNED and CONVERSATIONS slabs with their counts over one card per conversation of
+/// the kind picked in the section panel's Chats group (#48). On paper, no row separators.
 struct ConversationSidebar: View {
     @Binding var selection: String?
     /// The Filter field's focus (⌘K).
@@ -25,12 +26,24 @@ struct ConversationSidebar: View {
     private var tagCounts: [(tag: String, count: Int)] { SessionListing.tagCounts(ids: threads.map(\.id), tags: tags) }
 
     /// Pinned first, then most recent first. Every kind, unfiltered.
-    private var listing: (pinned: [SessionOverview], rest: [SessionOverview]) {
+    private var listing: (pinned: [SessionOverview], rest: [SessionOverview]) { Self.listing(model) }
+
+    /// The model's conversations, one per thread, pinned first, then most recent first (the panel's Chats group counts them).
+    @MainActor static func listing(_ model: AppModel) -> (pinned: [SessionOverview], rest: [SessionOverview]) {
         guard let store = model.store else { return ([], []) }
+        let threads = SessionListing.threads(model.sessions, id: \.id, links: store.links)
         let overviews = threads
             .compactMap { store.overview[$0.id] }
             .sorted { ($0.lastActivity ?? .distantPast) > ($1.lastActivity ?? .distantPast) }
         return SessionListing.pinnedApart(overviews) { $0.info?.isPinned == true }
+    }
+
+    /// Counts and marks per kind.
+    static func summary(_ listing: (pinned: [SessionOverview], rest: [SessionOverview])) -> ConversationKind.Summary {
+        ConversationKind.Summary((listing.pinned + listing.rest).map {
+            (source: $0.source,
+             attention: ConversationKind.Attention(isWaitingForApproval: $0.isWaitingForApproval, isRunning: $0.run != nil))
+        })
     }
 
     /// The listing in the tab, after the filter field and the tag filter; `elsewhere` when the filter finds nothing in
@@ -64,27 +77,21 @@ struct ConversationSidebar: View {
 
     var body: some View {
         let listing = self.listing
-        let summary = ConversationKind.Summary((listing.pinned + listing.rest).map {
-            (source: $0.source,
-             attention: ConversationKind.Attention(isWaitingForApproval: $0.isWaitingForApproval, isRunning: $0.run != nil))
-        })
-        let kind = summary.resolving(storedKind)
+        let kind = Self.summary(listing).resolving(storedKind)
         let shown = self.shown(listing, kind: kind)
         let count = shown.pinned.count + shown.rest.count
         VStack(spacing: 0) {
-            header(kind: kind, count: count, summary: summary)
+            header(kind: kind, count: count)
             if count == 0 { empty(kind: kind, elsewhere: shown.elsewhere) }
             List(selection: $selection) {
                 if !shown.pinned.isEmpty {
-                    SectionLabel(title: "Pinned").sidebarRow()
+                    SectionLabel(title: "Pinned", count: shown.pinned.count).sidebarRow()
                     ForEach(shown.pinned) { conversation($0) }
                     if !shown.rest.isEmpty {
-                        // 20 pt below the last card, whose cell brings 4.
-                        SectionLabel(title: "Conversations").padding(.top, Space.l).sidebarRow()
+                        SectionLabel(title: "Conversations", count: shown.rest.count).padding(.top, Space.s).sidebarRow()
                     }
                 }
                 ForEach(shown.rest) { conversation($0) }
-                if count > 0 { SidebarFlare(count: count).sidebarRow() }
             }
             .sidebarList()
         }
@@ -142,20 +149,29 @@ struct ConversationSidebar: View {
                     .padding(.top, Space.s)
             }
         }
-        .sidebarCardCell()
+        .sidebarCardCell(isSelected: selection == overview.id)
         .tag(overview.id)
         .sidebarRow()
     }
 
-    /// `SidebarHeader`'s layout with the kind tabs between the title and the filter field.
-    private func header(kind: ConversationKind, count: Int, summary: ConversationKind.Summary) -> some View {
-        VStack(spacing: Space.s) {
-            SidebarTitleRow(title: "\(kind.name) // \(count)") {
-                EndfieldButton("New conversation", symbol: Symbol.plus, kind: .quiet, iconOnly: true) { create() }
+    /// The header line, then the filter field, the tag chips and any refusal. The `+` steps down from yellow while the
+    /// open conversation runs: Steer is the yellow action then.
+    private func header(kind: ConversationKind, count: Int) -> some View {
+        let open = selection.flatMap { id in model.sessions.first { $0.id == (model.store?.threadTip(of: id) ?? id) } }
+        return VStack(spacing: Space.s) {
+            ListHeader(title: "\(kind.name) // \(count)") {
+                Menu {
+                    if let open { ConversationMenuItems(info: open, actions: actions, store: model.store, headerOnly: true) }
+                } label: { IconCell(symbol: Symbol.ellipsis) }
+                    .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+                    .disabled(open == nil)
+                    .help("Actions for the open conversation")
+                    .accessibilityLabel("Conversation actions")
+            } trailing: {
+                PlusButton("New conversation", isPrimary: open.flatMap { model.store?.overview[$0.id]?.run } == nil) { create() }
             }
-            .padding(.bottom, -Space.s)
-            ChatKindTabs(summary: summary, kind: $storedKind)
-            SidebarFilter("Filter conversations", text: $filter, focus: filterFocus)
+            .padding(.horizontal, -Space.l)
+            SidebarFilter("Filter", text: $filter, focus: filterFocus)
             if !tagCounts.isEmpty { tagFilterBar }
             ActionError(message: createFailed ? "Could not create a conversation. Try again." : nil)
             ActionError(message: actions.error)
@@ -201,7 +217,8 @@ struct ChatKindTabs: View {
     let summary: ConversationKind.Summary
     @Binding var kind: ConversationKind
 
-    private func chip(_ kind: ConversationKind) -> KindChip {
+    /// A kind as the tabs and the panel's Chats group show it.
+    static func chip(_ kind: ConversationKind, summary: ConversationKind.Summary) -> KindChip {
         let entry = summary[kind]
         return KindChip(id: kind.rawValue, title: kind.name, symbol: Self.symbol(kind), count: entry.count, mark: entry.attention.map(Self.mark))
     }
@@ -218,10 +235,10 @@ struct ChatKindTabs: View {
         }
     }
 
-    private static func mark(_ attention: ConversationKind.Attention) -> StickerState { attention == .approval ? .approval : .running }
+    static func mark(_ attention: ConversationKind.Attention) -> StickerState { attention == .approval ? .approval : .running }
 
     var body: some View {
-        KindTabs(tabs: ConversationKind.tabs.map(chip), more: summary.more.map(chip), moreMark: summary.moreAttention.map(Self.mark),
+        KindTabs(tabs: ConversationKind.tabs.map { Self.chip($0, summary: summary) }, more: summary.more.map { Self.chip($0, summary: summary) }, moreMark: summary.moreAttention.map(Self.mark),
                  selection: summary.resolving(kind).rawValue) { id in
             if let picked = ConversationKind(rawValue: id) { kind = picked }
         }
@@ -240,7 +257,9 @@ private struct ConversationRow: View {
         TimelineView(.periodic(from: .now, by: overview.run == nil ? 30 : 1)) { context in
             let row = SessionRowView(
                 name: overview.info.map(ConversationSidebar.title) ?? "New conversation",
-                source: source, activity: Self.age(overview.lastActivity, now: context.date), isSelected: isSelected,
+                source: source, activity: Self.age(overview.lastActivity, now: context.date),
+                // The relay's preview as it is; with no title the preview is the title already.
+                preview: overview.info?.title == nil ? nil : overview.info?.preview, isSelected: isSelected,
                 isReadOnly: overview.isReadOnly, isPinned: overview.info?.isPinned == true,
                 runElapsed: overview.run.map { Self.clock(context.date.timeIntervalSince($0.startedAt)) },
                 needsApproval: overview.isWaitingForApproval, tags: tags)

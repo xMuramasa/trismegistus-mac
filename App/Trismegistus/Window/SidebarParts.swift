@@ -2,8 +2,8 @@ import SwiftUI
 import TrismegistusKit
 import TrismegistusUI
 
-/// The top of a section's sidebar (09f, #65): `TITLE // n` with an icon-only action, the filter field (⌘K), then
-/// whatever the section adds (pickers, tags, a refusal).
+/// The top of a section's list column (#68): the list header with the title centred and the section's own actions at
+/// the right, the filter field (⌘K), then whatever the section adds (pickers, tags, a refusal).
 struct SidebarHeader<Trailing: View, Extra: View>: View {
     let title: String
     let prompt: String
@@ -14,32 +14,17 @@ struct SidebarHeader<Trailing: View, Extra: View>: View {
 
     var body: some View {
         VStack(spacing: Space.s) {
-            SidebarTitleRow(title: title, trailing: trailing)
-                .padding(.bottom, -Space.s)
+            ListHeader(title: title) { EmptyView() } trailing: { trailing() }
+                .padding(.horizontal, -Space.l)
             SidebarFilter(prompt, text: $filter, focus: focus)
-                .padding(.top, Space.s)
             extra()
         }
         .padding(.horizontal, Space.l).padding(.bottom, Space.m)
     }
 }
 
-/// `APP // 10` and the action beside it. Every section's the same height, with or without its button.
-struct SidebarTitleRow<Trailing: View>: View {
-    let title: String
-    @ViewBuilder let trailing: () -> Trailing
-
-    var body: some View {
-        HStack(spacing: Space.s) {
-            SidebarTitle(title)
-            Spacer(minLength: Space.s)
-            trailing()
-        }
-        .frame(height: Size.sidebarHead)
-    }
-}
-
-/// A sidebar's filter field, its right edge pulled in so the soft shadow has the same margin as the rest of the column.
+/// A list column's filter field with its ⌘K key cap, its right edge pulled in so the soft shadow has the same margin as
+/// the rest of the column.
 struct SidebarFilter: View {
     let prompt: String
     @Binding var text: String
@@ -52,7 +37,7 @@ struct SidebarFilter: View {
     }
 
     var body: some View {
-        EndfieldTextField(prompt, text: $text, focus: focus).padding(.trailing, Space.xs)
+        EndfieldTextField(prompt, text: $text, focus: focus, hint: "⌘K").padding(.trailing, Space.xs)
     }
 }
 
@@ -96,7 +81,7 @@ struct SidebarRow<Marks: View>: View {
         HStack(spacing: Space.s) {
             VStack(alignment: .leading, spacing: Space.xs) {
                 Text(title).typeRole(.headline).foregroundStyle(ink.title).lineLimit(titleLines)
-                Text(meta).typeRole(.monoSmall).foregroundStyle(ink.meta).lineLimit(1)
+                Text(meta).typeRole(.callout).monospacedDigit().foregroundStyle(ink.meta).lineLimit(1)
             }
             Spacer(minLength: Space.s)
             marks(ink)

@@ -46,16 +46,19 @@ public struct Composer: View {
                 placeholder: placeholder, text: $text, lines: $lines, focused: $focused, isEnabled: isEnabled, focusRequests: focusRequests
             )
             .frame(height: height)
-            .background(isEnabled ? Ink.surface.raised : Ink.surface.sunken)
-            .edge(isEnabled ? Ink.line.strong : Ink.line.rule)
+            .background {
+                RoundedRectangle(cornerRadius: Radius.m, style: .continuous).fill(isEnabled ? Ink.surface.raised : Ink.surface.sunken)
+            }
+            .edge(isEnabled ? Ink.line.strong : Ink.line.rule, radius: Radius.m)
             .overlay {
                 if isFocused {
-                    Rectangle().strokeBorder(Ink.text.link, lineWidth: Stroke.accent).padding(-(Stroke.hairline + Stroke.accent))
+                    RoundedRectangle(cornerRadius: Radius.m + Stroke.hairline + Stroke.accent, style: .continuous)
+                        .strokeBorder(Ink.text.link, lineWidth: Stroke.accent).padding(-(Stroke.hairline + Stroke.accent))
                 }
             }
             .overlay(alignment: .top) { grabber(height) }
             if let counter = Self.counter(text) {
-                Text(counter).typeRole(.monoSmall).foregroundStyle(Self.isOverLimit(text) ? Ink.status.error : Ink.text.secondary)
+                Text(counter).typeRole(.caption).monospacedDigit().foregroundStyle(Self.isOverLimit(text) ? Ink.status.error : Ink.text.secondary)
             }
         }
     }
@@ -111,26 +114,39 @@ public struct Composer: View {
     public static func message(_ draft: String) -> String { draft.trimmingCharacters(in: .whitespacesAndNewlines) }
 }
 
-/// The one block under a chat (`.composer`): raised, a rule on top, the run line over the input line, on the chat column.
+/// The one block under a chat (`.composer`): the run line over the input line, on the chat column. In the popover
+/// raised with a rule on top; `floating` (the window, #68) a raised block with `xl` corners and a 1 pt rule edge, 8 pt in
+/// from the detail's sides and bottom.
 public struct ComposerBlock<RunLine: View, Input: View>: View {
+    let floating: Bool
     let runLine: RunLine
     let input: Input
 
-    public init(@ViewBuilder runLine: () -> RunLine, @ViewBuilder input: () -> Input) {
+    public init(floating: Bool = false, @ViewBuilder runLine: () -> RunLine, @ViewBuilder input: () -> Input) {
+        self.floating = floating
         self.runLine = runLine()
         self.input = input()
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: Space.s) {
+        let block = VStack(alignment: .leading, spacing: Space.s) {
             runLine
             input
         }
         .frame(maxWidth: Size.chatColumn)
         .padding(.horizontal, Space.l).padding(.vertical, Space.m)
         .frame(maxWidth: .infinity)
-        .background(Ink.surface.raised)
-        .overlay(alignment: .top) { Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline) }
+        if floating {
+            // A ground, not a clip: the field's focus ring and the grabber stay whole.
+            block
+                .background { RoundedRectangle(cornerRadius: Radius.xl, style: .continuous).fill(Ink.surface.raised) }
+                .edge(Ink.line.rule, radius: Radius.xl)
+                .padding([.horizontal, .bottom], Space.s)
+        } else {
+            block
+                .background(Ink.surface.raised)
+                .overlay(alignment: .top) { Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline) }
+        }
     }
 }
 

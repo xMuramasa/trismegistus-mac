@@ -60,7 +60,7 @@ struct ChatView: View {
                 .frame(maxWidth: .infinity)
                 .environment(\.plainAnswers, !compact)
             } dock: {
-                ComposerBlock { runLine } input: { input }
+                ComposerBlock(floating: !compact) { runLine } input: { input }
             }
             .background { if !compact && !empty { Ink.surface.window.frame(maxWidth: Size.chatColumn + 2 * Space.l) } }
         }
@@ -460,8 +460,7 @@ private struct UserMessage: View {
                 Text(text).typeRole(.body).foregroundStyle(Ink.text.primary).textSelection(.enabled)
                     .padding(Space.m)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Ink.surface.raised)
-                    .overlay(Rectangle().strokeBorder(Ink.line.rule, lineWidth: Stroke.hairline))
+                    .rounded(Radius.l, fill: Ink.surface.raised, edge: Ink.line.rule)
             }
         }
     }

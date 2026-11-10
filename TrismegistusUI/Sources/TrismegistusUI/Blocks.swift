@@ -27,7 +27,7 @@ public struct CodeBlockView: View {
         }
         .padding(Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Ink.surface.sunken)
+        .rounded(Radius.l, fill: Ink.surface.sunken)
     }
 }
 
@@ -77,7 +77,8 @@ public struct ApprovalBannerView: View {
             .padding(Space.m)
         }
         .foregroundStyle(Ink.text.primary)
-        .background(Ink.surface.raised)
+        // An `l` box (#68): the yellow bar follows its top corners.
+        .rounded(Radius.l, fill: Ink.surface.raised)
         .shadow(Shadow.panel)
     }
 }
@@ -166,7 +167,7 @@ public struct TerminalEntryView: View {
     private var failedExit: Int? { exitCode.flatMap { $0 != 0 ? $0 : nil } }
 
     /// Square but for the top-right corner (Martin's pick, against Endfield's zero rounding).
-    private static let shape = UnevenRoundedRectangle(topTrailingRadius: Radius.card, style: .continuous)
+    private static let shape = UnevenRoundedRectangle(topTrailingRadius: Radius.l, style: .continuous)
 
     public var body: some View {
         if oneLine {

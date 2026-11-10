@@ -123,13 +123,14 @@ struct CommandsView: View {
             HStack(spacing: Space.s) {
                 Text(verbatim: "\(CommandsSidebar.count(calls)) · \(failed) failed")
                 if listFailed && log?.all.isEmpty == false {
-                    Text("can't reach the relay").foregroundStyle(Ink.status.warn)
+                    Text("can't reach the relay").foregroundStyle(Ink.text.error)
                 }
             }
         } trailing: {
             HStack(spacing: Space.s) {
                 FilterChip(title: "One line", symbol: "text.justify", isOn: oneLine) { oneLine.toggle() }
                 FilterChip(title: "Failed", symbol: "exclamationmark.triangle", isOn: failedOnly) { failedOnly.toggle() }
+                DetailTools(section: .commands)
             }
         }
     }

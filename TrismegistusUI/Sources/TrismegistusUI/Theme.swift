@@ -43,9 +43,14 @@ extension View {
         return font(spec.font(weight: weight)).tracking(spec.tracking).textCase(spec.uppercase ? .uppercase : nil)
     }
 
-    /// The 1 px square edge every Endfield surface uses.
-    func edge(_ color: Color) -> some View {
-        overlay(Rectangle().strokeBorder(color, lineWidth: Stroke.hairline))
+    /// The 1 px edge every Endfield surface uses, square or on the radius scale (#68).
+    public func edge(_ color: Color, radius: CGFloat = Radius.none) -> some View {
+        overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(color, lineWidth: Stroke.hairline))
+    }
+
+    /// Fill, clip and edge of a rounded surface: the content is clipped to the shape, the edge drawn over it.
+    public func rounded(_ radius: CGFloat, fill: Color, edge color: Color = .clear) -> some View {
+        background(fill).clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous)).edge(color, radius: radius)
     }
 
     /// A shadow token's colour, blur and offset.
@@ -75,6 +80,9 @@ public enum Symbol {
     public static let cli = "apple.terminal"
     public static let lock = "lock.fill"
     public static let pin = "pin.fill"
+    /// the card's pin and lock (#68): outline glyphs at the end of the preview line
+    public static let pinOutline = "pin"
+    public static let lockOutline = "lock"
     public static let chevronRight = "chevron.right"
     public static let chevronDown = "chevron.down"
     public static let chevronUp = "chevron.up"
@@ -89,4 +97,8 @@ public enum Symbol {
     public static let kindAll = "square.stack"
     public static let kindOther = "bubble.left"
     public static let more = "ellipsis.circle"
+    public static let ellipsis = "ellipsis"
+    public static let sidebar = "sidebar.left"
+    public static let settings = "slider.horizontal.3"
+    public static let device = "laptopcomputer"
 }

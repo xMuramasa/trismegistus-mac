@@ -35,6 +35,9 @@ struct TrismegistusApp: App {
                 }
                 .onDisappear { NSApp.setActivationPolicy(.accessory) }
         }
+        // A transparent title bar over a full-size content view (#68): the panel reaches the top, the window's buttons
+        // sit in it (`TrafficLights`).
+        .windowStyle(.hiddenTitleBar)
         .defaultLaunchBehavior(.suppressed)
         .commands { SidebarMenuCommands() }
 

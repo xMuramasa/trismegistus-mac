@@ -17,7 +17,7 @@ struct ModelMenu: View {
                 if let error { Text(error).typeRole(.caption).foregroundStyle(onSteel ? Ink.status.warn : Ink.text.error).lineLimit(1) }
                 if info.isReadOnly {
                     if let id = info.model {
-                        Text(ModelChoice.label(id)).typeRole(.monoSmall).lineLimit(1)
+                        Text(ModelChoice.label(id)).typeRole(.callout).lineLimit(1)
                             .foregroundStyle(onSteel ? Ink.text.onDark.opacity(Opacity.secondaryOnDark) : Ink.text.secondary)
                             .help("Model (set in \(PopoverFormat.sourceName(info.source)))")
                     }
@@ -52,12 +52,12 @@ struct ModelLabel: View {
 
     var body: some View {
         HStack(spacing: Space.xs) {
-            Text(choice?.label ?? "Model").typeRole(.monoSmall).lineLimit(1)
+            Text(choice?.label ?? "Model").typeRole(.callout).lineLimit(1)
             Image(systemName: Symbol.chevronDown).font(.system(size: Icon.xs, weight: .semibold))
         }
         .foregroundStyle(onSteel ? Ink.text.onDark : Ink.text.primary)
         .padding(.horizontal, Space.s).padding(.vertical, Space.xs)
-        .overlay(Rectangle().strokeBorder(onSteel ? Ink.line.outlineOnDark : Ink.line.rule, lineWidth: Stroke.hairline))
+        .edge(onSteel ? Ink.line.outlineOnDark : Ink.line.rule, radius: Radius.l)
         .contentShape(Rectangle())
     }
 }
