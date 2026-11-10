@@ -1,6 +1,6 @@
 # Trismegistus — three-column window: changes
 
-`index.html` hashes: `#a`, `#a2`, `#b` (1560×1122); `#all` (default: #a and #a2 side by side at 50 %, 1560×561); `#a-narrow`, `#a2-narrow`, `#b-narrow` (1180×1122, list column 380 px); `#a2-states` (one list column, 520×1122, a card in every state).
+`index.html` hashes: `#a`, `#a2`, `#a3`, `#b` (1560×1122); `#all` (default: #a and #a2 side by side at 50 %, 1560×561); `#compare` (#a2 and #a3 side by side at 50 %, 1560×561); `#a-narrow`, `#a2-narrow`, `#a3-narrow`, `#b-narrow` (1180×1122, list column 380 px); `#a2-states`, `#a3-states` (one list column, 520×1122, a card in every state).
 
 ## What moved where (both variants)
 
@@ -136,3 +136,49 @@ Take from #b the white list column with the hairlines starting after the avatar 
 - **Shadows** (panel 4/4/8 at ink 40 %, menus) are unchanged and follow the rounded shapes.
 
 No step on the scale needed adjusting.
+
+## #a3: Endfield-faithful
+
+`#a3` keeps the layout as built today: #a2 plus the tree panel. The tree runs Chats with its fold chevron, the indented kinds with App as the highlighted row, then GitHub, Agents, Jobs and Commands, with the device row at the bottom. The list, detail, composer, content and states are as in #a2. Only the skin changes, following the six game screens. #a, #a2 and #b are untouched.
+
+### The 8 points
+
+| # | What changed | Follows |
+| --- | --- | --- |
+| 1 | **No black on light grounds.** Card foot bars, ink slabs and the ink edges on stickers, tags, filter and "+" are gone. Cards, filter, buttons and the composer have 1 px grey hairlines (#D9D9D9 / #C8C8C0). The section panel is a translucent dark-panel grey (#35373C at 86–93 %) with a faint white hairline, not a black slab. Ink is left for text, plus the 26 px "T" avatar and a tiny tick on the title rule, both in dark-panel grey. | settings-rows (grey rows, hairline edges), database-list-detail (cards without outlines), mail-list (dark translucent list panel) |
+| 2 | **Yellow is a line, not a fill.** The selected card stays white, with a 1.5 px yellow frame and a faint yellow glow. The current kind (App) is a slightly lighter row with a 3 px yellow bar at its left edge. Solid yellow remains only on the "+" (or on STEER while a run goes), the 56 px segment of the title rule, the WORKING progress line and the RUN tag's ring and time. | mail-list (selected "Happy Birthday" item), settings-rows (FPS row), database-list-detail (LN Tower's yellow left bar), daily-activity-list (yellow progress line) |
+| 3 | **Quiet type.** Titles are Inter 500 (quiet) / 600 (state or selected), normal case, 13 px; the detail title is 14 px. Meta is 11–12 px regular grey. Uppercase only for tiny tracked labels: `// TRISMEGISTUS`, `// APP` + `10`, `// PINNED — 04`, `// CONVERSATIONS — 07`, `YOU // 13:42`, `RUN ACTIVE`. The one large numeral is the list count "10", 28 px at weight 500. No 700+ weights anywhere. | mail-list ("// MAIL", "Inbox 10/200"), settings-rows ("// SETTINGS"), daily-activity-list (the large "100") |
+| 4 | **No offset shadows.** Depth comes from layers: the dark translucent panel, the lightly frosted list column (sunken grey at 42 % with the contour lines faintly through), white cards and a frosted detail header and composer. Only the selected card glows. Menus keep a soft, non-offset 24 px blur. | news-panel (layered grey panels), operator-overview (dark translucent panels over the scene), settings-rows |
+| 5 | **The game's greys.** The panel steps from 93 % to 86 % dark-panel grey from top to bottom. Cards step from white to translucent white, so they read slightly lit from above. Tags and the code block are sunken grey. | database-list-detail (grey card steps), daily-activity-list (panel gradients) |
+| 6 | **Fine detail, mostly functional.** `//` labels with a hairline running to the edge and a 2-digit count. Muted index numbers 01–11 on the cards (their order in the conversation list). A short diagonal hatch in the list header and on the selected card. 6 px grey bracket corners around the selected card. A thin title rule: dark tick, yellow segment, grey rest. Run metadata in the detail header (`run_7f3a2c · seq 214 · 38 ms · started 13:52`). A link latency on the device row (`· 38 ms`). A vertical tree guide line under the Chats icon. A chamfered top-right corner on the panel. The contour lines stay. | mail-list / settings-rows / daily-activity-list (`//` labels), database-list-detail ("Recently Unlocked ——", hatch marks on the cards), news-panel ("Click to Go" bracket corners, chamfered tabs), daily-activity-list ([ ] brackets), settings-rows ("Performance & Graphics" title with yellow bar and rule), every screen's "104ms UID" corner |
+| 7 | **Lighter shapes.** Avatars are 26 px rounded squares (radius 4), and the detail avatar is 28 px. Status stickers become 18 px tags: a light chip with a hairline, a 2 px coloured bar on the left, a small coloured glyph and the word in tracked small caps. Buttons are thin-edged 4 px rectangles. Only the model dropdown is a full pill, like the game's dropdowns. Radii are 3–8 px: 3 px tags, 4 px cards and controls, 6 px menus, 8 px panel and composer. | mail-list (small item icons), database-list-detail (NEW tag), operator-overview ("Current" / "Preview" labels), settings-rows (pill dropdowns), news-panel (chamfer) |
+| 8 | **Tighter rows.** Cards are 46 px at a 50 px pitch (#a2: 56 / 60 px). Section heads are 24 px label lines instead of 28 px slabs, and panel rows are 36 px instead of 40 px. The list now fits about 19 conversations in the window against about 15 in #a2. The airiness comes from the 8 px gaps around the panel, list and composer, not from padding inside rows. | settings-rows (dense rows), mail-list |
+
+### Contrast of every state mark (#a3)
+
+| Mark | Against | Ratio |
+| --- | --- | --- |
+| APPROVAL: magenta 2 px bar + diamond | White tag chip | 3.5:1 |
+| APPROVAL / FAILED / DONE word (ink) | White chip | 17.6:1 |
+| RUN: dark-panel chip | White card | 12.2:1 |
+| RUN: yellow ring, bar, time | Dark-panel chip | 11.0:1 |
+| RUN: white word | Dark-panel chip | 12.2:1 |
+| FAILED: terminal-red bar + cross | White chip | 5.7:1 |
+| DONE: terminal-green bar + check | White chip | 4.5:1 |
+| Glyph-only chips in the panel (Jobs, App, folded Chats): white chip | Dark panel | ≈ 12:1 (glyphs inside as above) |
+| Current kind: yellow 3 px bar | Lit panel row (≈ #494B50) | ≈ 7.9:1 |
+| Selected card: grey bracket corners #666 | Frosted list ground (≈ #EBEBEB) | ≈ 4.8:1 (the yellow frame itself is ≈ 1.1:1; it's the accent, the brackets carry the 3:1) |
+| Device status dot green #00FFA2 | Dark panel | ≈ 9.2:1 |
+| Run-line square terminal-green | White composer | 4.5:1 |
+| Panel counts #C8C8C0 / labels #E9E9E9 | Dark panel | 7.2:1 / 10.1:1 |
+
+Magenta and yellow never appear as text on light grounds. The 2-digit card indexes are muted #999 (2.9:1 on white). They're decorative order numbers in the game's manner, not information; if you want them to count as text, they move to #666 (5.7:1).
+
+### What #a3 loses against #a2
+
+- **States are quieter.** At a glance, an APPROVAL in #a2 is a magenta block you can't miss. In #a3 it's a 2 px bar and a small diamond, so you have to read the list to find it. Only the dark RUN tag still jumps out.
+- **Selection relies on a thin accent.** Yellow on white is about 1.1:1, so the frame and glow read as "lit" rather than as an edge. The grey bracket corners and the semibold title carry the selection. #a2's ink card is far louder.
+- **Less of the chosen B2 identity.** The ink slabs, square nodes and yellow blocks that made B2 recognisable are gone; #a3 looks like the game, not like B2.
+- **Translucency costs.** The panel, list column, header and composer use SwiftUI materials (`.ultraThinMaterial` / `.regularMaterial` tinted, or `.glassEffect`). Their contrast varies slightly with what's behind them, and they're more expensive to draw than #a2's flat fills.
+- **Custom shapes.** The panel's chamfer needs a custom `Shape` (a rounded rect with one cut corner) instead of a plain `RoundedRectangle`. The bracket corners and hatches are small overlay views.
+- **Palette substitutions:** the game's green progress bars and orange alert diamonds aren't in the palette. #a3 uses the yellow progress line instead, and doesn't use orange at all.

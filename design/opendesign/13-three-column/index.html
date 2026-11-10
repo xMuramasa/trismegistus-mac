@@ -330,6 +330,149 @@ kbd,.kbd{font-family:inherit;font-size:var(--t-label);font-weight:600;line-heigh
 .win-states{grid-template-columns:520px}
 .win-states .lc{border-right:0}
 
+/* =================== SKIN A3 — Endfield-faithful =================== */
+.idx,.hatch,.dt-rule .hz,.sp-lbl{display:none}
+.skin-a3{--focus:var(--blue)}
+/* section panel: dark translucent tree, chamfered top-right corner */
+.skin-a3 .sp{background:linear-gradient(180deg,rgba(53,55,60,.93),rgba(53,55,60,.86));-webkit-backdrop-filter:blur(6px) saturate(1.1);backdrop-filter:blur(6px) saturate(1.1);
+  border:1px solid rgba(255,255,255,.10);border-radius:8px;color:var(--on-steel);--focus:var(--yellow);
+  clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,0 100%)}
+.skin-a3 .sp::after{content:"";position:absolute;top:7.5px;right:-3.3px;width:22.6px;height:1px;background:rgba(255,255,255,.22);transform:rotate(45deg)}
+.skin-a3 .lights i{background:var(--secondary)}
+.skin-a3 .sp .ib{background:none;color:var(--on-steel);border:0;border-radius:4px}
+.skin-a3 .sp-lbl{display:flex;align-items:center;gap:8px;height:20px;padding:0 12px 0 10px;margin-bottom:8px;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--contour)}
+.skin-a3 .sp-lbl .ln,.skin-a3 .lsh .ln{display:block;flex:1;height:1px}
+.skin-a3 .sp-lbl .ln{background:rgba(255,255,255,.14)}
+.skin-a3 .sp-lbl .num{letter-spacing:.04em;color:var(--muted)}
+.sp-tree{display:flex;flex-direction:column;gap:2px}
+.tparent{display:flex;align-items:center;gap:2px}
+.tparent .tp{flex:1;min-width:0}
+.tfold{width:30px;height:30px;display:grid;place-items:center;border:0;padding:0;background:none;color:var(--contour);border-radius:4px;flex:none;--od-icon-size:14px}
+.tfold .chev{transition:transform var(--dur) ease-out}
+.tfold[aria-expanded="false"] .chev{transform:rotate(-90deg)}
+.skin-a3 .srow{position:relative;height:36px;padding:0 10px;gap:10px;border-radius:4px;color:var(--on-steel);font-size:13px;font-weight:500;--od-icon-size:16px}
+.skin-a3 .srow .cnt{color:var(--contour);font-size:var(--t-meta)}
+.skin-a3 .srow.tp{color:var(--raised);font-weight:600}
+.skin-a3 .srow.kid{padding-left:36px}
+.skin-a3 .sp-kinds{position:relative;margin-bottom:8px}
+.skin-a3 .sp-kinds::before{content:"";position:absolute;left:18px;top:0;bottom:12px;width:1px;background:rgba(255,255,255,.14)}
+.skin-a3 .srow.is-kind{background:rgba(255,255,255,.10);color:var(--raised);font-weight:600}
+.skin-a3 .srow.is-kind::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;background:var(--yellow)}
+.skin-a3 .srow.is-kind .cnt{color:var(--raised)}
+.skin-a3 .sp-id{border-top:1px solid rgba(255,255,255,.12)}
+.skin-a3 .sp-id .name{color:var(--raised);font-size:13px;font-weight:600}
+.skin-a3 .sp-id .link{color:var(--contour);font-size:11px}
+.skin-a3 .sp-id .dot{background:var(--green)}
+.skin-a3 .dev-av{width:28px;height:28px;border-radius:4px;background:rgba(255,255,255,.08);color:var(--on-steel);--od-icon-size:16px}
+.skin-a3 .sp-id .ib{border:1px solid rgba(255,255,255,.16)}
+
+/* list column: lightly frosted over the contour ground */
+.skin-a3 .lc{background:rgba(229,229,229,.42);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);border-right:1px solid var(--rule)}
+.skin-a3 .lc-head{position:relative}
+.skin-a3 .lc-head::after{content:"";position:absolute;right:56px;top:24px;width:32px;height:4px;background:repeating-linear-gradient(135deg,var(--contour) 0 1px,transparent 1px 4px)}
+.skin-a3 .lc-title{display:flex;align-items:baseline;justify-content:center;gap:8px;text-transform:none;letter-spacing:0;font-weight:500}
+.lbl3{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--secondary)}
+.big{font-size:28px;font-weight:500;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--ink)}
+.skin-a3 .ib{background:rgba(255,255,255,.7);border:1px solid var(--rule);border-radius:4px;color:var(--ink);--od-icon-size:16px}
+.skin-a3 .ib[aria-pressed="true"]{background:var(--sunken);border-color:var(--secondary);color:var(--ink)}
+.skin-a3 .ib-plus{background:var(--yellow);border-color:var(--yellow)}
+.skin-a3 .ib-plus.demoted{background:rgba(255,255,255,.7);border-color:var(--rule)}
+.skin-a3 .ib-clip{background:none;border-color:transparent}
+.skin-a3 .lc-search{background:var(--raised);border:1px solid var(--rule);border-radius:4px}
+.skin-a3 kbd{background:var(--sunken);border:0;border-radius:3px;font-size:10px}
+.skin-a3 .lsh{height:24px;padding:0 16px;margin:8px 0 4px;background:none;font-size:10px;font-weight:600;letter-spacing:.14em;color:var(--secondary)}
+.skin-a3 .lsh .ln{background:var(--contour)}
+.skin-a3 .lsh .n{margin-left:0;color:var(--secondary);letter-spacing:.04em}
+.skin-a3 .cap{padding:8px 16px 2px;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--secondary)}
+
+/* cards: 46 px, hairline edge, faint white→translucent step */
+.skin-a3 .row{width:calc(100% - 16px);margin:0 8px 4px;height:46px;padding:0 10px 0 4px;gap:8px;border-radius:4px;
+  background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(255,255,255,.72));border:1px solid rgba(200,200,192,.6)}
+.skin-a3 .idx{display:block;width:16px;flex:none;text-align:right;font-size:10px;font-weight:500;color:var(--muted)}
+.skin-a3 .row .av{width:26px;height:26px;border-radius:4px;font-size:13px;font-weight:600;--od-icon-size:14px}
+.skin-a3 .av-app{background:var(--dark-panel)}
+.skin-a3 .av-cron{background:var(--sunken);border:1px solid var(--rule)}
+.skin-a3 .row-body{gap:0}
+.skin-a3 .row-l1{height:18px}
+.skin-a3 .row-title{font-size:13px;font-weight:500;line-height:18px}
+.skin-a3 .row.is-strong .row-title{font-weight:600}
+.skin-a3 .row-time{font-size:11px}
+.skin-a3 .row-l2{height:20px;gap:6px;--od-icon-size:12px}
+.skin-a3 .row-prev{font-size:var(--t-meta);line-height:20px}
+.skin-a3 .tag{height:16px;padding:0 5px;font-size:10px;border-radius:3px}
+.skin-a3 .tag-more{font-size:10px}
+.skin-a3 .row.is-sel{background:var(--raised);border-color:var(--yellow);box-shadow:0 0 0 .5px var(--yellow),0 0 12px rgba(255,250,0,.45)}
+.skin-a3 .row.is-sel .fr{display:block;position:absolute;inset:-6px;pointer-events:none}
+.skin-a3 .fr .nd{display:block;position:absolute;width:6px;height:6px;border:0 solid var(--secondary)}
+.skin-a3 .nd.tl{top:0;left:0;border-top-width:1px;border-left-width:1px}
+.skin-a3 .nd.tr{top:0;right:0;border-top-width:1px;border-right-width:1px}
+.skin-a3 .nd.bl{bottom:0;left:0;border-bottom-width:1px;border-left-width:1px}
+.skin-a3 .nd.br{bottom:0;right:0;border-bottom-width:1px;border-right-width:1px}
+.skin-a3 .row.is-sel .hatch{display:block;position:absolute;top:2px;right:56px;width:24px;height:3px;background:repeating-linear-gradient(135deg,var(--contour) 0 1px,transparent 1px 4px)}
+.skin-a3 .row.is-hover{background:var(--raised);border-color:var(--contour)}
+
+/* state tags: 18 px, light chip, thin coloured bar + glyph, small caps word */
+.skin-a3 .stk{position:relative;height:18px;padding-left:2px;border:1px solid var(--rule);border-radius:3px;overflow:hidden;background:var(--raised);
+  font-size:10px;font-weight:600;letter-spacing:.1em}
+.skin-a3 .stk::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--bar)}
+.skin-a3 .stk .g{width:16px;border:0;background:none !important;color:var(--glyph);--od-icon-size:9px}
+.skin-a3 .stk .w{background:none !important;color:var(--ink);padding:0 6px 0 0;gap:4px}
+.skin-a3 .stk.go{height:16px}
+.skin-a3 .stk.go .g{width:14px}
+.skin-a3 .stk-approval{--bar:var(--magenta);--glyph:var(--magenta)}
+.skin-a3 .stk-failed{--bar:var(--term-red);--glyph:var(--term-red)}
+.skin-a3 .stk-done{--bar:var(--term-green);--glyph:var(--term-green)}
+.skin-a3 .stk-run{--bar:var(--yellow);--glyph:var(--yellow);background:var(--dark-panel);border-color:var(--dark-panel)}
+.skin-a3 .stk-run .w{color:var(--raised)}
+.skin-a3 .stk-run .t{color:var(--yellow)}
+
+/* detail */
+.skin-a3 .dt-head{background:rgba(255,255,255,.72);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.skin-a3 .dt-head .av{width:28px;height:28px;border-radius:4px;font-size:13px;font-weight:600}
+.skin-a3 .dt-ttl .t1{font-size:14px;font-weight:600}
+.skin-a3 .dt-ttl .t2{font-size:11px}
+.skin-a3 .meter{font-size:11px}
+.skin-a3 .bars i.on{background:var(--secondary)}
+.skin-a3 .model{border-radius:15px;font-size:var(--t-meta)}
+.skin-a3 .dt-tools .ib{background:transparent}
+.skin-a3 .dt-rule{height:2px;background:var(--rule)}
+.skin-a3 .dt-rule i{height:2px}
+.skin-a3 .dt-rule .m{width:8px;background:var(--dark-panel);margin-right:4px}
+.skin-a3 .dt-rule .y{width:56px}
+.skin-a3 .dt-rule .g{display:none}
+.skin-a3 .who{font-size:10px;letter-spacing:.14em;font-weight:600}
+.skin-a3 .you{background:rgba(255,255,255,.85);border-color:var(--rule);border-radius:4px;padding:8px 12px;font-size:14px}
+.skin-a3 .hermes{font-size:14px}
+.skin-a3 .hermes ul li::before{width:4px;height:4px;top:.7em;background:var(--secondary)}
+.skin-a3 .hermes code{border-radius:3px}
+.skin-a3 .hermes pre{background:var(--sunken);color:var(--ink);border:1px solid var(--rule);border-radius:4px}
+.skin-a3 .hermes pre .p{color:var(--term-green)}
+.skin-a3 .hermes pre .c{color:var(--secondary)}
+.skin-a3 .cmdchip{background:rgba(255,255,255,.7);border:1px solid var(--rule);border-radius:4px;font-size:10px;font-weight:600;letter-spacing:.12em}
+.skin-a3 .working b{font-size:10px;letter-spacing:.14em}
+.skin-a3 .working::after{content:"";flex:1;height:2px;background:linear-gradient(90deg,var(--yellow) 0 30%,var(--rule) 30% 100%)}
+.skin-a3 .approve{border:1px solid var(--rule);border-radius:4px}
+.skin-a3 .btn{border:1px solid var(--rule);border-radius:4px;font-size:10px;font-weight:600;letter-spacing:.12em}
+.skin-a3 .btn-ink{background:var(--raised);color:var(--ink);border-color:var(--secondary)}
+.skin-a3 .btn-line{background:var(--raised)}
+.skin-a3 .btn-mark{background:var(--yellow);border-color:var(--yellow)}
+.skin-a3 .composer{margin:0 8px 8px;border:1px solid var(--rule);border-radius:8px;background:rgba(255,255,255,.82);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.skin-a3 .runline{font-size:10px;font-weight:600;letter-spacing:.14em}
+.skin-a3 .runline .sq{width:6px;height:6px}
+.skin-a3 .inrow input{border-color:var(--contour);border-radius:4px}
+.skin-a3 .stopb{border-color:var(--rule);border-radius:4px}
+.skin-a3 .menu{border-color:var(--rule);border-radius:6px;box-shadow:0 8px 24px rgba(25,25,25,.12)}
+.skin-a3 .menu button{border-radius:4px}
+.skin-a3 .tip,.skin-a3 .toast{background:var(--dark-panel);border-radius:4px}
+@media (hover:hover){
+  .skin-a3 .srow:not(.is-kind):hover,.skin-a3 .tfold:hover,.skin-a3 .sp .ib:hover{background:rgba(255,255,255,.06)}
+  .skin-a3 .ib:hover,.skin-a3 .cmdchip:hover{background:var(--raised);border-color:var(--contour)}
+  .skin-a3 .ib-plus:hover{background:var(--yellow);border-color:var(--yellow);box-shadow:0 0 8px rgba(255,250,0,.6)}
+  .skin-a3 .ib-plus.demoted:hover{background:var(--raised);box-shadow:none}
+  .skin-a3 .row:not(.is-sel):hover{background:var(--raised);border-color:var(--contour)}
+  .skin-a3 .btn-ink:hover,.skin-a3 .btn-line:hover{background:var(--sunken)}
+}
+
 /* =================== SKIN B — macOS 26 native =================== */
 .skin-b .sp{background:rgba(255,255,255,.55);-webkit-backdrop-filter:blur(24px) saturate(1.3);backdrop-filter:blur(24px) saturate(1.3);
   border:1px solid rgba(255,255,255,.9);border-radius:16px;box-shadow:0 8px 24px rgba(25,25,25,.10)}
@@ -538,13 +681,14 @@ function avatar(src) {
   return `<span class="av av-app" aria-hidden="true">T</span>`;
 }
 
-function rowMarkup(c, selId, extra = '') {
+function rowMarkup(c, selId, extra = '', idx = null) {
   const sel = selId === c.id;
   const tags = c.tags.slice(0, 2).map(t => `<span class="tag">${esc(t)}</span>`).join('') + (c.tags.length > 2 ? `<span class="tag-more num">+${c.tags.length - 2}</span>` : '');
   return `<button class="row ${sel ? 'is-sel on-dark' : ''} ${c.state || sel ? 'is-strong' : ''} ${extra}" type="button" data-act="row" data-id="${c.id}" data-key="row-${c.id}" ${sel ? 'aria-current="true"' : ''}
       aria-label="${esc(c.title)}, ${c.state ? STATE_LONG[c.state] + ', ' : ''}${esc(c.time)}${c.pinned ? ', pinned' : ''}">
-    ${avatar(c.src)}
+    ${idx != null ? `<span class="idx num" aria-hidden="true">${String(idx).padStart(2, '0')}</span>` : ''}${avatar(c.src)}
     <span class="row-body">
+      <span class="hatch" aria-hidden="true"></span>
       <span class="row-l1"><span class="row-title od-truncate">${esc(c.title)}</span><span class="row-time num">${esc(c.time)}</span></span>
       <span class="row-l2"><span class="row-prev od-truncate">${esc(c.preview)}</span>${c.readOnly ? `<span class="lock" title="Read-only">${ic('lock')}</span>` : ''}${tags}${sticker(c.state, c)}${c.pinned ? `<span class="pin">${ic('pin')}</span>` : ''}</span>
     </span>
@@ -553,7 +697,7 @@ function rowMarkup(c, selId, extra = '') {
 }
 
 /* ---------- #a2-states: one list column, a card in every state ---------- */
-function createStates() {
+function createStates(skin = 'a2') {
   const B = id => ({...BASE.find(c => c.id === id), src:'app', tags:[], extra:[]});
   const conv = (id, patch) => ({...B(id), ...patch, tags:(patch && patch.tags) || B(id).tags || []});
   const items = [
@@ -570,20 +714,20 @@ function createStates() {
   ];
   items.forEach(([, c]) => { if (c.id === 'news') c.src = 'cron'; if (!Array.isArray(c.tags)) c.tags = []; });
   const win = document.createElement('div');
-  win.className = 'win skin-a skin-a2 win-states';
+  win.className = skin === 'a3' ? 'win skin-a3 win-states' : 'win skin-a skin-a2 win-states';
   win.style.setProperty('--w', '520px');
-  win.setAttribute('aria-label', '#a2 card states');
+  win.setAttribute('aria-label', `#${skin} card states`);
   win.innerHTML = `${contours(520, 1122)}
     <section class="lc" aria-label="Card states">
       <header class="lc-head">
         <button class="ib" type="button" aria-label="List actions" data-tip="Rename, tags, hand off">${ic('more')}</button>
-        <div class="lc-title num">States<span class="sl">//</span>10</div>
+        <div class="lc-title num">${skin === 'a3' ? '<span class="lbl3">// States</span><span class="big">10</span>' : 'States<span class="sl">//</span>10'}</div>
         <button class="ib ib-plus" type="button" aria-label="New conversation" data-tip="New conversation  ⌘N">${ic('plus')}</button>
       </header>
       <label class="lc-search">${ic('search')}<span class="sr">Filter conversations</span><input type="search" placeholder="Filter" autocomplete="off"><kbd>⌘K</kbd></label>
       <div class="lc-scroll">
-        <div class="lsh">Card states<span class="n num">10</span></div>
-        ${items.map(([cap, c, extra, sel]) => `<div class="cap">${cap}</div>${rowMarkup(c, sel ? c.id : null, extra || '')}`).join('')}
+        <div class="lsh">${skin === 'a3' ? '<span>// Card states</span><i class="ln"></i><span class="n num">10</span>' : 'Card states<span class="n num">10</span>'}</div>
+        ${items.map(([cap, c, extra, sel], i) => `<div class="cap">${cap}</div>${rowMarkup(c, sel ? c.id : null, extra || '', i + 1)}`).join('')}
       </div>
     </section>`;
   WINS.push({win, tick() {
@@ -604,10 +748,11 @@ function createWin(skin, narrow) {
   };
   const win = document.createElement('div');
   win.className = skin === "a2" ? "win skin-a skin-a2" : `win skin-${skin}`;
+  const A3 = skin === 'a3';
   win.style.setProperty('--w', W + 'px');
   win.style.setProperty('--lc', (narrow ? 380 : 520) + 'px');
   win.setAttribute('role', 'application');
-  win.setAttribute('aria-label', `Trismegistus window, ${skin === 'a' ? 'B2 skin' : skin === 'a2' ? 'B2 skin, rounder corners' : 'macOS 26 native skin'}`);
+  win.setAttribute('aria-label', `Trismegistus window, ${skin === 'a' ? 'B2 skin' : skin === 'a2' ? 'B2 skin, rounder corners' : A3 ? 'Endfield-faithful skin' : 'macOS 26 native skin'}`);
   win.innerHTML = `${contours(W, 1122)}
     <aside class="sp" aria-label="Sections"></aside>
     <section class="lc" aria-label="Conversations">
@@ -650,6 +795,40 @@ function createWin(skin, narrow) {
       const m = k.mark === 'auto' ? sticker(mark, null, true) : '';
       return `<button class="srow ${cur ? 'is-kind' : ''}" type="button" data-act="kind" data-id="${k.id}" data-key="kind-${k.id}" ${cur ? 'aria-current="true"' : ''}>${ic(k.icon)}<span class="lbl">${k.label}</span>${cur ? '<span class="kmark" aria-hidden="true"></span>' : ''}${m}<span class="cnt num">${k.count}</span></button>`;
     };
+    if (A3) {
+      const chatCur = st.section === 'chat';
+      const tsec = s => {
+        const cur = st.section === s.id;
+        const m = s.mark ? sticker(s.mark, null, true) : '';
+        const c = s.count != null ? `<span class="cnt num" aria-label="${s.count} ${s.hint || ''}">${s.count}</span>` : '';
+        return `<button class="srow ${cur ? 'is-kind' : ''}" type="button" data-act="section" data-id="${s.id}" data-key="sec-${s.id}" ${cur ? 'aria-current="page"' : ''}>${ic(s.icon)}<span class="lbl">${s.label}</span>${m}${c}</button>`;
+      };
+      const tkind = k => {
+        const cur = chatCur && st.kind === k.id;
+        const m = k.mark === 'auto' ? sticker(mark, null, true) : '';
+        return `<button class="srow kid ${cur ? 'is-kind' : ''}" type="button" data-act="kind" data-id="${k.id}" data-key="kind-${k.id}" ${cur ? 'aria-current="page"' : ''}>${ic(k.icon)}<span class="lbl">${k.label}</span>${m}<span class="cnt num">${k.count}</span></button>`;
+      };
+      const kid = `kinds-${skin}${narrow ? 'n' : ''}`;
+      sp.innerHTML = `
+        <div class="sp-top"><div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
+          <button class="ib" type="button" data-act="toast" data-msg="Hide sidebar  ⌃⌘S" data-key="sbt" aria-label="Hide sidebar" data-tip="Hide sidebar  ⌃⌘S">${ic('sidebar')}</button></div>
+        <div class="sp-lbl"><span>// Trismegistus</span><i class="ln"></i><span class="num">v0.9</span></div>
+        <nav class="sp-tree" aria-label="Sections">
+          <div class="tparent ${chatCur ? 'is-open-cur' : ''}">
+            <button class="srow tp" type="button" data-act="kind" data-id="${st.kind}" data-key="sec-chat">${ic('chat')}<span class="lbl">Chats</span>${st.groupOpen ? '' : sticker(mark, null, true)}</button>
+            <button class="tfold" type="button" data-act="group" data-key="grp" aria-expanded="${st.groupOpen}" aria-controls="${kid}" aria-label="${st.groupOpen ? 'Fold' : 'Unfold'} chat kinds" data-tip="${st.groupOpen ? 'Fold' : 'Unfold'}">${ic('chev','chev')}</button>
+          </div>
+          <div class="sp-kinds" id="${kid}" ${st.groupOpen ? '' : 'hidden'}>${KINDS.map(tkind).join('')}</div>
+          ${SECTIONS.filter(x => x.id !== 'chat').map(tsec).join('')}
+        </nav>
+        <div class="sp-id">
+          <span class="dev-av" aria-hidden="true">${ic('laptop')}</span>
+          <div class="idw"><span class="name">macbook</span><span class="link"><span class="dot" aria-hidden="true"></span><span class="od-truncate num">linked · hermes.lab.x-muramasa.dev · 38 ms</span></span></div>
+          <button class="ib" type="button" data-act="menu" data-menu="id" data-key="id-more" aria-label="Device menu" aria-haspopup="menu" data-tip="Settings, unpair">${ic('more')}</button>
+        </div>`;
+      sp.classList.add('on-dark');
+      return;
+    }
     sp.innerHTML = `
       <div class="sp-top"><div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
         <button class="ib" type="button" data-act="toast" data-msg="Hide sidebar  ⌃⌘S" data-key="sbt" aria-label="Hide sidebar" data-tip="Hide sidebar  ⌃⌘S">${ic('sidebar')}</button></div>
@@ -665,16 +844,18 @@ function createWin(skin, narrow) {
   }
 
   /* list column */
-  const rowHTML = c => rowMarkup(c, st.sel);
+  const rowHTML = (c, i) => rowMarkup(c, st.sel, '', A3 ? st.convs.indexOf(c) + 1 : null);
+  const head = (label, n) => A3 ? `<div class="lsh" role="presentation"><span>// ${label}</span><i class="ln"></i><span class="n num">${String(n).padStart(2, '0')}</span></div>` : `<div class="lsh" role="presentation">${label}<span class="n num">${n}</span></div>`;
+  const title = (label, n) => A3 ? `<span class="lbl3">// ${esc(label)}</span>${n != null ? `<span class="big">${n}</span>` : ''}` : `${esc(label)}${n != null ? `<span class="sl">//</span>${n}` : ''}`;
   function renderList() {
     const sec = SECTIONS.find(s => s.id === st.section);
     const kind = KINDS.find(k => k.id === st.kind);
     if (st.section !== 'chat') {
-      lcTitle.innerHTML = `${esc(sec.label)}${sec.count != null ? `<span class="sl">//</span>${sec.count}` : ''}`;
+      lcTitle.innerHTML = title(sec.label, sec.count);
       lcScroll.innerHTML = `<div class="empty"><b>${esc(sec.label)}</b>${sec.count != null ? `${sec.count} ${sec.hint}. ` : sec.hint ? `${sec.hint[0].toUpperCase() + sec.hint.slice(1)}. ` : ''}This prototype draws the Chat section only; pick Chat to see the list.</div>`;
       return;
     }
-    lcTitle.innerHTML = `${esc(kind.label)}<span class="sl">//</span>${kind.count}`;
+    lcTitle.innerHTML = title(kind.label, kind.count);
     if (!['app', 'all'].includes(st.kind)) {
       lcScroll.innerHTML = `<div class="empty"><b>${kind.count} ${esc(kind.label)} conversations</b>The sample data in this prototype holds App conversations only. Pick App or All.</div>`;
       return;
@@ -687,8 +868,8 @@ function createWin(skin, narrow) {
       return;
     }
     lcScroll.innerHTML =
-      (pinned.length ? `<div class="lsh" role="presentation">Pinned<span class="n num">${pinned.length}</span></div>${pinned.map(rowHTML).join('')}` : '') +
-      (rest.length ? `<div class="lsh" role="presentation">Conversations<span class="n num">${rest.length}</span></div>${rest.map(rowHTML).join('')}` : '');
+      (pinned.length ? `${head('Pinned', pinned.length)}${pinned.map(rowHTML).join('')}` : '') +
+      (rest.length ? `${head('Conversations', rest.length)}${rest.map(rowHTML).join('')}` : '');
     const plus = $('.ib-plus');
     const running = conv(st.sel) && conv(st.sel).state === 'run';
     plus.classList.toggle('demoted', !!running);
@@ -710,7 +891,7 @@ function createWin(skin, narrow) {
     body += c.extra.map(m => `<div class="who num">${m.who} // ${m.time}</div>${m.who === 'You' ? `<div class="you">${esc(m.text)}</div>` : `<div class="hermes"><p>${esc(m.text)}</p></div>`}`).join('');
     if (running) body += `<div class="working num"><b>WORKING</b><span data-run="${c.id}">${mmss(c.run)}</span><span>· 2 tools</span></div>`;
 
-    const sub = c.sub || (c.readOnly ? 'Cron · read-only' : c.isNew ? 'Trismegistus · not started' : `Trismegistus · last activity ${c.time}`);
+    const sub = (A3 && c.id === 'swift') ? 'Trismegistus · run_7f3a2c · seq 214 · 38 ms · started 13:52' : c.sub || (c.readOnly ? 'Cron · read-only' : c.isNew ? 'Trismegistus · not started' : `Trismegistus · last activity ${c.time}`);
     const composer = c.readOnly
       ? `<div class="runline"><span>Read-only</span><span class="tm">written by cron · 07:00 daily</span></div>
          <div class="inrow"><input type="text" disabled placeholder="Cron conversations can’t be answered" aria-label="Message (disabled)"></div>`
@@ -739,7 +920,7 @@ function createWin(skin, narrow) {
           <button class="ib" type="button" data-act="menu" data-menu="detail" data-key="dt-more" aria-label="Conversation actions" aria-haspopup="menu" data-tip="More">${ic('more')}</button>
         </div>
       </header>
-      <div class="dt-rule" aria-hidden="true"><i class="m"></i><i class="y"></i><i class="g"></i></div>
+      <div class="dt-rule" aria-hidden="true"><i class="m"></i><i class="y"></i><i class="g"></i><i class="hz"></i></div>
       <div class="dt-scroll"><div class="col">${body}</div></div>
       <div class="term" ${st.term ? '' : 'hidden'}><pre>hermes@lab ~/trismegistus-mac $ swift build
 Building for debugging...
@@ -872,16 +1053,16 @@ Build complete! (6.12s)</pre></div>
 const stage = document.getElementById('stage');
 function route() {
   const h = location.hash.slice(1);
-  const v = ['a', 'b', 'a2', 'all', 'a-narrow', 'b-narrow', 'a2-narrow', 'a2-states'].includes(h) ? h : 'all';
+  const v = ['a', 'b', 'a2', 'a3', 'all', 'compare', 'a-narrow', 'b-narrow', 'a2-narrow', 'a3-narrow', 'a2-states', 'a3-states'].includes(h) ? h : 'all';
   WINS.length = 0;
   stage.innerHTML = '';
   let w = 1560, hgt = 1122;
-  if (v === 'all') {
+  if (v === 'all' || v === 'compare') {
     hgt = 561;
-    ['a', 'a2'].forEach(s => { const f = document.createElement('div'); f.className = 'frame'; f.appendChild(createWin(s, false)); stage.appendChild(f); });
-  } else if (v === 'a2-states') {
+    (v === 'all' ? ['a', 'a2'] : ['a2', 'a3']).forEach(s => { const f = document.createElement('div'); f.className = 'frame'; f.appendChild(createWin(s, false)); stage.appendChild(f); });
+  } else if (v.endsWith('-states')) {
     w = 520;
-    stage.appendChild(createStates());
+    stage.appendChild(createStates(v.split('-')[0]));
   } else {
     const [skin, mod] = v.split('-');
     const narrow = mod === 'narrow';
