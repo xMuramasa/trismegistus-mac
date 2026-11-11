@@ -1,0 +1,66 @@
+/* ---------- 18: search (#76) ---------- */
+.srw mark{background:rgba(255,250,0,.6);color:inherit;border-radius:2px;padding:0 1px}
+.srw mark.cur{background:var(--yellow);box-shadow:inset 0 -2px 0 var(--ink)}
+.srw .lc-search.sr-on{border-color:var(--ink)}
+.srw .lc-search .spin{flex:none;width:12px;height:12px;border:1.5px solid var(--rule);border-top-color:var(--ink);border-radius:50%;margin-right:4px}
+/* hit cards: the mission card with the matching line for its preview (two lines) and a hit count under the time */
+.skin-a3.mcw .row.mc-row.sr-card{height:72px}
+.mcw .sr-snip{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:12px;line-height:16px;color:var(--secondary);padding-right:4px}
+.mcw .sr-snip mark{color:var(--ink)}
+.mcw .sr-n{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--secondary);white-space:nowrap}
+.mcw .sr-card .mc-side{width:62px;justify-content:center;gap:6px;padding:0 10px 0 0}
+/* grouped results */
+.mcw .sr-grp{margin:0 10px 12px;background:rgba(255,255,255,.9);border:1px solid var(--rule);border-radius:4px;padding:4px 0 6px}
+.mcw .sr-grp.is-sel{border-color:var(--ink)}
+.mcw .sr-gh{display:flex;align-items:center;gap:8px;height:34px;padding:0 12px 0 0}
+.mcw .sr-gh .mc-emb{width:44px;height:34px}
+.mcw .sr-gh .mc-emb .gl{margin-top:-5px}
+.mcw .sr-gh .mc-emb .tri{left:9px;top:5px;width:26px;height:24px}
+.mcw .sr-gh .mc-emb .tri svg{width:26px;height:24px}
+.mcw .sr-gh .t{flex:1;font-size:14px;font-weight:500}
+.mcw .sr-gh .n{font-size:11px;color:var(--secondary)}
+.mcw .sr-line{display:grid;grid-template-columns:44px 1fr;gap:0;width:100%;text-align:left;padding:4px 12px 4px 0;border:0;background:none;font:inherit;cursor:pointer}
+.mcw .sr-line .tm{font-size:11px;color:var(--secondary);text-align:center;padding-top:1px}
+.mcw .sr-line .s{font-size:12px;line-height:16px;color:var(--secondary);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.mcw .sr-line .s mark{color:var(--ink)}
+.mcw .sr-line.is-cur{background:linear-gradient(90deg,rgba(255,250,0,.55),rgba(255,250,0,0) 70%)}
+.mcw .sr-more{display:block;margin:2px 0 0 44px;padding:2px 0;border:0;background:none;font:inherit;font-size:12px;color:var(--ink);text-decoration:underline;text-decoration-color:var(--rule);text-underline-offset:3px}
+/* find bar under the title rule */
+.fb{position:relative;z-index:2;display:flex;align-items:center;gap:8px;height:44px;padding:0 16px;background:rgba(255,255,255,.88);border-bottom:1px solid var(--rule);--od-icon-size:14px}
+.fb .fld{flex:0 1 320px;display:flex;align-items:center;gap:6px;height:30px;padding:0 8px;border:1px solid var(--ink);border-radius:4px;background:#fff;color:var(--secondary)}
+.fb .fld input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:14px;color:var(--ink)}
+.fb .fld .x{display:grid;place-items:center;width:16px;height:16px;border-radius:50%;background:var(--sunken);color:var(--secondary);--od-icon-size:9px}
+.fb .cnt{min-width:96px;font-size:12px;color:var(--secondary);white-space:nowrap}
+.fb .cnt.none{color:var(--term-red)}
+.fb .ib{width:28px;height:28px}
+.fb .flip{display:grid;transform:scaleY(-1)}
+.fb .fsp{flex:1}
+.fb .hint{font-size:12px;color:var(--secondary)}
+.fb kbd{margin-right:4px}
+.srw .hermes.hit-msg{box-shadow:inset 3px 0 0 var(--yellow);padding-left:15px}
+/* states sheet */
+.win-states.srw{display:block;height:auto;min-height:0;padding:16px 0 8px}
+.srw .st-grid{position:relative;display:grid;grid-template-columns:520px minmax(0,1fr);gap:0}
+.srw .st-left{border-right:1px solid var(--rule)}
+.srw .st-cell{padding:8px 0 14px;border-bottom:1px solid var(--rule)}
+.srw .st-cell:last-child{border-bottom:0}
+.srw .st-left .lc-search{margin:4px 12px 8px}
+.srw .sr-col{position:relative}
+.srw .sr-note{margin:0 12px 6px 22px;font-size:12px;line-height:17px;color:var(--secondary)}
+.srw .sr-note.warn{color:var(--ink)}
+.srw .sr-note code{display:block;margin-top:4px;font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12px;color:var(--secondary)}
+.srw .st-right .fb{margin:4px 16px 0;border:1px solid var(--rule);border-radius:4px}
+.srw .sr-demo{padding:6px 16px 0;max-width:none}
+/* the shipped header rule (back on Martin's ask, 2026-11-11): 4 pt magenta, yellow, green to the edge */
+.srw.skin-a3 .dt-rule{height:4px;background:none}
+.srw.skin-a3 .dt-rule i{height:4px}
+.srw.skin-a3 .dt-rule .m{width:48px;background:var(--magenta);margin:0}
+.srw.skin-a3 .dt-rule .y{width:120px;background:var(--yellow)}
+.srw.skin-a3 .dt-rule .g{display:block;flex:1;background:var(--green)}
+.srw .st-right .fb .fld{flex:0 0 160px;min-width:0;width:160px}
+.srw .st-right .fb .fld input{width:0}
+.srw .st-right .fb .cnt{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis}
+.srw .st-right .fb .fsp{display:none}
+.srw .st-right .fb .hint{display:none}
+.srw .st-right .cap{white-space:normal}
+.srw .st-right{min-width:0;overflow:hidden}

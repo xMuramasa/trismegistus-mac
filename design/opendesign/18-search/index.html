@@ -1,0 +1,2247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trismegistus — window layout</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* OD-LAYOUT-PRIMITIVES v1 — structure only: display, flex/grid, overflow, wrapping, ratio, geometry.
+   Put this @layer first; product CSS outside the layer wins ordinary layout rules.
+   Native hidden and closed-dialog states take precedence over component display rules. */
+@layer od-layout {
+  [hidden]:not([hidden="until-found" i]) { display: none !important; }
+  dialog:not([open]) { display: none !important; }
+  :where(.od-stack,.od-row,.od-row-top,.od-cluster,.od-grid,.od-field,.od-stat,.od-cell,.od-tile) > :where(*) { min-width: 0; }
+  .od-stack   { display: flex; flex-direction: column; gap: var(--od-gap, 8px); }
+  .od-row     { display: flex; align-items: center; gap: var(--od-gap, 8px); }
+  .od-row-top { display: flex; align-items: flex-start; gap: var(--od-gap, 8px); }
+  .od-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--od-gap, 8px); }
+  .od-fill    { flex: 1 1 0; min-width: 0; }
+  .od-fixed   { flex: none; }
+  .od-grid    { display: grid; gap: var(--od-gap, 12px); grid-template-columns: repeat(var(--od-cols, 3), minmax(0, 1fr)); }
+  .od-stat, .od-field, .od-cell { display: grid; gap: var(--od-gap, 2px); }
+  :where(.od-stat,.od-field,.od-cell) > :where(*) { display: block; }
+  .od-tile { display: grid; grid-template-rows: auto 1fr; }
+  :where(.od-tile) > :where(*) { display: block; }
+  .od-media { display: block; width: 100%; height: auto; aspect-ratio: var(--od-ratio, auto); }
+  .od-media-cover { object-fit: cover; }
+  .od-icon { display: inline-block; inline-size: var(--od-icon-size, 1em); block-size: var(--od-icon-size, 1em); flex: none; }
+  .od-truncate { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .od-clamp-2, .od-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .od-clamp-2 { -webkit-line-clamp: 2; }
+  .od-clamp-3 { -webkit-line-clamp: 3; }
+  .od-lines-2 { min-height: calc(2 * 1.4em); }
+  .od-nowrap  { white-space: nowrap; }
+  .od-keep    { word-break: keep-all; overflow-wrap: anywhere; }
+  .od-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+  .od-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+  .od-rail { display: flex; gap: var(--od-gap, 8px); overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none;
+             padding-inline: var(--od-rail-pad, 16px); scroll-padding-inline: var(--od-rail-pad, 16px); }
+  .od-rail::-webkit-scrollbar { display: none; }
+  :where(.od-rail) > :where(*) { flex: none; scroll-snap-align: start; }
+  :where(.od-rail) > :where(:last-child) { margin-inline-end: var(--od-rail-pad, 16px); }
+  .od-spacer { flex: none; visibility: hidden; pointer-events: none; }
+  .od-touch  { min-width: 44px; min-height: 44px; }
+}
+:root [hidden]:where(:not([hidden="until-found" i])) { display: none; }
+/* /OD-LAYOUT-PRIMITIVES v1 */
+
+:root{
+  --paper:#F2F2F2; --raised:#FFFFFF; --sunken:#E5E5E5; --rule:#D9D9D9; --ink:#191919;
+  --dark-panel:#35373C; --secondary:#666666; --muted:#999999; --yellow:#FFFA00; --blue:#0040E8;
+  --green:#00FFA2; --magenta:#FF1AAC; --red:#E5332A; --term-green:#00875A; --term-red:#C4271F;
+  --contour:#C8C8C0; --on-steel:#E9E9E9;
+  --s2:2px; --s4:4px; --s8:8px; --s12:12px; --s16:16px; --s20:20px; --s24:24px; --s32:32px; --s40:40px;
+  --ctl:30px; --row-panel:40px; --row-list:52px;
+  --t-label:11px; --t-meta:12px; --t-small:13px; --t-row:14px; --t-body:15px;
+  --dur:180ms; --dur-out:120ms;
+  --focus:var(--blue);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--paper);overflow:hidden}
+body{font-family:"Inter",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;font-size:var(--t-body);line-height:1.5}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+#stage{display:flex;width:100%;height:100%}
+.frame{width:780px;height:561px;overflow:hidden;flex:none}
+.frame > .win{transform:scale(.5);transform-origin:0 0}
+
+/* ---------- window ---------- */
+.win{position:relative;width:var(--w,1560px);height:1122px;flex:none;background:var(--paper);overflow:hidden;
+  display:grid;grid-template-columns:316px var(--lc,520px) minmax(0,1fr)}
+.contours{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.sp,.lc,.dt{position:relative;z-index:1;min-height:0}
+
+/* ---------- section panel ---------- */
+.sp{margin:8px 0 8px 8px;width:300px;display:flex;flex-direction:column;padding:8px}
+.sp-top{height:40px;display:flex;align-items:center;justify-content:space-between;padding:0 0 0 12px;margin-bottom:8px}
+.lights{display:flex;gap:8px}
+.lights i{display:block;width:12px;height:12px;border-radius:50%}
+.sp-nav,.sp-kinds{display:flex;flex-direction:column;gap:2px}
+.srow{height:var(--row-panel);display:flex;align-items:center;gap:12px;padding:0 12px;border:0;background:none;width:100%;
+  text-align:left;font-size:var(--t-row);font-weight:400;--od-icon-size:18px;transition:background-color var(--dur) ease-out}
+.srow .lbl{flex:1;min-width:0}
+.srow .cnt{flex:none;font-size:var(--t-small)}
+.srow[aria-current="page"],.srow.is-kind{font-weight:700}
+.kmark{display:block;width:8px;height:8px;background:var(--yellow);border:1px solid var(--ink);flex:none}
+.grp-head{margin-top:16px;margin-bottom:4px;height:28px;display:flex;align-items:center;gap:8px;padding:0 12px;border:0;width:100%;
+  font-size:var(--t-label);font-weight:700;letter-spacing:.08em;text-transform:uppercase;text-align:left;--od-icon-size:14px}
+.grp-head .lbl{flex:1}
+.grp-head .chev{transition:transform var(--dur) ease-out}
+.grp-head[aria-expanded="false"] .chev{transform:rotate(-90deg)}
+.sp-id{margin-top:auto;display:flex;align-items:center;gap:12px;padding:8px 4px 4px 8px;min-height:56px}
+.sp-id .idw{flex:1;min-width:0;display:flex;flex-direction:column}
+.sp-id .name{font-weight:700;font-size:var(--t-row);line-height:1.3}
+.sp-id .link{display:flex;align-items:center;gap:6px;font-size:var(--t-meta);line-height:1.3;min-width:0}
+.sp-id .link > span:last-child{min-width:0}
+.dot{display:block;width:8px;height:8px;border-radius:50%;flex:none}
+.dev-av{width:32px;height:32px;display:grid;place-items:center;flex:none;--od-icon-size:18px}
+
+/* ---------- list column ---------- */
+.lc{display:flex;flex-direction:column;border-right:1px solid var(--rule);min-width:0}
+.lc-head{height:52px;display:grid;grid-template-columns:30px minmax(0,1fr) 30px;align-items:center;gap:8px;padding:0 16px;flex:none}
+.lc-title{text-align:center;font-weight:800;font-size:var(--t-body);letter-spacing:.02em;text-transform:uppercase;white-space:nowrap}
+.lc-title .sl{color:var(--secondary);font-weight:600;margin:0 4px}
+.lc-search{margin:0 16px 12px;height:var(--ctl);display:flex;align-items:center;gap:8px;padding:0 8px;background:var(--sunken);flex:none;--od-icon-size:16px;color:var(--secondary)}
+.lc-search:focus-within{outline:2px solid var(--focus);outline-offset:2px}
+.lc-search input{flex:1;min-width:0;border:0;background:none;outline:none;font-size:var(--t-row);color:var(--ink);height:100%}
+.lc-search input::placeholder{color:var(--secondary)}
+kbd,.kbd{font-family:inherit;font-size:var(--t-label);font-weight:600;line-height:1;padding:3px 4px;background:var(--raised);color:var(--secondary);border:1px solid var(--rule);white-space:nowrap}
+.lc-scroll{flex:1;overflow-y:auto;min-height:0;padding-bottom:16px;scrollbar-width:thin}
+.lsh{display:flex;align-items:center;gap:8px;font-size:var(--t-label);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.lsh .n{margin-left:auto}
+.empty{padding:24px 16px;font-size:var(--t-small);color:var(--secondary);line-height:1.5}
+.empty b{display:block;color:var(--ink);font-size:var(--t-row);margin-bottom:4px}
+
+.row{position:relative;display:flex;align-items:center;gap:12px;border:0;text-align:left;color:var(--ink);background:none;
+  transition:background-color var(--dur) ease-out}
+.row-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.row-l1{display:flex;align-items:center;gap:8px;height:20px}
+.row-title{flex:1;min-width:0;font-size:var(--t-row);font-weight:400;line-height:20px}
+.row.is-strong .row-title{font-weight:700}
+.row-time{flex:none;font-size:var(--t-meta);color:var(--secondary)}
+.row-l2{display:flex;align-items:center;gap:6px;height:24px;--od-icon-size:14px}
+.row-prev{flex:1;min-width:0;font-size:var(--t-small);color:var(--secondary);line-height:24px}
+.row .pin,.row .lock{color:var(--secondary);flex:none}
+.tag{display:inline-flex;align-items:center;height:18px;padding:0 6px;font-size:var(--t-label);font-weight:500;background:var(--sunken);color:var(--secondary);flex:none;white-space:nowrap}
+.tag-more{font-size:var(--t-label);font-weight:600;color:var(--secondary);flex:none}
+.av{display:grid;place-items:center;flex:none;color:var(--raised);font-weight:800;--od-icon-size:20px}
+.av-app{background:var(--ink)}
+.av-telegram{background:var(--blue)}
+.av-terminal{background:var(--dark-panel)}
+.av-cron{background:var(--sunken);color:var(--ink);border:1px solid var(--rule)}
+.nd{display:none}
+
+/* ---------- stickers ---------- */
+.stk{display:inline-flex;align-items:stretch;height:24px;border:1px solid var(--ink);flex:none;font-size:var(--t-label);font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1;white-space:nowrap}
+.stk .g{width:20px;display:grid;place-items:center;border-right:1px solid var(--ink);--od-icon-size:12px}
+.stk .w{display:flex;align-items:center;gap:6px;padding:0 6px}
+.stk.go{height:20px}
+.stk.go .g{width:18px;border-right:0}
+.stk-approval .g,.stk-approval .w{background:var(--magenta);color:var(--ink)}
+.stk-run .g{background:var(--yellow);color:var(--ink)}
+.stk-run .w{background:var(--ink);color:var(--raised)}
+.stk-run .t{color:var(--yellow)}
+.stk-failed .g{background:var(--raised);color:var(--term-red)}
+.stk-failed .w{background:var(--term-red);color:var(--raised)}
+.stk-done .g,.stk-done .w{background:var(--green);color:var(--ink)}
+.on-dark .stk,.on-dark .stk .g{border-color:var(--on-steel)}
+.skin-a .srow[aria-current="page"] .stk,.skin-a .srow[aria-current="page"] .stk .g{border-color:var(--ink)}
+
+/* ---------- buttons ---------- */
+.ib{width:var(--ctl);height:var(--ctl);display:inline-grid;place-items:center;border:0;padding:0;background:var(--sunken);color:var(--ink);flex:none;--od-icon-size:18px;transition:background-color var(--dur) ease-out}
+.ib[aria-pressed="true"]{background:var(--ink);color:var(--raised)}
+.ib-plus{background:var(--yellow);color:var(--ink);border:1px solid var(--ink);--od-icon-size:18px}
+.ib-plus.demoted{background:var(--raised);color:var(--ink)}
+.btn{height:var(--ctl);display:inline-flex;align-items:center;gap:8px;padding:0 12px;border:1px solid var(--ink);font-size:var(--t-label);font-weight:700;letter-spacing:.08em;text-transform:uppercase;flex:none;--od-icon-size:14px;white-space:nowrap}
+.btn-ink{background:var(--ink);color:var(--raised)}
+.btn-mark{background:var(--yellow);color:var(--ink)}
+.btn-line{background:var(--raised);color:var(--ink)}
+.btn:disabled{background:var(--sunken);color:var(--secondary);border-color:var(--rule);cursor:not-allowed}
+
+/* ---------- detail ---------- */
+.dt{display:flex;flex-direction:column;min-width:0;container-type:inline-size}
+.dt-head{height:52px;display:flex;align-items:center;gap:12px;padding:0 16px 0 24px;background:var(--raised);flex:none}
+.dt-head .av{width:32px;height:32px;font-size:var(--t-row);--od-icon-size:16px}
+.dt-ttl{flex:1;min-width:0;display:flex;flex-direction:column}
+.dt-ttl .t1{display:flex;align-items:center;gap:6px;font-weight:700;font-size:var(--t-body);line-height:1.3;--od-icon-size:14px}
+.dt-ttl .t1 > span{min-width:0}
+.dt-ttl .t2{font-size:var(--t-meta);color:var(--secondary);line-height:1.3}
+.meter{display:flex;align-items:center;gap:8px;font-size:var(--t-meta);color:var(--secondary);flex:none}
+.bars{display:flex;gap:2px}
+.bars i{display:block;width:3px;height:12px;background:var(--rule)}
+.bars i.on{background:var(--ink)}
+.model{height:var(--ctl);display:inline-flex;align-items:center;gap:8px;padding:0 8px 0 12px;border:1px solid var(--rule);background:var(--raised);font-size:var(--t-small);font-weight:500;--od-icon-size:14px;flex:none}
+.dt-tools{display:flex;gap:8px;flex:none}
+.dt-rule{display:flex;height:4px;flex:none}
+.dt-rule i{display:block;height:4px}
+.dt-rule .m{width:48px;background:var(--magenta)}
+.dt-rule .y{width:120px;background:var(--yellow)}
+.dt-rule .g{flex:1;background:var(--green)}
+.dt-scroll{flex:1;overflow-y:auto;min-height:0;padding:24px 24px 16px;scrollbar-width:thin}
+.col{max-width:700px;margin:0 auto}
+.who{font-size:var(--t-label);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--secondary);margin:16px 0 4px}
+.who:first-child{margin-top:0}
+.you{background:var(--raised);border:1px solid var(--rule);padding:12px 16px;font-size:var(--t-body)}
+.hermes{padding:0 12px;font-size:var(--t-body);line-height:1.6}
+.hermes p{margin:0 0 12px}
+.hermes ul,.hermes ol{margin:0 0 12px;padding-left:20px}
+.hermes ul{list-style:none;padding-left:16px}
+.hermes ul li{position:relative}
+.hermes ul li::before{content:"";position:absolute;left:-16px;top:.62em;width:6px;height:6px;background:var(--ink)}
+.hermes ol li::marker{color:var(--secondary);font-variant-numeric:tabular-nums}
+.hermes li{margin-bottom:2px}
+.hermes code{font-family:inherit;font-size:.92em;background:var(--sunken);padding:1px 4px}
+.hermes pre{margin:0 0 12px;background:var(--dark-panel);color:var(--on-steel);padding:12px 16px;overflow-x:auto}
+.hermes pre code,.term pre{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:13px;line-height:1.55;background:none;padding:0}
+.hermes pre .p{color:var(--green)}
+.hermes pre .c{color:var(--muted)}
+.cmdchip{height:var(--ctl);display:inline-flex;align-items:center;gap:8px;padding:0 8px 0 10px;border:0;background:var(--sunken);font-size:var(--t-label);font-weight:700;letter-spacing:.08em;--od-icon-size:14px;margin-left:12px}
+.cmdchip .chev{transition:transform var(--dur) ease-out}
+.cmdchip[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.cmdlist{margin:8px 0 0 12px}
+.working{display:flex;align-items:center;gap:8px;margin:12px 0 0 12px;font-size:var(--t-meta);color:var(--secondary)}
+.working b{font-size:var(--t-label);letter-spacing:.08em;color:var(--ink)}
+.approve{margin:4px 12px 0;background:var(--raised);border:1px solid var(--ink);padding:12px 16px}
+.approve .hd{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:var(--t-label);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.approve pre{margin:0 0 12px}
+.approve .acts{display:flex;gap:8px}
+.newchat{padding:80px 24px;text-align:center;color:var(--secondary);font-size:var(--t-row)}
+.newchat b{display:block;color:var(--ink);font-size:18px;margin-bottom:4px}
+
+.term{background:var(--dark-panel);color:var(--on-steel);padding:8px 24px;flex:none}
+.term pre{margin:0 auto;max-width:700px}
+
+.composer{background:var(--raised);border-top:1px solid var(--rule);padding:12px 24px 16px;flex:none}
+.runline{display:flex;align-items:center;gap:8px;height:24px;margin-bottom:8px;font-size:var(--t-label);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.runline .sq{display:block;width:8px;height:8px;background:var(--term-green);flex:none}
+.runline .tm{font-size:var(--t-meta);font-weight:500;letter-spacing:0;color:var(--secondary)}
+.hints{margin-left:auto;display:flex;gap:12px;font-size:var(--t-meta);font-weight:400;letter-spacing:0;text-transform:none;color:var(--secondary)}
+.hints span{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.inrow{display:flex;align-items:center;gap:8px}
+.inrow input{flex:1;min-width:0;height:var(--ctl);border:1px solid var(--ink);background:var(--raised);padding:0 12px;font-size:var(--t-row)}
+.inrow input::placeholder{color:var(--secondary)}
+.inrow input:disabled{background:var(--sunken);border-color:var(--rule)}
+.stopb{width:var(--ctl);height:var(--ctl);display:grid;place-items:center;border:1px solid var(--term-red);background:var(--raised);padding:0;flex:none}
+.stopb i{display:block;width:10px;height:10px;background:var(--term-red)}
+.ib-clip{background:none}
+@container (max-width: 700px){ .meter{display:none} .hints .x{display:none} }
+@container (max-width: 460px){ .hints{display:none} }
+
+/* ---------- overlays ---------- */
+.menu{position:absolute;z-index:20;min-width:184px;background:var(--raised);border:1px solid var(--ink);padding:4px;display:flex;flex-direction:column}
+.menu button{height:var(--ctl);border:0;background:none;text-align:left;padding:0 12px;font-size:var(--t-small)}
+.menu button.danger{color:var(--term-red)}
+.tip{position:absolute;z-index:30;background:var(--ink);color:var(--raised);font-size:var(--t-meta);padding:4px 8px;pointer-events:none;white-space:nowrap}
+.toast{position:absolute;z-index:30;left:50%;bottom:132px;transform:translateX(-50%);background:var(--ink);color:var(--raised);font-size:var(--t-small);padding:8px 12px;white-space:nowrap}
+.toast.in,.menu.in{animation:pop var(--dur) ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(4px)}to{opacity:1}}
+.toast.in{animation-name:popc}
+@keyframes popc{from{opacity:0;transform:translate(-50%,4px)}to{opacity:1;transform:translate(-50%,0)}}
+
+@media (hover:hover){
+  .menu button:hover{background:var(--sunken)}
+  .ib:hover{background:var(--rule)}
+  .ib-plus:hover{background:var(--yellow);box-shadow:inset 0 0 0 1px var(--ink)}
+  .ib-plus.demoted:hover{background:var(--sunken)}
+  .cmdchip:hover{background:var(--rule)}
+  .btn-ink:hover{background:var(--dark-panel)}
+  .btn-line:hover{background:var(--sunken)}
+}
+
+/* =================== SKIN A — B2, neo-brutalist Endfield =================== */
+.skin-a .sp{background:var(--ink);color:var(--raised);border:1px solid var(--ink);box-shadow:4px 4px 8px rgba(25,25,25,.4);--focus:var(--yellow)}
+.skin-a .lights i{background:var(--secondary)}
+.skin-a .sp .ib{background:none;color:var(--raised)}
+.skin-a .srow{color:var(--raised)}
+.skin-a .srow .cnt{color:var(--muted)}
+.skin-a .srow[aria-current="page"]{background:var(--yellow);color:var(--ink)}
+.skin-a .srow[aria-current="page"] .cnt{color:var(--ink)}
+.skin-a .srow.is-kind{background:var(--dark-panel)}
+.skin-a .srow.is-kind .cnt{color:var(--on-steel)}
+.skin-a .grp-head{background:var(--dark-panel);color:var(--raised)}
+.skin-a .grp-head::before{content:"";display:block;width:8px;height:8px;background:var(--yellow);flex:none}
+.skin-a .sp-id{border-top:1px solid var(--dark-panel)}
+.skin-a .sp-id .link{color:var(--on-steel)}
+.skin-a .sp-id .dot{background:var(--green)}
+.skin-a .dev-av{background:var(--dark-panel);color:var(--raised)}
+
+.skin-a .lc-search input{border-radius:0}
+.skin-a .lsh{height:28px;padding:0 16px;background:var(--ink);color:var(--yellow);margin:8px 0}
+.skin-a .lsh::before{content:"";display:block;width:8px;height:8px;background:var(--yellow);flex:none}
+.skin-a .lsh .n{color:var(--muted)}
+.skin-a .row{width:calc(100% - 16px);margin:0 8px 4px;height:56px;padding:0 12px;background:var(--raised);border-top:4px solid var(--muted);border-bottom:4px solid var(--dark-panel)}
+.skin-a .row .av{width:36px;height:36px;font-size:18px}
+.skin-a .row-title{text-transform:uppercase;letter-spacing:.02em}
+.skin-a .row.is-sel{background:var(--ink);border-top-color:var(--ink);border-bottom-color:var(--ink);margin-top:8px;margin-bottom:12px}
+.skin-a .row.is-sel .row-title{color:var(--yellow)}
+.skin-a .row.is-sel .row-time,.skin-a .row.is-sel .row-prev,.skin-a .row.is-sel .pin,.skin-a .row.is-sel .lock,.skin-a .row.is-sel .tag-more{color:var(--on-steel)}
+.skin-a .row.is-sel .tag{background:var(--dark-panel);color:var(--on-steel)}
+.skin-a .row.is-sel .av-app{background:var(--raised);color:var(--ink)}
+.skin-a .row.is-sel .fr{display:block;position:absolute;inset:-8px -4px;border:1px solid var(--yellow);pointer-events:none}
+.skin-a .fr .nd{display:block;position:absolute;width:4px;height:4px;background:var(--yellow)}
+.skin-a .nd.tl{top:-2px;left:-2px}.skin-a .nd.tr{top:-2px;right:-2px}.skin-a .nd.bl{bottom:-2px;left:-2px}.skin-a .nd.br{bottom:-2px;right:-2px}
+.skin-a .fr{display:none}
+.skin-a .dt-head .av{width:32px;height:32px}
+@media (hover:hover){
+  .skin-a .srow:not([aria-current="page"]):hover{background:var(--dark-panel)}
+  .skin-a .sp .ib:hover{background:var(--dark-panel)}
+  .skin-a .row:not(.is-sel):hover{background:var(--sunken)}
+  .skin-a .grp-head:hover{background:#191919}
+}
+.skin-a .menu{box-shadow:4px 4px 8px rgba(25,25,25,.4)}
+
+/* =================== SKIN A2 — B2 with rounder corners (inherits .skin-a) =================== */
+.skin-a2{--r-lg:16px;--r-md:12px;--r-sm:8px;--r-xs:6px}
+/* 16 — floating panel, composer block */
+.skin-a2 .sp{border-radius:var(--r-lg)}
+.skin-a2 .composer{margin:0 8px 8px;border:1px solid var(--rule);border-radius:var(--r-lg)}
+/* 12 — cards, code, message boxes, model picker, menus */
+.skin-a2 .row{border-top:0;border-bottom:0;padding-block:4px;border-radius:var(--r-md);
+  background:linear-gradient(var(--muted),var(--muted)) top/100% 4px no-repeat,linear-gradient(var(--dark-panel),var(--dark-panel)) bottom/100% 4px no-repeat,var(--raised)}
+.skin-a2 .row.is-sel{background:var(--ink)}
+.skin-a2 .hermes pre,.skin-a2 .you,.skin-a2 .approve,.skin-a2 .model,.skin-a2 .menu{border-radius:var(--r-md)}
+.skin-a2 .menu button{border-radius:var(--r-sm)}
+/* selected frame: 4 px outside the card, radius = card + 4; nodes become corner arcs */
+.skin-a2 .row.is-sel .fr{inset:-4px;border-radius:calc(var(--r-md) + 4px)}
+.skin-a2 .fr .nd{width:16px;height:16px;background:none;border:0 solid var(--yellow)}
+.skin-a2 .nd.tl{top:-1px;left:-1px;border-top-width:3px;border-left-width:3px;border-top-left-radius:16px}
+.skin-a2 .nd.tr{top:-1px;right:-1px;left:auto;border-top-width:3px;border-right-width:3px;border-top-right-radius:16px}
+.skin-a2 .nd.bl{bottom:-1px;left:-1px;top:auto;border-bottom-width:3px;border-left-width:3px;border-bottom-left-radius:16px}
+.skin-a2 .nd.br{bottom:-1px;right:-1px;top:auto;left:auto;border-bottom-width:3px;border-right-width:3px;border-bottom-right-radius:16px}
+/* 8 — filter, buttons, current-section block, kind highlight, commands chip, slabs, group head */
+.skin-a2 .lc-search,.skin-a2 .ib,.skin-a2 .btn,.skin-a2 .stopb,.skin-a2 .inrow input,.skin-a2 .srow,.skin-a2 .cmdchip,.skin-a2 .grp-head,.skin-a2 .tip,.skin-a2 .toast{border-radius:var(--r-sm)}
+.skin-a2 .lsh{margin:8px;border-radius:var(--r-sm)}
+/* 6 — stickers, tags, kbd hints, source avatars */
+.skin-a2 .stk,.skin-a2 .tag,.skin-a2 kbd,.skin-a2 .av,.skin-a2 .dev-av{border-radius:var(--r-xs)}
+.skin-a2 .stk{overflow:hidden}
+.skin-a2 .cap{padding:8px 16px 4px;font-size:var(--t-label);font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--secondary)}
+.skin-a2 .row.is-hover{background:linear-gradient(var(--muted),var(--muted)) top/100% 4px no-repeat,linear-gradient(var(--dark-panel),var(--dark-panel)) bottom/100% 4px no-repeat,var(--sunken)}
+@media (hover:hover){
+  .skin-a2 .row:not(.is-sel):hover{background:linear-gradient(var(--muted),var(--muted)) top/100% 4px no-repeat,linear-gradient(var(--dark-panel),var(--dark-panel)) bottom/100% 4px no-repeat,var(--sunken)}
+}
+.win-states{grid-template-columns:520px}
+.win-states .lc{border-right:0}
+
+/* =================== SKIN A3 — Endfield-faithful =================== */
+.idx,.hatch,.dt-rule .hz,.sp-lbl{display:none}
+.skin-a3{--focus:var(--blue)}
+/* section panel: dark translucent tree, chamfered top-right corner */
+.skin-a3 .sp{background:linear-gradient(180deg,rgba(53,55,60,.93),rgba(53,55,60,.86));-webkit-backdrop-filter:blur(6px) saturate(1.1);backdrop-filter:blur(6px) saturate(1.1);
+  border:1px solid rgba(255,255,255,.10);border-radius:8px;color:var(--on-steel);--focus:var(--yellow);
+  clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,0 100%)}
+.skin-a3 .sp::after{content:"";position:absolute;top:7.5px;right:-3.3px;width:22.6px;height:1px;background:rgba(255,255,255,.22);transform:rotate(45deg)}
+.skin-a3 .lights i{background:var(--secondary)}
+.skin-a3 .sp .ib{background:none;color:var(--on-steel);border:0;border-radius:4px}
+.skin-a3 .sp-lbl{display:flex;align-items:center;gap:8px;height:20px;padding:0 12px 0 10px;margin-bottom:8px;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--contour)}
+.skin-a3 .sp-lbl .ln,.skin-a3 .lsh .ln{display:block;flex:1;height:1px}
+.skin-a3 .sp-lbl .ln{background:rgba(255,255,255,.14)}
+.skin-a3 .sp-lbl .num{letter-spacing:.04em;color:var(--muted)}
+.sp-tree{display:flex;flex-direction:column;gap:2px}
+.tparent{display:flex;align-items:center;gap:2px}
+.tparent .tp{flex:1;min-width:0}
+.tfold{width:30px;height:30px;display:grid;place-items:center;border:0;padding:0;background:none;color:var(--contour);border-radius:4px;flex:none;--od-icon-size:14px}
+.tfold .chev{transition:transform var(--dur) ease-out}
+.tfold[aria-expanded="false"] .chev{transform:rotate(-90deg)}
+.skin-a3 .srow{position:relative;height:36px;padding:0 10px;gap:10px;border-radius:4px;color:var(--on-steel);font-size:13px;font-weight:500;--od-icon-size:16px}
+.skin-a3 .srow .cnt{color:var(--contour);font-size:var(--t-meta)}
+.skin-a3 .srow.tp{color:var(--raised);font-weight:600}
+.skin-a3 .srow.kid{padding-left:36px}
+.skin-a3 .sp-kinds{position:relative;margin-bottom:8px}
+.skin-a3 .sp-kinds::before{content:"";position:absolute;left:18px;top:0;bottom:12px;width:1px;background:rgba(255,255,255,.14)}
+.skin-a3 .srow.is-kind{background:rgba(255,255,255,.10);color:var(--raised);font-weight:600}
+.skin-a3 .srow.is-kind::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;background:var(--yellow)}
+.skin-a3 .srow.is-kind .cnt{color:var(--raised)}
+.skin-a3 .sp-id{border-top:1px solid rgba(255,255,255,.12)}
+.skin-a3 .sp-id .name{color:var(--raised);font-size:13px;font-weight:600}
+.skin-a3 .sp-id .link{color:var(--contour);font-size:11px}
+.skin-a3 .sp-id .dot{background:var(--green)}
+.skin-a3 .dev-av{width:28px;height:28px;border-radius:4px;background:rgba(255,255,255,.08);color:var(--on-steel);--od-icon-size:16px}
+.skin-a3 .sp-id .ib{border:1px solid rgba(255,255,255,.16)}
+
+/* list column: lightly frosted over the contour ground */
+.skin-a3 .lc{background:rgba(229,229,229,.42);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);border-right:1px solid var(--rule)}
+.skin-a3 .lc-head{position:relative}
+.skin-a3 .lc-head::after{content:"";position:absolute;right:56px;top:24px;width:32px;height:4px;background:repeating-linear-gradient(135deg,var(--contour) 0 1px,transparent 1px 4px)}
+.skin-a3 .lc-title{display:flex;align-items:baseline;justify-content:center;gap:8px;text-transform:none;letter-spacing:0;font-weight:500}
+.lbl3{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--secondary)}
+.big{font-size:28px;font-weight:500;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--ink)}
+.skin-a3 .ib{background:rgba(255,255,255,.7);border:1px solid var(--rule);border-radius:4px;color:var(--ink);--od-icon-size:16px}
+.skin-a3 .ib[aria-pressed="true"]{background:var(--sunken);border-color:var(--secondary);color:var(--ink)}
+.skin-a3 .ib-plus{background:var(--yellow);border-color:var(--yellow)}
+.skin-a3 .ib-plus.demoted{background:rgba(255,255,255,.7);border-color:var(--rule)}
+.skin-a3 .ib-clip{background:none;border-color:transparent}
+.skin-a3 .lc-search{background:var(--raised);border:1px solid var(--rule);border-radius:4px}
+.skin-a3 kbd{background:var(--sunken);border:0;border-radius:3px;font-size:10px}
+.skin-a3 .lsh{height:24px;padding:0 16px;margin:8px 0 4px;background:none;font-size:10px;font-weight:600;letter-spacing:.14em;color:var(--secondary)}
+.skin-a3 .lsh .ln{background:var(--contour)}
+.skin-a3 .lsh .n{margin-left:0;color:var(--secondary);letter-spacing:.04em}
+.skin-a3 .cap{padding:8px 16px 2px;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--secondary)}
+
+/* cards: 46 px, hairline edge, faint white→translucent step */
+.skin-a3 .row{width:calc(100% - 16px);margin:0 8px 4px;height:46px;padding:0 10px 0 4px;gap:8px;border-radius:4px;
+  background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(255,255,255,.72));border:1px solid rgba(200,200,192,.6)}
+.skin-a3 .idx{display:block;width:16px;flex:none;text-align:right;font-size:10px;font-weight:500;color:var(--muted)}
+.skin-a3 .row .av{width:26px;height:26px;border-radius:4px;font-size:13px;font-weight:600;--od-icon-size:14px}
+.skin-a3 .av-app{background:var(--dark-panel)}
+.skin-a3 .av-cron{background:var(--sunken);border:1px solid var(--rule)}
+.skin-a3 .row-body{gap:0}
+.skin-a3 .row-l1{height:18px}
+.skin-a3 .row-title{font-size:13px;font-weight:500;line-height:18px}
+.skin-a3 .row.is-strong .row-title{font-weight:600}
+.skin-a3 .row-time{font-size:11px}
+.skin-a3 .row-l2{height:20px;gap:6px;--od-icon-size:12px}
+.skin-a3 .row-prev{font-size:var(--t-meta);line-height:20px}
+.skin-a3 .tag{height:16px;padding:0 5px;font-size:10px;border-radius:3px}
+.skin-a3 .tag-more{font-size:10px}
+.skin-a3 .row.is-sel{background:var(--raised);border-color:var(--yellow);box-shadow:0 0 0 .5px var(--yellow),0 0 12px rgba(255,250,0,.45)}
+.skin-a3 .row.is-sel .fr{display:block;position:absolute;inset:-6px;pointer-events:none}
+.skin-a3 .fr .nd{display:block;position:absolute;width:6px;height:6px;border:0 solid var(--secondary)}
+.skin-a3 .nd.tl{top:0;left:0;border-top-width:1px;border-left-width:1px}
+.skin-a3 .nd.tr{top:0;right:0;border-top-width:1px;border-right-width:1px}
+.skin-a3 .nd.bl{bottom:0;left:0;border-bottom-width:1px;border-left-width:1px}
+.skin-a3 .nd.br{bottom:0;right:0;border-bottom-width:1px;border-right-width:1px}
+.skin-a3 .row.is-sel .hatch{display:block;position:absolute;top:2px;right:56px;width:24px;height:3px;background:repeating-linear-gradient(135deg,var(--contour) 0 1px,transparent 1px 4px)}
+.skin-a3 .row.is-hover{background:var(--raised);border-color:var(--contour)}
+
+/* state tags: 18 px, light chip, thin coloured bar + glyph, small caps word */
+.skin-a3 .stk{position:relative;height:18px;padding-left:2px;border:1px solid var(--rule);border-radius:3px;overflow:hidden;background:var(--raised);
+  font-size:10px;font-weight:600;letter-spacing:.1em}
+.skin-a3 .stk::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--bar)}
+.skin-a3 .stk .g{width:16px;border:0;background:none !important;color:var(--glyph);--od-icon-size:9px}
+.skin-a3 .stk .w{background:none !important;color:var(--ink);padding:0 6px 0 0;gap:4px}
+.skin-a3 .stk.go{height:16px}
+.skin-a3 .stk.go .g{width:14px}
+.skin-a3 .stk-approval{--bar:var(--magenta);--glyph:var(--magenta)}
+.skin-a3 .stk-failed{--bar:var(--term-red);--glyph:var(--term-red)}
+.skin-a3 .stk-done{--bar:var(--term-green);--glyph:var(--term-green)}
+.skin-a3 .stk-run{--bar:var(--yellow);--glyph:var(--yellow);background:var(--dark-panel);border-color:var(--dark-panel)}
+.skin-a3 .stk-run .w{color:var(--raised)}
+.skin-a3 .stk-run .t{color:var(--yellow)}
+
+/* detail */
+.skin-a3 .dt-head{background:rgba(255,255,255,.72);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.skin-a3 .dt-head .av{width:28px;height:28px;border-radius:4px;font-size:13px;font-weight:600}
+.skin-a3 .dt-ttl .t1{font-size:14px;font-weight:600}
+.skin-a3 .dt-ttl .t2{font-size:11px}
+.skin-a3 .meter{font-size:11px}
+.skin-a3 .bars i.on{background:var(--secondary)}
+.skin-a3 .model{border-radius:15px;font-size:var(--t-meta)}
+.skin-a3 .dt-tools .ib{background:transparent}
+.skin-a3 .dt-rule{height:2px;background:var(--rule)}
+.skin-a3 .dt-rule i{height:2px}
+.skin-a3 .dt-rule .m{width:8px;background:var(--dark-panel);margin-right:4px}
+.skin-a3 .dt-rule .y{width:56px}
+.skin-a3 .dt-rule .g{display:none}
+.skin-a3 .who{font-size:10px;letter-spacing:.14em;font-weight:600}
+.skin-a3 .you{background:rgba(255,255,255,.85);border-color:var(--rule);border-radius:4px;padding:8px 12px;font-size:14px}
+.skin-a3 .hermes{font-size:14px}
+.skin-a3 .hermes ul li::before{width:4px;height:4px;top:.7em;background:var(--secondary)}
+.skin-a3 .hermes code{border-radius:3px}
+.skin-a3 .hermes pre{background:var(--sunken);color:var(--ink);border:1px solid var(--rule);border-radius:4px}
+.skin-a3 .hermes pre .p{color:var(--term-green)}
+.skin-a3 .hermes pre .c{color:var(--secondary)}
+.skin-a3 .cmdchip{background:rgba(255,255,255,.7);border:1px solid var(--rule);border-radius:4px;font-size:10px;font-weight:600;letter-spacing:.12em}
+.skin-a3 .working b{font-size:10px;letter-spacing:.14em}
+.skin-a3 .working::after{content:"";flex:1;height:2px;background:linear-gradient(90deg,var(--yellow) 0 30%,var(--rule) 30% 100%)}
+.skin-a3 .approve{border:1px solid var(--rule);border-radius:4px}
+.skin-a3 .btn{border:1px solid var(--rule);border-radius:4px;font-size:10px;font-weight:600;letter-spacing:.12em}
+.skin-a3 .btn-ink{background:var(--raised);color:var(--ink);border-color:var(--secondary)}
+.skin-a3 .btn-line{background:var(--raised)}
+.skin-a3 .btn-mark{background:var(--yellow);border-color:var(--yellow)}
+.skin-a3 .composer{margin:0 8px 8px;border:1px solid var(--rule);border-radius:8px;background:rgba(255,255,255,.82);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.skin-a3 .runline{font-size:10px;font-weight:600;letter-spacing:.14em}
+.skin-a3 .runline .sq{width:6px;height:6px}
+.skin-a3 .inrow input{border-color:var(--contour);border-radius:4px}
+.skin-a3 .stopb{border-color:var(--rule);border-radius:4px}
+.skin-a3 .menu{border-color:var(--rule);border-radius:6px;box-shadow:0 8px 24px rgba(25,25,25,.12)}
+.skin-a3 .menu button{border-radius:4px}
+.skin-a3 .tip,.skin-a3 .toast{background:var(--dark-panel);border-radius:4px}
+@media (hover:hover){
+  .skin-a3 .srow:not(.is-kind):hover,.skin-a3 .tfold:hover,.skin-a3 .sp .ib:hover{background:rgba(255,255,255,.06)}
+  .skin-a3 .ib:hover,.skin-a3 .cmdchip:hover{background:var(--raised);border-color:var(--contour)}
+  .skin-a3 .ib-plus:hover{background:var(--yellow);border-color:var(--yellow);box-shadow:0 0 8px rgba(255,250,0,.6)}
+  .skin-a3 .ib-plus.demoted:hover{background:var(--raised);box-shadow:none}
+  .skin-a3 .row:not(.is-sel):hover{background:var(--raised);border-color:var(--contour)}
+  .skin-a3 .btn-ink:hover,.skin-a3 .btn-line:hover{background:var(--sunken)}
+}
+
+/* =================== SECTIONS (GitHub, Agents, Jobs, Commands) — shared, then per skin =================== */
+/* #a2 section panel as a tree (Chats → kinds, then sections) */
+.skin-a2 .sp-tree .srow.kid{padding-left:42px}
+.skin-a2 .sp-tree .sp-kinds{margin-bottom:8px}
+.skin-a2 .tfold{color:var(--on-steel);border-radius:8px;--od-icon-size:16px}
+@media (hover:hover){ .skin-a2 .tfold:hover{background:var(--dark-panel)} }
+.lc-tools{padding:0 16px 12px;display:flex;flex-direction:column;gap:8px;flex:none}
+.pick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sel{height:30px;min-width:0;border:1px solid var(--rule);background:var(--raised);color:var(--ink);font-size:var(--t-small);padding:0 8px}
+.seg{display:grid;grid-template-columns:1fr 1fr;height:30px}
+.seg button{display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--rule);background:var(--raised);font-size:var(--t-meta);font-weight:600;--od-icon-size:16px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--yellow);border-color:var(--ink)}
+.lsh-btn{width:calc(100% - 0px);border:0;cursor:pointer;text-align:left;font-family:inherit;--od-icon-size:14px}
+.lsh-btn .chev{transition:transform var(--dur) ease-out}
+.lsh-btn[aria-expanded="false"] .chev{transform:rotate(-90deg)}
+.more-note{padding:4px 16px 12px;font-size:var(--t-meta);color:var(--secondary)}
+.ptag{display:inline-flex;align-items:center;height:18px;padding:0 6px;font-size:10px;font-weight:700;letter-spacing:.06em;background:var(--ink);color:var(--raised);flex:none}
+.okt{display:inline-flex;align-items:center;gap:4px;height:18px;padding:0 6px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;background:var(--sunken);color:var(--ink);flex:none;--od-icon-size:10px}
+.okt svg{color:var(--term-green)}
+.okt.paused svg{color:var(--secondary)}
+.skin-a .row.is-sel .ptag{background:var(--raised);color:var(--ink)}
+.skin-a .row.is-sel .okt{background:var(--dark-panel);color:var(--on-steel)}
+.skin-a .row.is-sel .okt svg{color:var(--green)}
+
+.dt-acts{display:flex;align-items:center;gap:8px;flex:none}
+.ro-mini{display:flex;align-items:center;gap:4px;font-size:var(--t-meta);color:var(--secondary);--od-icon-size:14px}
+.rostrip{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:8px 24px;background:var(--raised);border-bottom:1px solid var(--rule);flex:none}
+.ro{display:flex;align-items:center;gap:8px}
+.rl{display:block;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--secondary)}
+.ro .sel{height:28px}
+.ro-end{margin-left:auto}
+.card{background:var(--raised);border:1px solid var(--rule);padding:16px 20px;margin-bottom:16px}
+.card-by{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:var(--t-label);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.card-h{margin:0 0 12px;font-size:16px;font-weight:700;line-height:1.35}
+.card-sub{display:flex;align-items:baseline;gap:8px;margin:16px 0 8px;font-size:var(--t-small);font-weight:700}
+.card-sub .num{font-weight:500;color:var(--secondary)}
+.card p{margin:0 0 8px;font-size:14px;line-height:1.6}
+.card p.note{color:var(--secondary);font-size:var(--t-small)}
+.card-lbl{padding-bottom:8px;margin-bottom:12px;border-bottom:1px solid var(--ink);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.dtable{width:100%;border-collapse:collapse;font-size:14px;line-height:1.5}
+.dtable td{padding:8px 0;border-top:1px solid var(--rule);vertical-align:top}
+.dtable td:first-child{width:32px;color:var(--secondary)}
+.linkbtn{display:inline-flex;align-items:center;gap:4px;border:0;background:none;padding:4px 0;color:var(--blue);font-size:var(--t-small);font-weight:600;--od-icon-size:14px}
+.linkbtn .chev{transition:transform var(--dur) ease-out}
+.linkbtn[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.cklist{display:flex;flex-direction:column}
+.ck{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-top:1px solid var(--rule);font-size:14px;line-height:1.5;cursor:pointer}
+.ck input{width:16px;height:16px;margin:3px 0 0;accent-color:var(--ink);flex:none}
+.ck .n{width:16px;flex:none;text-align:right;color:var(--secondary)}
+.ck.on .t{color:var(--secondary);text-decoration:line-through}
+.cbox textarea{display:block;width:100%;min-height:72px;border:1px solid var(--rule);padding:8px 12px;font:inherit;font-size:14px;resize:vertical;background:var(--raised)}
+.cbox{padding:12px}
+.acts-r{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+.checkp{border-top:4px solid var(--yellow)}
+.cp-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:var(--t-label);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.cp-sq{display:block;width:8px;height:8px;background:var(--magenta);flex:none}
+.cp-n{color:var(--secondary);font-weight:500}
+.cp-from{margin-left:auto;font-size:var(--t-meta);font-weight:500;letter-spacing:0;text-transform:none;color:var(--secondary)}
+.card .cp-lead{margin-bottom:4px}
+.cp-acts{display:flex;gap:8px;margin-top:12px}
+.cp-note{flex:1;min-width:0;display:block}
+.cp-note input{width:100%;height:30px;border:1px solid var(--rule);padding:0 12px;font-size:var(--t-small);background:var(--sunken)}
+.card .cp-ex{margin:8px 0 0;font-size:var(--t-meta);color:var(--secondary);line-height:1.5}
+.cp-done{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:var(--t-small)}
+.rtag{display:inline-flex;align-items:center;height:18px;padding:0 6px;font-size:10px;font-weight:700;letter-spacing:.08em;background:var(--green);color:var(--ink)}
+.steps{padding:0;overflow:hidden}
+.steps-h{display:flex;align-items:center;gap:8px;width:100%;height:32px;padding:0 16px;border:0;background:var(--ink);color:var(--yellow);font-size:var(--t-label);font-weight:700;letter-spacing:.08em;text-transform:uppercase;--od-icon-size:14px}
+.steps-h .chev{margin-left:auto;transition:transform var(--dur) ease-out}
+.steps-h[aria-expanded="false"] .chev{transform:rotate(-90deg)}
+.step + .step{border-top:1px solid var(--rule)}
+.step-h{display:grid;grid-template-columns:20px minmax(0,1fr) auto 14px;align-items:center;gap:12px;width:100%;padding:8px 16px;border:0;background:none;text-align:left;font-size:var(--t-small);line-height:1.45;--od-icon-size:14px}
+.step-h .n{color:var(--secondary);text-align:right}
+.step-h .chev,.crow-h .chev{transition:transform var(--dur) ease-out}
+.step-h[aria-expanded="true"] .chev,.crow-h[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.step-ok{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--term-green);--od-icon-size:12px}
+.step-out{padding:0 16px 12px 48px;font-size:var(--t-meta);color:var(--secondary);line-height:1.5}
+.ro3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:16px;background:var(--raised);border:1px solid var(--rule)}
+.ro3 > div{display:flex;flex-direction:column;gap:2px;padding:12px 16px}
+.ro3 > div + div{border-left:1px solid var(--rule)}
+.ro3 .rl{margin-bottom:4px}
+.ro3 b{font-size:14px}
+.ro3 span:not(.rl){font-size:var(--t-meta);color:var(--ink)}
+.ro3 .ok{color:var(--term-green)}
+.ro3 .chip{display:block;width:max-content;margin-top:4px;padding:1px 6px;background:var(--sunken);letter-spacing:.08em}
+.prompt{font-size:14px;line-height:1.6;white-space:pre-line}
+.prompt.fold{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:8;overflow:hidden}
+.cg{margin-bottom:24px}
+.cg-head{display:flex;align-items:center;gap:12px;height:32px;margin-bottom:8px;border-bottom:1px solid var(--ink);font-size:var(--t-meta);color:var(--secondary)}
+.cg-title{display:flex;align-items:center;gap:4px;border:0;background:none;padding:0;color:var(--blue);font-size:14px;font-weight:600;--od-icon-size:12px}
+.cg-title .chev-r{transform:rotate(-90deg)}
+.cg-fail{color:var(--term-red);font-weight:600}
+.cg-head .ib{margin-left:auto;width:24px;height:24px;background:none;--od-icon-size:14px}
+.cg-head .ib[aria-expanded="false"] svg{transform:rotate(-90deg)}
+.crow{margin-bottom:4px;background:var(--raised);border:1px solid var(--rule);box-shadow:inset 3px 0 0 var(--term-green);overflow:hidden}
+.crow.fail{box-shadow:inset 3px 0 0 var(--term-red)}
+.crow-h{display:grid;grid-template-columns:56px minmax(0,1fr) auto 72px 14px;align-items:center;gap:12px;width:100%;padding:6px 12px 6px 16px;border:0;background:none;text-align:left;--od-icon-size:14px}
+.ctool{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--secondary)}
+.ccmd{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12.5px;color:var(--ink)}
+.cm-wrap .ccmd{white-space:pre-wrap;word-break:break-all}
+.cexit{font-size:var(--t-label);color:var(--secondary);white-space:nowrap}
+.crow.fail .cexit{padding:1px 6px;background:var(--term-red);color:var(--raised);font-weight:600}
+.cdur{font-size:var(--t-meta);color:var(--secondary);text-align:right;white-space:nowrap}
+.cout{padding:0 16px 10px 84px}
+.cout pre{margin:0;padding:8px 12px;background:var(--sunken);font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px}
+.cout p{margin:0;font-size:var(--t-meta);color:var(--secondary)}
+@media (hover:hover){
+  .crow-h:hover,.step-h:hover{background:var(--paper)}
+  .linkbtn:hover,.cg-title:hover{text-decoration:underline}
+}
+
+/* a2: B2 rounded */
+.skin-a2 .sel,.skin-a2 .cbox textarea,.skin-a2 .cp-note input,.skin-a2 .crow{border-radius:8px}
+.skin-a2 .seg button:first-child{border-radius:8px 0 0 8px}
+.skin-a2 .seg button:last-child{border-radius:0 8px 8px 0}
+.skin-a2 .ptag,.skin-a2 .okt,.skin-a2 .rtag,.skin-a2 .ro3 .chip,.skin-a2 .crow.fail .cexit{border-radius:6px}
+.skin-a2 .card,.skin-a2 .ro3{border-radius:12px}
+.skin-a2 .lsh-btn{width:calc(100% - 16px)}
+.skin-a2 .lsh-btn .chev{margin-left:8px;color:var(--yellow)}
+.skin-a2 .ro3 > div + div{border-left-color:var(--rule)}
+
+/* a3: Endfield-faithful */
+.skin-a3 .sel,.skin-a3 .cbox textarea,.skin-a3 .cp-note input,.skin-a3 .crow,.skin-a3 .card,.skin-a3 .ro3{border-radius:4px}
+.skin-a3 .card,.skin-a3 .ro3,.skin-a3 .crow{background:rgba(255,255,255,.88)}
+.skin-a3 .cp-note input{background:var(--raised);border-color:var(--contour)}
+.skin-a3 .seg button{border-radius:0;color:var(--secondary)}
+.skin-a3 .seg button:first-child{border-radius:4px 0 0 4px}
+.skin-a3 .seg button:last-child{border-radius:0 4px 4px 0;border-left:0}
+.skin-a3 .seg button[aria-pressed="true"]{background:var(--raised);color:var(--ink);border-color:var(--contour);box-shadow:inset 0 -2px 0 var(--yellow)}
+.skin-a3 .lsh-btn{width:100%}
+.skin-a3 .lsh-btn .chev{color:var(--secondary)}
+.skin-a3 .ptag{background:var(--sunken);color:var(--ink);font-weight:600;border-radius:3px}
+.skin-a3 .okt{background:var(--raised);border:1px solid var(--rule);border-radius:3px;font-size:10px}
+.skin-a3 .rtag{background:var(--raised);border:1px solid var(--rule);border-radius:3px;box-shadow:inset 2px 0 0 var(--term-green);padding-left:8px;font-weight:600}
+.skin-a3 .rostrip{background:rgba(255,255,255,.72)}
+.skin-a3 .card-h{font-weight:600;font-size:15px}
+.skin-a3 .card-by,.skin-a3 .cp-head{font-size:10px;font-weight:600;letter-spacing:.14em;color:var(--secondary)}
+.skin-a3 .card-by::before,.skin-a3 .card-lbl::before{content:"// "}
+.skin-a3 .card-lbl{border-bottom-color:var(--rule);font-weight:600;letter-spacing:.14em;color:var(--secondary)}
+.skin-a3 .card-sub{font-weight:600}
+.skin-a3 .checkp{border-top:1px solid var(--rule);box-shadow:inset 0 2px 0 var(--yellow),0 0 12px rgba(255,250,0,.25)}
+.skin-a3 .cp-sq{transform:rotate(45deg);width:7px;height:7px}
+.skin-a3 .steps-h{background:none;color:var(--secondary);border-bottom:1px solid var(--rule);font-size:10px;font-weight:600;letter-spacing:.14em}
+.skin-a3 .steps-h::before{content:"//"}
+.skin-a3 .cg-head{border-bottom-color:var(--contour)}
+.skin-a3 .ro3 .chip{border-radius:3px}
+.skin-a3 .crow.fail .cexit{background:none;color:var(--term-red);padding:0}
+.skin-a3 .step-h,.skin-a3 .crow-h{padding-top:5px;padding-bottom:5px}
+
+/* =================== SKIN B — macOS 26 native =================== */
+.skin-b .sp{background:rgba(255,255,255,.55);-webkit-backdrop-filter:blur(24px) saturate(1.3);backdrop-filter:blur(24px) saturate(1.3);
+  border:1px solid rgba(255,255,255,.9);border-radius:16px;box-shadow:0 8px 24px rgba(25,25,25,.10)}
+.skin-b .lights i{background:var(--rule);box-shadow:inset 0 0 0 1px var(--contour)}
+.skin-b .sp .ib{background:none;border-radius:50%}
+.skin-b .srow{border-radius:10px;color:var(--ink)}
+.skin-b .srow .cnt{color:var(--secondary)}
+.skin-b .srow[aria-current="page"]{background:var(--ink);color:var(--raised)}
+.skin-b .srow[aria-current="page"] .cnt{color:var(--on-steel)}
+.skin-b .srow.is-kind{background:var(--raised)}
+.skin-b .grp-head{background:none;color:var(--secondary);border-radius:8px}
+.skin-b .sp-id{border-top:1px solid rgba(25,25,25,.08)}
+.skin-b .sp-id .link{color:var(--secondary)}
+.skin-b .sp-id .dot{background:var(--term-green)}
+.skin-b .dev-av{background:var(--raised);border-radius:50%;box-shadow:inset 0 0 0 1px var(--rule)}
+.skin-b .sp-id .ib{background:var(--raised)}
+
+.skin-b .lc{background:var(--raised)}
+.skin-b .ib{border-radius:50%}
+.skin-b .ib-plus{border:0}
+.skin-b .ib-plus.demoted{background:var(--sunken)}
+.skin-b .lc-search{border-radius:8px}
+.skin-b .lc-search:focus-within{outline-offset:1px}
+.skin-b kbd{border-radius:4px}
+.skin-b .lsh{padding:16px 16px 4px;color:var(--secondary);font-weight:600}
+.skin-b .lsh .n{color:var(--secondary);font-weight:500}
+.skin-b .row{width:calc(100% - 16px);margin:0 8px;height:52px;padding:0 8px;border-radius:12px}
+.skin-b .row .av{width:40px;height:40px;border-radius:50%;font-size:18px}
+.skin-b .row::after{content:"";position:absolute;left:60px;right:8px;bottom:0;height:1px;background:var(--rule)}
+.skin-b .row.is-sel::after,.skin-b .row:has(+ .row.is-sel)::after,.skin-b .row:last-child::after,.skin-b .row:has(+ .lsh)::after{display:none}
+.skin-b .row.is-sel{background:var(--ink);color:var(--raised)}
+.skin-b .row.is-sel .row-time,.skin-b .row.is-sel .row-prev,.skin-b .row.is-sel .pin,.skin-b .row.is-sel .lock,.skin-b .row.is-sel .tag-more{color:var(--on-steel)}
+.skin-b .row.is-sel .tag{background:var(--dark-panel);color:var(--on-steel)}
+.skin-b .row.is-sel .av-app{background:var(--raised);color:var(--ink)}
+.skin-b .tag{border-radius:4px}
+.skin-b .dt-head{background:rgba(255,255,255,.8);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+.skin-b .dt-head .av{border-radius:50%}
+.skin-b .model{border-radius:8px}
+.skin-b .you{border-radius:12px}
+.skin-b .hermes pre,.skin-b .approve{border-radius:8px}
+.skin-b .cmdchip{border-radius:15px}
+.skin-b .inrow input{border-radius:8px;border-color:var(--secondary)}
+.skin-b .btn,.skin-b .stopb{border-radius:8px}
+.skin-b .menu{border-color:var(--rule);border-radius:12px;box-shadow:0 8px 24px rgba(25,25,25,.16)}
+.skin-b .menu button{border-radius:6px}
+.skin-b .tip,.skin-b .toast{border-radius:6px}
+@media (hover:hover){
+  .skin-b .srow:not([aria-current="page"]):hover{background:rgba(255,255,255,.75)}
+  .skin-b .sp .ib:hover{background:rgba(255,255,255,.75)}
+  .skin-b .grp-head:hover{background:rgba(255,255,255,.6)}
+  .skin-b .row:not(.is-sel):hover{background:var(--paper)}
+}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none !important;transition:none !important}
+}
+/* ======== messages, mission style (a3-m1 objectives, a3-m2 mission cards) ======== */
+.msn .dt-scroll{padding:20px 28px 16px}
+.msn .col{max-width:668px}
+.msn .lbl{display:flex;align-items:center;gap:8px;height:16px;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--secondary);white-space:nowrap}
+.msn .lbl .num{letter-spacing:.04em;font-weight:500}
+.msn .lbl .ln{flex:1;height:1px;background:var(--contour)}
+.msn .lbl b{color:var(--ink);font-weight:600}
+.msn .sq{flex:none;display:grid;place-items:center;width:12px;height:12px;border:1.5px solid var(--secondary);background:var(--raised);color:var(--raised);--od-icon-size:10px;box-sizing:border-box}
+.msn .sq svg{stroke-width:2.6}
+.msn .is-done>.sq,.msn .sq.done{background:var(--dark-panel);border-color:var(--dark-panel)}
+.msn .is-run>.sq,.msn .sq.run{background:var(--yellow);border-color:var(--ink)}
+.msn .is-fail>.sq,.msn .sq.fail{background:var(--term-red);border-color:var(--term-red)}
+.msn .is-appr>.sq,.msn .sq.appr{background:var(--magenta);border-color:var(--magenta)}
+.msn mark{display:inline-block;background:none;color:var(--ink);font-weight:600;line-height:1.25;padding:0 1px;box-shadow:inset 0 -6px 0 rgba(255,250,0,.95)}
+.msn .hermes{padding:0;font-size:15px;line-height:1.6}
+.msn .hermes p{margin:0 0 10px}
+.msn .hermes ul,.msn .hermes ol{margin:0 0 10px}
+.msn .hermes pre{margin:0 0 10px}
+.msn .hermes pre code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12.5px}
+/* the objective: your message as a band, its square outside on the left */
+.msn .obj{position:relative;display:flex;align-items:flex-start;gap:12px;margin:18px 0 12px}
+.msn .obj>.sq{margin-top:14px}
+.msn .band{position:relative;flex:1;display:flex;align-items:baseline;gap:16px;min-height:42px;padding:10px 14px;background:rgba(255,255,255,.92);border-radius:4px;font-size:15px;font-weight:500;line-height:1.45}
+.msn .band p{margin:0;flex:1}
+.msn .band .tm{flex:none;font-size:11px;font-weight:400;color:var(--secondary)}
+.msn .ovtag{position:absolute;top:-10px;right:10px}
+.msn .ovtag .stk{height:18px;box-shadow:0 1px 4px rgba(25,25,25,.12)}
+.msn .reply{margin-left:24px}
+.msn .reply>.lbl{margin:0 0 8px}
+/* steps: the run's tool calls as sub-objectives */
+.msn .steps{margin:6px 0 4px;border-top:1px solid var(--rule)}
+.msn .st{display:flex;align-items:center;gap:10px;height:34px;padding:0 8px 0 2px;border-bottom:1px solid var(--rule);font-size:13px;color:var(--ink);--od-icon-size:14px}
+.msn .st .sq{width:10px;height:10px;--od-icon-size:8px}
+.msn .st .tool{flex:none;width:66px;font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--secondary)}
+.msn .st code{flex:1;min-width:0;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.msn .st .d{flex:none;font-size:11px;color:var(--secondary)}
+.msn .st.is-run{font-weight:600}
+.msn .st.is-run .d{color:var(--ink);font-weight:600}
+.msn .st.is-fail .d{color:var(--term-red);font-weight:600}
+.msn .st.sum b{font-weight:600}
+.msn .st.sum .d{margin-right:auto}
+.msn .st .chev{color:var(--secondary)}
+/* results: what the turn produced, as tiles with a coloured foot bar */
+.msn .res{display:flex;align-items:flex-end;gap:8px;margin:14px 0 6px}
+.msn .res>.lbl{flex:1;align-self:flex-end;margin-bottom:6px}
+.msn .tile{position:relative;flex:none;display:flex;flex-direction:column;justify-content:flex-start;gap:6px;width:80px;height:74px;padding:8px 9px 10px;background:var(--raised);border:1px solid var(--rule);border-radius:4px;box-shadow:inset 0 -3px 0 var(--bar);--od-icon-size:16px;color:var(--secondary);box-sizing:border-box}
+.msn .tile .n{display:block;margin-top:auto;font-size:20px;font-weight:500;line-height:20px;color:var(--ink)}
+.msn .tile .w{display:block;font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;line-height:10px;margin-top:-2px}
+.msn .t-ok{--bar:var(--term-green)}
+.msn .t-fail{--bar:var(--term-red)}
+.msn .t-link{--bar:var(--blue)}
+.msn .t-file{--bar:var(--dark-panel)}
+.msn .t-meta{--bar:var(--contour)}
+.msn .working{margin:2px 0 0;gap:8px}
+.msn .working::after{content:"";flex:1;height:2px;background:linear-gradient(90deg,var(--yellow) 0 34%,var(--rule) 34% 100%)}
+/* approval block */
+.msn .approve{margin:8px 0 4px;padding:12px 14px;background:var(--raised);border:1px solid var(--rule);border-radius:4px;box-shadow:inset 3px 0 0 var(--magenta)}
+.msn .approve .hd{font-size:10px;font-weight:600;letter-spacing:.14em;color:var(--secondary)}
+.msn .approve pre{background:var(--sunken);color:var(--ink);border:1px solid var(--rule);border-radius:4px;padding:10px 12px;margin:0 0 12px}
+.msn .approve pre code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12.5px}
+.msn .approve pre .p{color:var(--term-green)}
+.msn .btn-deny{background:var(--raised);color:var(--term-red);border-color:var(--term-red)}
+/* composer: the game's Track button as the send row */
+.msn .composer{padding:10px 16px 12px}
+.msn .runline{margin-bottom:8px}
+.msn .track{display:flex;align-items:center;gap:8px;height:46px;padding:0 5px 0 10px;background:var(--raised);border:1px solid var(--contour);border-radius:23px}
+.msn .track input{flex:1;min-width:0;height:36px;border:0;background:none;font:inherit;font-size:14px;color:var(--ink);outline:0;padding:0 4px}
+.msn .track input::placeholder{color:var(--secondary)}
+.msn .track .ib-clip{width:30px;height:30px;border:0;background:none;color:var(--secondary);--od-icon-size:16px;display:grid;place-items:center}
+.msn .stopc{flex:none;display:grid;place-items:center;width:34px;height:34px;padding:0;border:1px solid var(--rule);border-radius:50%;background:var(--raised)}
+.msn .stopc i{display:block;width:10px;height:10px;background:var(--term-red)}
+.msn .trk{flex:none;display:flex;align-items:center;gap:12px;height:36px;padding:0 4px 0 16px;border:1px solid var(--yellow);border-radius:18px;background:var(--yellow);font-size:11px;font-weight:600;letter-spacing:.14em;color:var(--ink);text-transform:uppercase}
+.msn .trk.plain{background:var(--raised);border-color:var(--rule)}
+.msn .trk .ring{display:grid;place-items:center;width:28px;height:28px;border:1.5px solid var(--ink);border-radius:50%;box-sizing:border-box;--od-icon-size:14px}
+.msn .trk.plain .ring{border-color:var(--secondary)}
+/* a3-m2: every turn a mission card, your words as its title */
+.msn2 .mc{position:relative;margin:0 0 14px;padding:14px 16px 12px 20px;background:rgba(255,255,255,.9);border:1px solid var(--rule);border-radius:4px;box-shadow:inset 3px 0 0 var(--bar,var(--contour))}
+.msn2 .mc.is-done{--bar:var(--term-green)}
+.msn2 .mc.is-run{--bar:var(--yellow);border-color:var(--contour)}
+.msn2 .mc.is-fail{--bar:var(--term-red)}
+.msn2 .mc.is-appr{--bar:var(--magenta)}
+.msn2 .mc-h{display:flex;align-items:flex-start;gap:12px}
+.msn2 .mc-h>.sq{margin-top:7px}
+.msn2 .mc-t{flex:1;min-width:0}
+.msn2 .mc h3{margin:0;font-size:19px;font-weight:500;line-height:1.35;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.msn2 .loc{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px;color:var(--secondary);white-space:nowrap}
+.msn2 .loc .pin{flex:none;width:8px;height:8px;background:var(--yellow);box-shadow:0 0 0 1px var(--ink)}
+.msn2 .loc b{font-weight:600;color:var(--ink)}
+.msn2 .mc .fold{flex:none;width:26px;height:26px;display:grid;place-items:center;border:1px solid var(--rule);border-radius:4px;background:var(--raised);color:var(--secondary);--od-icon-size:14px;padding:0}
+.msn2 .mc-rule{height:1px;margin:12px 0 12px 24px;background:var(--rule)}
+.msn2 .mc-b{margin-left:24px}
+.msn2 .mc.folded{padding-top:10px;padding-bottom:10px}
+.msn2 .mc.folded h3{font-size:15px;-webkit-line-clamp:1}
+.msn2 .mc.folded .loc{margin-top:3px}
+.msn2 .mini{display:flex;gap:6px;align-self:center}
+.msn2 .mini .tile{width:auto;height:34px;flex-direction:row;align-items:center;gap:6px;padding:0 9px 2px 8px;--od-icon-size:14px}
+.msn2 .mini .tile .n{font-size:14px;line-height:16px;margin:0}
+.msn2 .mini .tile .w{margin:0}
+.msn2 .hist{display:flex;align-items:center;gap:8px;margin:0 0 10px}
+.msn .runline .sq{width:8px;height:8px;border:0;background:var(--term-green)}
+.msn .runline .tm{text-transform:none;letter-spacing:0}
+.msn2 .mini .tile svg{flex:none}
+/* ======== chat entries as Endfield mission cards (#a3-c1, #a3-c2, #a3-c-states) ======== */
+.mcw .lc-scroll{padding-top:4px}
+.mcw .mg{position:relative;display:flex;align-items:center;gap:10px;height:30px;margin:14px 12px 12px;padding-bottom:0}
+.mcw .mg:first-child{margin-top:8px}
+.mcw .mg .ms{flex:none;display:grid;place-items:center;width:22px;height:22px;background:var(--yellow);color:var(--ink);border-radius:2px;box-shadow:0 0 0 1px var(--ink);--od-icon-size:14px}
+.mcw .mg .ms svg{stroke-width:2}
+.mcw .mg .ml{font-size:14px;font-weight:500;color:var(--ink);letter-spacing:0}
+.mcw .mg .mn{font-size:12px;font-weight:400;color:var(--secondary)}
+.mcw .mg::after{content:"";position:absolute;left:32px;right:0;bottom:-5px;height:1px;background:var(--contour)}
+.mcw .mg.ip{justify-content:flex-end;height:20px;margin-bottom:10px}
+.mcw .mg.ip .ml{font-size:12px;color:var(--secondary)}
+.mcw .mg.ip::after{display:none}
+.mcw .mg.ip .ln{flex:1;height:1px;background:var(--contour)}
+.mcw .mg.ip .ml{position:relative;z-index:1;background:transparent;padding-left:8px}
+.mcw .mg.ip .br{position:relative;z-index:1;flex:none;width:4px;height:14px;border:1.5px solid var(--yellow);border-left:0;box-shadow:1px 0 0 var(--ink)}
+.skin-a3.mcw .row.mc-row{display:flex;align-items:stretch;gap:0;width:calc(100% - 20px);height:56px;margin:0 10px 12px;padding:0;background:rgba(255,255,255,.9);border:1px solid var(--rule);border-radius:4px;box-shadow:none;overflow:visible}
+.skin-a3.mcw .row.mc-row::before{content:"";position:absolute;left:-1px;top:-1px;bottom:-1px;width:3px;background:var(--bar,var(--contour));border-radius:4px 0 0 4px}
+.mcw .mc-row.is-run{--bar:var(--yellow)}
+.mcw .mc-row.is-approval{--bar:var(--magenta)}
+.mcw .mc-row.is-failed{--bar:var(--term-red)}
+.mcw .mc-row.is-done{--bar:var(--term-green)}
+.mcw .mc-emb{position:relative;flex:none;display:grid;place-items:center;width:52px;color:var(--secondary);--od-icon-size:13px}
+.mcw .mc-emb .tri{position:absolute;left:11px;top:13px;width:30px;height:28px;color:var(--contour)}
+.mcw .mc-emb .tri svg{width:30px;height:28px;stroke-width:1.2}
+.mcw .mc-emb .gl{position:relative;margin-top:-6px;display:grid;place-items:center}
+.mcw .mc-emb .gl b{font-size:12px;font-weight:600;line-height:1;color:var(--secondary)}
+.mcw .mc-div{flex:none;align-self:center;width:1px;height:22px;background:var(--rule);margin-right:12px}
+.mcw .mc-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.mcw .mc-title{display:flex;align-items:center;gap:6px;min-width:0;font-size:14px;font-weight:500;line-height:19px;color:var(--ink);--od-icon-size:12px}
+.mcw .mc-title .t{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.mcw .mc-row.is-strong .mc-title{font-weight:600}
+.mcw .mc-title .pin{flex:none;color:var(--secondary)}
+.mcw .mc-sub{display:flex;align-items:center;gap:6px;min-width:0;font-size:12px;line-height:16px;color:var(--secondary);--od-icon-size:11px}
+.mcw .mc-sub .p{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.mcw .mc-sub .lock{flex:none}
+.mcw .mc-side{flex:none;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-end;gap:5px;width:52px;padding:0 10px 9px 0}
+.mcw .mc-time{font-size:11px;color:var(--secondary);line-height:1}
+.mcw .mc-hatch{display:block;width:14px;height:10px;background:repeating-linear-gradient(135deg,var(--contour) 0 1.5px,transparent 1.5px 4px)}
+.mcw .mc-tag{position:absolute;top:-10px;right:10px;z-index:2;display:inline-flex;align-items:center;gap:5px;height:19px;padding:0 9px 0 6px;border-radius:10px;background:var(--raised);color:var(--ink);font-size:11px;font-weight:600;line-height:1;white-space:nowrap;box-shadow:0 1px 3px rgba(25,25,25,.18),0 0 0 1px rgba(25,25,25,.06);--od-icon-size:12px}
+.mcw .mc-tag svg{stroke-width:2.2}
+.mcw .mc-tag.run{background:var(--yellow);box-shadow:0 1px 3px rgba(25,25,25,.18),0 0 0 1px var(--ink)}
+.mcw .mc-tag.approval{background:var(--magenta)}
+.mcw .mc-tag.failed svg{color:var(--term-red)}
+.mcw .mc-tag.done svg{color:var(--term-green)}
+.skin-a3.mcw .row.mc-row.is-sel{border-color:var(--ink);box-shadow:0 0 0 .5px var(--ink),0 2px 10px rgba(25,25,25,.10);background:linear-gradient(90deg,rgba(255,250,0,.95) 0,rgba(255,250,0,.55) 46px,rgba(255,250,0,0) 150px),repeating-linear-gradient(135deg,rgba(25,25,25,.035) 0 1px,transparent 1px 6px),var(--raised)}
+.mcw .mc-row.is-sel .mc-emb .tri{color:rgba(25,25,25,.28)}
+.mcw .mc-row.is-sel .mc-emb{color:var(--ink)}
+.mcw .mc-row.is-sel .mc-div{background:rgba(25,25,25,.25)}
+.skin-a3.mcw .row.mc-row.is-hover{background:var(--raised);border-color:var(--contour);box-shadow:0 1px 6px rgba(25,25,25,.08)}
+.mcw .mc-row .fr,.mcw .mc-row .hatch,.mcw .mc-row .idx{display:none!important}
+.mcw .cap{padding:6px 12px 8px}
+/* ---------- 18: search (#76) ---------- */
+.srw mark{background:rgba(255,250,0,.6);color:inherit;border-radius:2px;padding:0 1px}
+.srw mark.cur{background:var(--yellow);box-shadow:inset 0 -2px 0 var(--ink)}
+.srw .lc-search.sr-on{border-color:var(--ink)}
+.srw .lc-search .spin{flex:none;width:12px;height:12px;border:1.5px solid var(--rule);border-top-color:var(--ink);border-radius:50%;margin-right:4px}
+/* hit cards: the mission card with the matching line for its preview (two lines) and a hit count under the time */
+.skin-a3.mcw .row.mc-row.sr-card{height:72px}
+.mcw .sr-snip{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:12px;line-height:16px;color:var(--secondary);padding-right:4px}
+.mcw .sr-snip mark{color:var(--ink)}
+.mcw .sr-n{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--secondary);white-space:nowrap}
+.mcw .sr-card .mc-side{width:62px;justify-content:center;gap:6px;padding:0 10px 0 0}
+/* grouped results */
+.mcw .sr-grp{margin:0 10px 12px;background:rgba(255,255,255,.9);border:1px solid var(--rule);border-radius:4px;padding:4px 0 6px}
+.mcw .sr-grp.is-sel{border-color:var(--ink)}
+.mcw .sr-gh{display:flex;align-items:center;gap:8px;height:34px;padding:0 12px 0 0}
+.mcw .sr-gh .mc-emb{width:44px;height:34px}
+.mcw .sr-gh .mc-emb .gl{margin-top:-5px}
+.mcw .sr-gh .mc-emb .tri{left:9px;top:5px;width:26px;height:24px}
+.mcw .sr-gh .mc-emb .tri svg{width:26px;height:24px}
+.mcw .sr-gh .t{flex:1;font-size:14px;font-weight:500}
+.mcw .sr-gh .n{font-size:11px;color:var(--secondary)}
+.mcw .sr-line{display:grid;grid-template-columns:44px 1fr;gap:0;width:100%;text-align:left;padding:4px 12px 4px 0;border:0;background:none;font:inherit;cursor:pointer}
+.mcw .sr-line .tm{font-size:11px;color:var(--secondary);text-align:center;padding-top:1px}
+.mcw .sr-line .s{font-size:12px;line-height:16px;color:var(--secondary);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.mcw .sr-line .s mark{color:var(--ink)}
+.mcw .sr-line.is-cur{background:linear-gradient(90deg,rgba(255,250,0,.55),rgba(255,250,0,0) 70%)}
+.mcw .sr-more{display:block;margin:2px 0 0 44px;padding:2px 0;border:0;background:none;font:inherit;font-size:12px;color:var(--ink);text-decoration:underline;text-decoration-color:var(--rule);text-underline-offset:3px}
+/* find bar under the title rule */
+.fb{position:relative;z-index:2;display:flex;align-items:center;gap:8px;height:44px;padding:0 16px;background:rgba(255,255,255,.88);border-bottom:1px solid var(--rule);--od-icon-size:14px}
+.fb .fld{flex:0 1 320px;display:flex;align-items:center;gap:6px;height:30px;padding:0 8px;border:1px solid var(--ink);border-radius:4px;background:#fff;color:var(--secondary)}
+.fb .fld input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:14px;color:var(--ink)}
+.fb .fld .x{display:grid;place-items:center;width:16px;height:16px;border-radius:50%;background:var(--sunken);color:var(--secondary);--od-icon-size:9px}
+.fb .cnt{min-width:96px;font-size:12px;color:var(--secondary);white-space:nowrap}
+.fb .cnt.none{color:var(--term-red)}
+.fb .ib{width:28px;height:28px}
+.fb .flip{display:grid;transform:scaleY(-1)}
+.fb .fsp{flex:1}
+.fb .hint{font-size:12px;color:var(--secondary)}
+.fb kbd{margin-right:4px}
+.srw .hermes.hit-msg{box-shadow:inset 3px 0 0 var(--yellow);padding-left:15px}
+/* states sheet */
+.win-states.srw{display:block;height:auto;min-height:0;padding:16px 0 8px}
+.srw .st-grid{position:relative;display:grid;grid-template-columns:520px minmax(0,1fr);gap:0}
+.srw .st-left{border-right:1px solid var(--rule)}
+.srw .st-cell{padding:8px 0 14px;border-bottom:1px solid var(--rule)}
+.srw .st-cell:last-child{border-bottom:0}
+.srw .st-left .lc-search{margin:4px 12px 8px}
+.srw .sr-col{position:relative}
+.srw .sr-note{margin:0 12px 6px 22px;font-size:12px;line-height:17px;color:var(--secondary)}
+.srw .sr-note.warn{color:var(--ink)}
+.srw .sr-note code{display:block;margin-top:4px;font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12px;color:var(--secondary)}
+.srw .st-right .fb{margin:4px 16px 0;border:1px solid var(--rule);border-radius:4px}
+.srw .sr-demo{padding:6px 16px 0;max-width:none}
+/* the shipped header rule (back on Martin's ask, 2026-11-11): 4 pt magenta, yellow, green to the edge */
+.srw.skin-a3 .dt-rule{height:4px;background:none}
+.srw.skin-a3 .dt-rule i{height:4px}
+.srw.skin-a3 .dt-rule .m{width:48px;background:var(--magenta);margin:0}
+.srw.skin-a3 .dt-rule .y{width:120px;background:var(--yellow)}
+.srw.skin-a3 .dt-rule .g{display:block;flex:1;background:var(--green)}
+.srw .st-right .fb .fld{flex:0 0 160px;min-width:0;width:160px}
+.srw .st-right .fb .fld input{width:0}
+.srw .st-right .fb .cnt{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis}
+.srw .st-right .fb .fsp{display:none}
+.srw .st-right .fb .hint{display:none}
+.srw .st-right .cap{white-space:normal}
+.srw .st-right{min-width:0;overflow:hidden}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- icons: one line family, 1.6 stroke, square ends ---------- */
+const P = {
+  chat:'<path d="M4 5h16v11H9l-5 4z"/>',
+  pr:'<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><path d="M6 8v8M18 16v-7a3 3 0 0 0-3-3h-4M13 4l-2 2 2 2"/>',
+  agents:'<rect x="7" y="7" width="10" height="10"/><path d="M10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4"/>',
+  jobs:'<rect x="4" y="5" width="16" height="15"/><path d="M4 10h16M8 3v4M16 3v4"/>',
+  cmd:'<path d="M4 6h2M4 12h2M4 18h2M9 6h11M9 12h11M9 18h11"/>',
+  app:'<rect x="4" y="4" width="16" height="16"/><path d="M8 9h8M12 9v8"/>',
+  telegram:'<path d="M21 4 3 11l6 2 2 6 3-4 5 4zM9 13l12-9"/>',
+  terminal:'<rect x="3" y="5" width="18" height="14"/><path d="m7 10 3 2-3 2M12 15h5"/>',
+  oneshot:'<path d="M4 12h15M14 7l5 5-5 5"/>',
+  cron:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+  all:'<path d="m4 8 8-4 8 4-8 4zM4 12l8 4 8-4M4 16l8 4 8-4"/>',
+  more:'<circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="currentColor" stroke="none"/>',
+  plus:'<path d="M12 5v14M5 12h14" stroke-width="2"/>',
+  search:'<circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/>',
+  pin:'<path d="M9 4h6l-1 6 3 3H7l3-3zM12 13v7"/>',
+  chev:'<path d="m6 9 6 6 6-6"/>',
+  sidebar:'<rect x="3" y="5" width="18" height="14"/><path d="M9 5v14"/>',
+  sliders:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+  laptop:'<rect x="5" y="5" width="14" height="10"/><path d="M3 19h18"/>',
+  clip:'<path d="m16 8-6.5 6.5a2 2 0 0 1-3-3L13 5a3.5 3.5 0 0 1 5 5l-7 7a5 5 0 0 1-7-7l6-6"/>',
+  arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+  lock:'<rect x="6" y="11" width="12" height="9"/><path d="M9 11V8a3 3 0 0 1 6 0v3"/>',
+  diamond:'<path d="m12 4 8 8-8 8-8-8z" fill="currentColor" stroke="none"/>',
+  ring:'<path d="M12 5a7 7 0 1 1-7 7" stroke-width="3.2"/>',
+  cross:'<path d="m6 6 12 12M18 6 6 18" stroke-width="3.4"/>',
+  check:'<path d="m5 12 5 5 9-10" stroke-width="3.4"/>',
+  tick:'<path d="m5 12 5 5 9-10"/>',
+  refresh:'<path d="M19 12a7 7 0 1 1-2.05-4.95M19 4v4h-4"/>',
+  ext:'<path d="M7 17 17 7M9 7h8v8"/>',
+  eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  board:'<rect x="4" y="4" width="16" height="16"/><path d="M9.3 4v16M14.7 4v16"/>',
+  play:'<path d="m7 5 12 7-12 7z" fill="currentColor" stroke="none"/>',
+  pause:'<path d="M8 5v14M16 5v14" stroke-width="2.4"/>',
+  edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+  warn:'<path d="M12 4 2 20h20zM12 10v4M12 17v.5"/>',
+  lines:'<path d="M4 7h16M4 12h16M4 17h16"/>',
+  up:'<path d="M12 19V5M6 11l6-6 6 6"/>',
+  back:'<path d="M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3"/>',
+};
+const ic = (n, cls = '') => `<svg class="od-icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" aria-hidden="true">${P[n]}</svg>`;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const mmss = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
+/* ---------- data ---------- */
+const SECTIONS = [
+  {id:'chat', label:'Chat', icon:'chat', mark:'auto'},
+  {id:'github', label:'GitHub', icon:'pr', count:3, hint:'issues waiting for your check'},
+  {id:'agents', label:'Agents', icon:'agents', count:1, hint:'background agent running'},
+  {id:'jobs', label:'Jobs', icon:'jobs', mark:'failed', hint:'one job failed'},
+  {id:'commands', label:'Commands', icon:'cmd'},
+];
+const KINDS = [
+  {id:'app', label:'App', icon:'app', count:10, mark:'auto'},
+  {id:'telegram', label:'Telegram', icon:'telegram', count:4},
+  {id:'terminal', label:'Terminal', icon:'terminal', count:9},
+  {id:'oneshot', label:'One-shots', icon:'oneshot', count:2},
+  {id:'cron', label:'Cron', icon:'cron', count:6},
+  {id:'all', label:'All', icon:'all', count:31},
+];
+const RANK = {approval:4, run:3, failed:2, done:1};
+const STATE_WORD = {approval:'Approval', run:'Run', failed:'Failed', done:'Done'};
+const STATE_GLYPH = {approval:'diamond', run:'ring', failed:'cross', done:'check'};
+const STATE_LONG = {approval:'Approval waiting', run:'Run in progress', failed:'Failed, not seen yet', done:'Done, not seen yet'};
+
+const BASE = [
+  {id:'swift', title:'Swift app', time:'now', pinned:true, state:'run', run:36, preview:'Checking the sidebar with cua-driver, 2 tools running',
+   sub:'Trismegistus · run_7f3a2c · started 13:52'},
+  {id:'tris', title:'Trismegistus', time:'1 h', pinned:true, state:'done', preview:'Relay handshake passes on macbook, pixel and ipad',
+   ask:'re-run the relay handshake on every paired device', reply:'<p>Done. The relay handshake passes on <b>macbook</b>, <b>pixel</b> and <b>ipad</b>; median round trip 38 ms, no retries.</p>'},
+  {id:'android', title:'Android app', time:'2 h', pinned:true, state:'approval', preview:'Wants to run ./gradlew assembleRelease',
+   ask:'build a release apk once the tests pass', reply:'<p>All 212 unit tests pass. The next step signs and builds the release APK, so it needs your approval.</p>', approve:'./gradlew assembleRelease'},
+  {id:'wf', title:'Workflow refiner', time:'2 d', pinned:true, state:'failed', preview:'Step 4 timed out after 120 s',
+   ask:'refine the nightly workflow and run it once', reply:'<p>Step 4 (fetch issue labels) timed out after 120 s. Steps 1–3 finished; nothing was written.</p>'},
+  {id:'compare', title:'Compare Open Design vs Penpot', time:'5 min', preview:'Penpot exports SVG per board; Open Design keeps HTML',
+   ask:'compare open design and penpot for handoff', reply:'<p>Penpot exports SVG per board and keeps components in its own file. Open Design keeps editable HTML, so the handoff is the source itself.</p>'},
+  {id:'relay', title:'xMuramasa/homelab#1: Add the Trismegistus relay', time:'1 h', tags:['homelab','relay','infra'], preview:'Relay config drafted, PR waiting for your review',
+   ask:'pick up homelab#1', reply:'<p>The relay config is drafted in <code>relay/compose.yml</code>. The PR is open and waiting for your review.</p>'},
+  {id:'home', title:'Homepage project', time:'1 h', state:'done', preview:'Build passes; preview deployed for review',
+   ask:'rebuild the homepage with the new hero', reply:'<p>The build passes and the preview is deployed for review. Lighthouse 98 / 100 / 100 / 100.</p>'},
+  {id:'brief', title:'The briefing project', time:'3 h', preview:'Outline v2: 6 sections, sources linked',
+   ask:'tighten the briefing outline', reply:'<p>Outline v2 has 6 sections; every claim links its source.</p>'},
+  {id:'mage', title:'MAGE-SYS', time:'yesterday', preview:'Migration plan: 3 tables, no downtime',
+   ask:'plan the schema migration', reply:'<p>The migration touches 3 tables and runs online, with no downtime.</p>'},
+  {id:'news', title:'Morning news digest', time:'9 h', src:'cron', readOnly:true, preview:'07:00 digest: 12 items, 3 flagged for you',
+   ask:null, reply:'<p>07:00 digest: 12 items, 3 flagged for you. This conversation is written by a cron job and is read-only.</p>'},
+  {id:'infra', title:'Homelab infra research', time:'2 d', preview:'Proxmox vs k3s on the N100 box: notes',
+   ask:'research proxmox vs k3s for the n100 box', reply:'<p>Notes are in. k3s fits the N100’s 16 GB better; Proxmox wins if you want VMs.</p>'},
+];
+
+const SWIFT_HTML = `
+<div class="who num">You // 13:42</div>
+<div class="you">i already ran open, could you use cua-driver on my mac to test the ui?</div>
+<div class="who num">Hermes // 13:49</div>
+<div class="hermes">
+  <p>I’m testing through macOS accessibility in the background, so I haven’t taken over your screen. That covers structure and text; screenshots need the window in front.</p>
+  <p>Checked and working:</p>
+  <ul>
+    <li><b>#41, sections:</b> Chat, GitHub, Agents, Jobs and Commands each switch and show their list.</li>
+    <li><b>#48, chat kinds:</b> App 10, Telegram 4, Terminal 9, One-shots 2, Cron 6.</li>
+    <li><b>#50, runs on issues:</b> homelab#1 shows its finished run and jumps to Agents with that run selected.</li>
+  </ul>
+  <p>Small defects:</p>
+  <ol>
+    <li>The chat header says “run run_”; the run id is cut down to “run_”.</li>
+    <li>Some buttons read their label twice (“Looks good, Looks good”).</li>
+  </ol>
+<pre><code><span class="p">$</span> cua-driver inspect --app Trismegistus --depth 2
+window   "Trismegistus"  1560×1122
+  sidebar  sections=5  kinds=6  current="Chat"
+  list     rows=11     selected="Swift app"
+  detail   messages=4  composer=steer</code></pre>
+  <p>The cua-driver daemon is still running on your Mac. <code>cua-driver stop</code> ends it.</p>
+</div>
+<button class="cmdchip" type="button" data-act="cmds" data-key="cmds" aria-expanded="false">&gt;_ 4 COMMANDS · 6.1 S ${ic('chev','chev')}</button>
+<div class="hermes cmdlist" hidden><pre><code><span class="p">$</span> cua-driver status                      <span class="c">0.4 s</span>
+<span class="p">$</span> cua-driver inspect --app Trismegistus  <span class="c">2.9 s</span>
+<span class="p">$</span> cua-driver click "Chat" --dry-run     <span class="c">1.1 s</span>
+<span class="p">$</span> cua-driver inspect --depth 2           <span class="c">1.7 s</span></code></pre></div>
+<div class="who num">You // 13:52</div>
+<div class="you">go ahead i set it up a second screen for me to work while you check</div>`;
+
+/* ---------- contour lines ---------- */
+function contours(w, h) {
+  const cx = w * .78, cy = h * .72, m = Math.min(w, h);
+  let out = '';
+  for (let k = 1; k <= 18; k++) {
+    const r0 = k * m * .045;
+    let d = '';
+    for (let i = 0; i <= 180; i++) {
+      const t = i / 180 * Math.PI * 2;
+      const r = r0 * (1 + .045 * Math.sin(3 * t + k * .7) + .03 * Math.sin(5 * t + k * 1.3) + .02 * Math.sin(7 * t + k * .4));
+      d += `${i ? 'L' : 'M'}${(cx + r * Math.cos(t) * 1.35).toFixed(1)} ${(cy + r * Math.sin(t)).toFixed(1)}`;
+    }
+    out += `<path d="${d}Z" stroke="#C8C8C0" stroke-width="1" fill="none" opacity="${k % 5 === 0 ? .9 : .55}"/>`;
+  }
+  return `<svg class="contours" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">${out}</svg>`;
+}
+
+/* ======== chat entries as Endfield mission cards ======== */
+let MCARDS = 0;   // 0 off, 1 = today's groups, 2 = with an In progress group on top
+P.tri = '<path d="M3 4h18l-9 16z"/>';
+P.clock2 = '<circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/>';
+P.bang = '<path d="M9 5v9M15 5v9M9 18v1M15 18v1"/>';
+function mcEmblem(src) {
+  const g = src === 'cron' ? ic('cron') : src === 'telegram' ? ic('telegram') : src === 'terminal' ? ic('terminal') : '<b>T</b>';
+  return `<span class="mc-emb" aria-hidden="true"><span class="tri">${ic('tri')}</span><span class="gl">${g}</span></span>`;
+}
+function mcTag(c) {
+  if (!c.state) return '';
+  if (c.state === 'run') return `<span class="mc-tag run">${ic('clock2')}<span class="num" data-run="${c.id}">${mmss(c.run)}</span></span>`;
+  const glyph = {approval: 'diamond', failed: 'cross', done: 'check'}[c.state];
+  return `<span class="mc-tag ${c.state}">${ic(glyph)}<span>${STATE_WORD[c.state]}</span></span>`;
+}
+function missionRow(c, selId, extra = '') {
+  const sel = selId === c.id;
+  return `<button class="row mc-row ${c.state ? 'is-' + c.state : ''} ${sel ? 'is-sel' : ''} ${c.state || sel ? 'is-strong' : ''} ${extra}" type="button" data-act="row" data-id="${c.id}" data-key="row-${c.id}" ${sel ? 'aria-current="true"' : ''}
+      aria-label="${esc(c.title)}, ${c.state ? STATE_LONG[c.state] + ', ' : ''}${esc(c.time)}${c.pinned ? ', pinned' : ''}">
+    ${mcTag(c)}${mcEmblem(c.src)}<span class="mc-div" aria-hidden="true"></span>
+    <span class="mc-body">
+      <span class="mc-title"><span class="t">${esc(c.title)}</span>${c.pinned ? `<span class="pin">${ic('pin')}</span>` : ''}</span>
+      <span class="mc-sub">${c.readOnly || c.src === 'cron' ? `<span class="lock">${ic('lock')}</span>` : ''}<span class="p">${esc(c.preview)}</span></span>
+    </span>
+    <span class="mc-side"><span class="mc-time num">${esc(c.time)}</span><span class="mc-hatch" aria-hidden="true"></span></span>
+  </button>`;
+}
+function missionHead(label, n, glyph) {
+  if (label === 'In progress') return `<div class="mg ip" role="presentation"><i class="ln" aria-hidden="true"></i><span class="ml">In progress</span><span class="br" aria-hidden="true"></span></div>`;
+  return `<div class="mg" role="presentation"><span class="ms" aria-hidden="true">${ic(glyph || (label === 'Pinned' ? 'pin' : 'chat'))}</span><span class="ml">${esc(label)}</span><span class="mn num">${n}</span></div>`;
+}
+
+/* ---------- pieces ---------- */
+function sticker(state, conv, glyphOnly) {
+  if (!state) return '';
+  const g = `<span class="g">${ic(STATE_GLYPH[state])}</span>`;
+  if (glyphOnly) return `<span class="stk go stk-${state}" role="img" aria-label="${STATE_LONG[state]}" data-tip="${STATE_LONG[state]}">${g}</span>`;
+  const t = state === 'run' ? `<span class="t num" data-run="${conv.id}">${mmss(conv.run)}</span>` : '';
+  return `<span class="stk stk-${state}">${g}<span class="w">${STATE_WORD[state]}${t}</span></span>`;
+}
+function avatar(src) {
+  if (src === 'cron') return `<span class="av av-cron" aria-hidden="true">${ic('cron')}</span>`;
+  if (src === 'telegram') return `<span class="av av-telegram" aria-hidden="true">${ic('telegram')}</span>`;
+  if (src === 'terminal') return `<span class="av av-terminal" aria-hidden="true">${ic('terminal')}</span>`;
+  return `<span class="av av-app" aria-hidden="true">T</span>`;
+}
+
+function rowMarkup(c, selId, extra = '', idx = null) {
+  if (MCARDS) return missionRow(c, selId, extra);
+  const sel = selId === c.id;
+  const tags = c.tags.slice(0, 2).map(t => `<span class="tag">${esc(t)}</span>`).join('') + (c.tags.length > 2 ? `<span class="tag-more num">+${c.tags.length - 2}</span>` : '');
+  return `<button class="row ${sel ? 'is-sel on-dark' : ''} ${c.state || sel ? 'is-strong' : ''} ${extra}" type="button" data-act="row" data-id="${c.id}" data-key="row-${c.id}" ${sel ? 'aria-current="true"' : ''}
+      aria-label="${esc(c.title)}, ${c.state ? STATE_LONG[c.state] + ', ' : ''}${esc(c.time)}${c.pinned ? ', pinned' : ''}">
+    ${idx != null ? `<span class="idx num" aria-hidden="true">${String(idx).padStart(2, '0')}</span>` : ''}${avatar(c.src)}
+    <span class="row-body">
+      <span class="hatch" aria-hidden="true"></span>
+      <span class="row-l1"><span class="row-title od-truncate">${esc(c.title)}</span><span class="row-time num">${esc(c.time)}</span></span>
+      <span class="row-l2"><span class="row-prev od-truncate">${esc(c.preview)}</span>${c.readOnly ? `<span class="lock" title="Read-only">${ic('lock')}</span>` : ''}${tags}${sticker(c.state, c)}${c.pinned ? `<span class="pin">${ic('pin')}</span>` : ''}</span>
+    </span>
+    <span class="fr" aria-hidden="true"><i class="nd tl"></i><i class="nd tr"></i><i class="nd bl"></i><i class="nd br"></i></span>
+  </button>`;
+}
+
+/* ---------- #a2-states: one list column, a card in every state ---------- */
+function createStates(skin = 'a2') {
+  const B = id => ({...BASE.find(c => c.id === id), src:'app', tags:[], extra:[]});
+  const conv = (id, patch) => ({...B(id), ...patch, tags:(patch && patch.tags) || B(id).tags || []});
+  const items = [
+    ['Idle', conv('brief', {})],
+    ['Hovered', conv('mage', {}), 'is-hover'],
+    ['Selected · running · pinned', conv('swift', {}), '', true],
+    ['Running (not selected)', conv('swift', {id:'swift2', run:252, pinned:false, title:'Swift app — second run'})],
+    ['Approval · pinned', conv('android', {})],
+    ['Failed · pinned', conv('wf', {})],
+    ['Done', conv('home', {})],
+    ['Pinned, no state', conv('tris', {state:null})],
+    ['Read-only (cron)', conv('news', {src:'cron'})],
+    ['Tagged (2 + 1)', conv('relay', {tags:['homelab','relay','infra']})],
+  ];
+  items.forEach(([, c]) => { if (c.id === 'news') c.src = 'cron'; if (!Array.isArray(c.tags)) c.tags = []; });
+  const win = document.createElement('div');
+  win.className = skin === 'a3' ? 'win skin-a3 win-states' : 'win skin-a skin-a2 win-states';
+  win.style.setProperty('--w', '520px');
+  win.setAttribute('aria-label', `#${skin} card states`);
+  win.innerHTML = `${contours(520, 1122)}
+    <section class="lc" aria-label="Card states">
+      <header class="lc-head">
+        <button class="ib" type="button" aria-label="List actions" data-tip="Rename, tags, hand off">${ic('more')}</button>
+        <div class="lc-title num">${skin === 'a3' ? '<span class="lbl3">// States</span><span class="big">10</span>' : 'States<span class="sl">//</span>10'}</div>
+        <button class="ib ib-plus" type="button" aria-label="New conversation" data-tip="New conversation  ⌘N">${ic('plus')}</button>
+      </header>
+      <label class="lc-search">${ic('search')}<span class="sr">Filter conversations</span><input type="search" placeholder="Filter" autocomplete="off"><kbd>⌘K</kbd></label>
+      <div class="lc-scroll">
+        <div class="lsh">${skin === 'a3' ? '<span>// Card states</span><i class="ln"></i><span class="n num">10</span>' : 'Card states<span class="n num">10</span>'}</div>
+        ${items.map(([cap, c, extra, sel], i) => `<div class="cap">${cap}</div>${rowMarkup(c, sel ? c.id : null, extra || '', i + 1)}`).join('')}
+      </div>
+    </section>`;
+  WINS.push({win, tick() {
+    items.forEach(([, c]) => { if (c.state === 'run') { c.run++; win.querySelectorAll(`[data-run="${c.id}"]`).forEach(n => { n.textContent = mmss(c.run); }); } });
+  }, focusFilter() { win.querySelector('input').focus(); }});
+  return win;
+}
+
+
+/* ---------- sections data (#a2 / #a3) ---------- */
+const SECTIONS_FULL = [
+  {id:'chat', label:'Chat', icon:'chat', mark:'auto'},
+  {id:'github', label:'GitHub', icon:'pr', count:11, hint:'issues need your check'},
+  {id:'agents', label:'Agents', icon:'agents', count:0, hint:'running'},
+  {id:'jobs', label:'Jobs', icon:'jobs'},
+  {id:'commands', label:'Commands', icon:'cmd'},
+];
+const EXTRA_CONVS = [
+  {id:'lab', at:4, title:'lab maintenance', time:'now', kind:'app', preview:'Checked containers, failed units and disk space',
+   ask:'quick health check on the lab box', reply:'<p>Containers are up, no failed user units, and the root disk has room. The three commands are in Commands under “lab maintenance”.</p>'},
+  {id:'qa', title:'QA', time:'5 d', kind:'app', preview:'Test notes for the current build',
+   ask:'collect the QA notes for this build', reply:'<p>The notes for the current build are collected in this conversation.</p>'},
+  {id:'tg1', title:'Homelab mega-thread', time:'2 Nov', kind:'telegram', src:'telegram', readOnly:true, sub:'Telegram · read-only', preview:'Ongoing notes on the homelab setup',
+   ask:'keeping the homelab notes here', reply:'<p>Noted. This thread keeps the running notes on the homelab setup.</p>'},
+  {id:'tg2', title:'Weekly AI news feed', time:'19 Oct', kind:'telegram', src:'telegram', readOnly:true, tags:['cron delivery'], sub:'Telegram · cron delivery · read-only', preview:'This week’s digest, delivered by cron',
+   ask:null, reply:'<p>This week’s AI news digest, delivered by a cron job.</p>'},
+  {id:'tg3', title:'Casual check-in greeting', time:'15 Oct', kind:'telegram', src:'telegram', readOnly:true, sub:'Telegram · read-only', preview:'A quick hello and a status check',
+   ask:'hey, how is everything?', reply:'<p>All good here. Nothing needs you right now.</p>'},
+  {id:'tg4', title:'Computer hardware running assistants', time:'14 Oct', kind:'telegram', src:'telegram', readOnly:true, sub:'Telegram · read-only', preview:'Which machines can host local assistants',
+   ask:'which of my machines could run a local assistant?', reply:'<p>A short comparison of the machines you have and what each could host.</p>'},
+  {id:'tm1', title:'Resume previous run after limit', time:'6 d', kind:'terminal', src:'terminal', sub:'Terminal session', preview:'Picked up the run where it stopped',
+   ask:'resume the previous run', reply:'<p>Resumed from the last finished step.</p>'},
+  {id:'tm2', title:'Arch Linux Arknights Endfield theme', time:'26 Oct', kind:'terminal', src:'terminal', sub:'Terminal session', preview:'Theme notes for the desktop',
+   ask:'endfield-style theme for my arch desktop', reply:'<p>Theme notes are collected in this conversation.</p>'},
+  {id:'tm3', title:'Identify redundant services', time:'20 Oct', kind:'terminal', src:'terminal', sub:'Terminal session', preview:'A list of services to review',
+   ask:'which services are redundant?', reply:'<p>A list of services to review is in this conversation.</p>'},
+  {id:'tm4', title:'Explore uses for OptiPlex', time:'20 Oct', kind:'terminal', src:'terminal', sub:'Terminal session', preview:'Ideas for the OptiPlex machine',
+   ask:'what could the optiplex do?', reply:'<p>Some ideas for the OptiPlex are in this conversation.</p>'},
+  {id:'tm5', title:'Change timezone from UTC', time:'16 Oct', kind:'terminal', src:'terminal', sub:'Terminal session', preview:'Timezone set on the host',
+   ask:'change the timezone from utc', reply:'<p>The host’s timezone is changed from UTC.</p>'},
+];
+
+const GH_GROUPS = [
+  {id:'prog', label:'In progress', n:1, items:[{n:63, t:'Polish pass build (tracking #56)', p:'P1', status:'In progress'}]},
+  {id:'ready', label:'Ready', n:1, items:[{n:66, t:'Run alerts: sounds and unseen marks (done/failed) on rows, tabs, footer, menu bar; Settings per event', p:'P1', status:'Ready', tags:['area: ui','area: app','area: kit'], agent:'none yet'}]},
+  {id:'todo', label:'Todo', n:1, items:[{n:51, t:'Snapshot renderer: PNG of every section from fixtures, for design checks', p:'P2', status:'Todo'}]},
+  {id:'check', label:'Needs check', n:11, items:[
+    {n:68, t:'Window: three columns, B2 rounded (floating section panel, Chats group, device row, list column, detail header; no top bar)', p:'P1', status:'Needs check', tags:['area: app','agent: opus'], agent:'opus'},
+    {n:65, t:'Sidebar: the B2 look', p:'P1', status:'Needs check'},
+    {n:64, t:'Chat: a real terminal under the conversation (⌘⌥T)', p:'P1', status:'Needs check'},
+    {n:62, t:'Commands: grouped by conversation, the command in the folded header, exit codes', p:'P1', status:'Needs check'},
+    {n:61, t:'Jobs: schedule as a readout, the prompt as readable text', p:'P1', status:'Needs check'},
+    {n:60, t:'Agents: the run as steps, the result on top', p:'P1', status:'Needs check'},
+    {n:59, t:'GitHub: issue body with real checklists and a done/total readout', p:'P1', status:'Needs check'},
+  ]},
+  {id:'done', label:'Done', n:54, items:[]},
+];
+const GH_ALL = GH_GROUPS.flatMap(g => g.items);
+const GH_DECISIONS = ['Only runs the relay sees', 'Three events: approval waiting, run finished, run failed', 'Looking at it: the conversation is open, the app active, the window visible', 'Unseen state is local to this Mac'];
+const GH_TASKS = ['Kit Unseen tracker', 'Strongest state', 'Marks', 'App glue', 'Settings', 'SPEC.md', 'Tests'];
+const GH_CHECKS = [
+  'The traffic lights inside the panel; resize, full screen and back, hide the panel (⌃⌘S) and show it again.',
+  'Clicking the list header’s … and +, and the detail header’s buttons.',
+  'Sections with counts (GitHub needs-check, Agents running, Jobs failed); ⌘1–⌘5.',
+  'The Chats group: fold, pick a kind from another section.',
+  'The device row: link state, … → Settings, Unpair….',
+  'Cards with previews, stickers, the selected frame; dragging the list column’s edge.',
+  'The floating composer; no monospace outside code blocks and the terminal.',
+];
+
+const AG_RUNS = [
+  {id:'r68', title:'#68 Window: three columns, B2 rounded', run:'run_trismegistus-mac-issue-68', issue:68, when:'finished 11:20', time:'11:20', dur:'34 min', turns:179,
+   result:'The three-column window is built and all five gates pass with no compiler warnings. Two parts of done-when are still open: Martin hasn’t checked it on screen, and Hermes needs to review the snapshots.',
+   steps:['Radius tokens: s/m/l/xl in tokens.json, Tokens.swift regenerated.',
+     'Window, three columns: WindowColumns (panel 300 inset 8, list 380–720 default 520), hidden title bar, TrafficLights.',
+     'Top bar gone: link in the device row, terminal + Settings in detail headers.',
+     'Section rows: 40 pt rows, yellow block, badges.',
+     'Chats group: folding head, kinds with counts.',
+     'Device row: avatar, link line, … with Settings and Unpair.',
+     'List header, cards, other sections, detail header, floating composer.',
+     'No mono: run line, key caps, commands chip, inline code.',
+     'Tests: WindowA2Tests (16), gates: Linux 338, Mac 347, UI 130, build 0 warnings.']},
+  {id:'r65', title:'#65 Sidebar: the B2 look', run:'run_trismegistus-mac-issue-65', issue:65, when:'6 Nov 17:57', time:'6 Nov', dur:'29 min'},
+  {id:'r64', title:'#64 Chat: the terminal drawer', run:'run_trismegistus-mac-issue-64', issue:64, when:'4 Nov', time:'4 Nov'},
+  {id:'r31', title:'trismegistus#31 Relay + host helper: a shell on optiplex', run:'run_trismegistus-issue-31', when:'4 Nov', time:'4 Nov'},
+  {id:'r62', title:'#62 Commands', run:'run_trismegistus-mac-issue-62', issue:62, when:'4 Nov', time:'4 Nov'},
+  {id:'r61', title:'#61 Jobs', run:'run_trismegistus-mac-issue-61', issue:61, when:'4 Nov', time:'4 Nov'},
+];
+
+const AI_PROMPT = `Produce a daily AI news digest for a personal news reader (a web app, plus a short notice in Telegram), covering the last ~24 hours (since the previous edition). Use web_search and web_extract to find and verify real, dated news from reputable sources (official lab blogs, arXiv, The Verge, Ars Technica, TechCrunch, Reuters, The Information, Hugging Face, GitHub trending, etc.). Only include items published in the last ~24 hours; verify dates. Never invent items or links.
+
+Your previous edition (JSON) may be provided via continuity. Avoid repeating stories already covered unless there is a significant update, which you mark as an update (see CONTINUITY below).`;
+const NEXT3 = t => [`Wed 11 Nov ${t}`, `Thu 12 Nov ${t}`, `Fri 13 Nov ${t}`];
+const JOBS = [
+  {id:'ai', title:'Daily AI news feed', cad:'daily 03:00', cadLong:'Daily at 03:00', cron:'0 3 * * *', next:'03:00', nexts:NEXT3('03:00'), last:'03:04', lastLong:'Tue 10 Nov 03:04', model:'claude-haiku-5-5', extra:'web tools', prompt:AI_PROMPT},
+  {id:'cl', title:'Daily Chile news feed', cad:'daily 03:00', cadLong:'Daily at 03:00', cron:'0 3 * * *', next:'03:00', nexts:NEXT3('03:00'), last:'03:11', lastLong:'Tue 10 Nov 03:11'},
+  {id:'cy', title:'Daily cyber news feed', cad:'daily 03:00', cadLong:'Daily at 03:00', cron:'0 3 * * *', next:'03:00', nexts:NEXT3('03:00'), last:'03:11', lastLong:'Tue 10 Nov 03:11'},
+  {id:'pub', title:'News publisher', cad:'every 5 min', cadLong:'Every 5 minutes', cron:'*/5 * * * *', next:'14:52', nexts:['Tue 10 Nov 14:52', 'Tue 10 Nov 14:57', 'Tue 10 Nov 15:02'], last:'14:47', lastLong:'Tue 10 Nov 14:47', script:true},
+  {id:'cln', title:'News runs cleanup', cad:'daily 04:00', cadLong:'Daily at 04:00', cron:'0 4 * * *', next:'04:00', nexts:NEXT3('04:00'), last:'04:00', lastLong:'Tue 10 Nov 04:00', script:true, tg:true},
+];
+
+const CMD_GROUPS = [
+  {id:'tw', title:'Trismegistus window', calls:[
+    {id:'c1', cmd:'scripts/mac-swift.sh TrismegistusUI test --filter WindowA2Tests', exit:0, dur:'48 s'},
+    {id:'c2', cmd:'scripts/mac-build.sh --install', exit:0, dur:'1 min 42 s'},
+    {id:'c3', cmd:'git push -q origin HEAD:main', exit:0, dur:'2.1 s'},
+    {id:'c4', cmd:'dispatch check xMuramasa/trismegistus-mac#66', exit:0, dur:'1.8 s'},
+    {id:'c5', cmd:"ssh mac 'rm -rf ~/Library/Caches/trismegistus-mac/chats-tree'", exit:0, dur:'0.9 s'},
+    {id:'c6', cmd:'unzip -l Inter-4.1.zip', exit:127, dur:'0.1 s', out:'unzip: command not found'},
+  ]},
+  {id:'lab', title:'lab maintenance', conv:'lab', calls:[
+    {id:'c7', cmd:"docker ps --format '{{.Names}} {{.Status}}'", exit:0, dur:'0.4 s'},
+    {id:'c8', cmd:'systemctl --user --failed', exit:0, dur:'0.2 s'},
+    {id:'c9', cmd:'df -h /', exit:0, dur:'0.1 s'},
+  ]},
+];
+
+/* ---------- window factory ---------- */
+const WINS = [];
+
+function createWin(skin, narrow, open) {
+  const W = narrow ? 1180 : 1560;
+  const FULL = skin === 'a2' || skin === 'a3';
+  const SECS = FULL ? SECTIONS_FULL : SECTIONS;
+  const st = {
+    skin, section:'chat', kind:'app', sel:'swift', filter:'', groupOpen:true, cmdOpen:false, term:false,
+    convs: BASE.map(c => ({...c, src:c.src || 'app', tags:c.tags ? [...c.tags] : [], extra:[]})),
+    newN:0,
+    gh:{view:'board', sel:66, csel:68, doneOpen:false, decAll:false, checks:{}, verdict:null, note:'', prio:'any', repo:'all', dispatched:false, status:{}, prioOf:{}},
+    ag:{sel:'r68', open:{}, stepsOpen:true},
+    jb:{sel:'ai', promptAll:false, paused:{}},
+    cm:{sel:'all', open:{}, fold:{}, failedOnly:false, oneLine:true},
+  };
+  if (FULL) {
+    EXTRA_CONVS.forEach(x => { const c = {...x, src:x.src || 'app', tags:x.tags ? [...x.tags] : [], extra:[]}; if (x.at != null) st.convs.splice(x.at, 0, c); else st.convs.push(c); });
+  }
+  const win = document.createElement('div');
+  win.className = skin === "a2" ? "win skin-a skin-a2" : `win skin-${skin}`;
+  const A3 = skin === 'a3';
+  win.style.setProperty('--w', W + 'px');
+  win.style.setProperty('--lc', (narrow ? 380 : 520) + 'px');
+  win.setAttribute('role', 'application');
+  win.setAttribute('aria-label', `Trismegistus window, ${skin === 'a' ? 'B2 skin' : skin === 'a2' ? 'B2 skin, rounder corners' : A3 ? 'Endfield-faithful skin' : 'macOS 26 native skin'}`);
+  win.innerHTML = `${contours(W, 1122)}
+    <aside class="sp" aria-label="Sections"></aside>
+    <section class="lc" aria-label="Conversations">
+      <header class="lc-head">
+        <button class="ib" type="button" data-act="menu" data-menu="list" data-key="lc-more" aria-label="List actions" aria-haspopup="menu" data-tip="Rename, tags, hand off">${ic('more')}</button>
+        <div class="lc-title num" aria-live="polite"></div>
+        <button class="ib ib-plus" type="button" data-act="new" data-key="new" aria-label="New conversation" data-tip="New conversation  ⌘N">${ic('plus')}</button>
+      </header>
+      <label class="lc-search">${ic('search')}<span class="sr">Filter conversations</span><input type="search" placeholder="Filter" data-key="filter" autocomplete="off"><kbd>⌘K</kbd></label>
+      <div class="lc-tools" hidden></div>
+      <div class="lc-scroll"></div>
+    </section>
+    <main class="dt" aria-label="Conversation"></main>
+    <div class="menu" role="menu" hidden></div>
+    <div class="tip" role="tooltip" hidden></div>
+    <div class="toast" role="status" hidden></div>`;
+
+  const $ = s => win.querySelector(s);
+  const sp = $('.sp'), lcTitle = $('.lc-title'), lcScroll = $('.lc-scroll'), dt = $('.dt'), menu = $('.menu'), tip = $('.tip'), toast = $('.toast');
+  const filterInput = $('.lc-search input');
+  const conv = id => st.convs.find(c => c.id === id);
+  const strongest = () => st.convs.reduce((best, c) => (c.state && (!best || RANK[c.state] > RANK[best])) ? c.state : best, null);
+
+  function keepFocus(fn) {
+    const k = document.activeElement && win.contains(document.activeElement) ? document.activeElement.dataset.key : null;
+    fn();
+    if (k) { const el = win.querySelector(`[data-key="${k}"]`); if (el) el.focus(); else $('.ib-plus').focus(); }
+  }
+
+  /* section panel */
+  function renderPanel() {
+    const mark = strongest();
+    const srow = s => {
+      const cur = st.section === s.id;
+      const m = s.mark === 'auto' ? sticker(mark, null, true) : s.mark ? sticker(s.mark, null, true) : '';
+      const c = s.count != null ? `<span class="cnt num" aria-label="${s.count} ${s.hint || ''}">${s.count}</span>` : '';
+      return `<button class="srow" type="button" data-act="section" data-id="${s.id}" data-key="sec-${s.id}" ${cur ? 'aria-current="page"' : ''}>${ic(s.icon)}<span class="lbl">${s.label}</span>${m}${c}</button>`;
+    };
+    const krow = k => {
+      const cur = st.section === 'chat' && st.kind === k.id;
+      const m = k.mark === 'auto' ? sticker(mark, null, true) : '';
+      return `<button class="srow ${cur ? 'is-kind' : ''}" type="button" data-act="kind" data-id="${k.id}" data-key="kind-${k.id}" ${cur ? 'aria-current="true"' : ''}>${ic(k.icon)}<span class="lbl">${k.label}</span>${cur ? '<span class="kmark" aria-hidden="true"></span>' : ''}${m}<span class="cnt num">${k.count}</span></button>`;
+    };
+    if (skin === 'a2') {
+      /* tree, as built: the yellow block sits on the deepest current row that is visible */
+      const chatCur = st.section === 'chat';
+      const curKind = chatCur && st.groupOpen ? st.kind : null;
+      const chatsCur = chatCur && !st.groupOpen;
+      const cur = on => on ? 'aria-current="page"' : '';
+      const tsec = s => {
+        const m = s.mark ? sticker(s.mark, null, true) : '';
+        const c = s.count != null ? `<span class="cnt num" aria-label="${s.count} ${s.hint || ''}">${s.count}</span>` : '';
+        return `<button class="srow" type="button" data-act="section" data-id="${s.id}" data-key="sec-${s.id}" ${cur(st.section === s.id)}>${ic(s.icon)}<span class="lbl">${s.label}</span>${m}${c}</button>`;
+      };
+      const tkind = k => {
+        const m = k.mark === 'auto' ? sticker(mark, null, true) : '';
+        return `<button class="srow kid" type="button" data-act="kind" data-id="${k.id}" data-key="kind-${k.id}" ${cur(curKind === k.id)}>${ic(k.icon)}<span class="lbl">${k.label}</span>${m}<span class="cnt num">${k.count}</span></button>`;
+      };
+      const kid = `kinds-${skin}${narrow ? 'n' : ''}`;
+      sp.innerHTML = `
+        <div class="sp-top"><div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
+          <button class="ib" type="button" data-act="toast" data-msg="Hide sidebar  ⌃⌘S" data-key="sbt" aria-label="Hide sidebar" data-tip="Hide sidebar  ⌃⌘S">${ic('sidebar')}</button></div>
+        <nav class="sp-tree" aria-label="Sections">
+          <div class="tparent">
+            <button class="srow tp" type="button" data-act="kind" data-id="${st.kind}" data-key="sec-chat" ${cur(chatsCur)}>${ic('chat')}<span class="lbl">Chats</span>${st.groupOpen ? '' : sticker(mark, null, true)}</button>
+            <button class="tfold" type="button" data-act="group" data-key="grp" aria-expanded="${st.groupOpen}" aria-controls="${kid}" aria-label="${st.groupOpen ? 'Fold' : 'Unfold'} chat kinds" data-tip="${st.groupOpen ? 'Fold' : 'Unfold'}">${ic('chev','chev')}</button>
+          </div>
+          <div class="sp-kinds" id="${kid}" ${st.groupOpen ? '' : 'hidden'}>${KINDS.map(tkind).join('')}</div>
+          ${SECS.filter(x => x.id !== 'chat').map(tsec).join('')}
+        </nav>
+        <div class="sp-id">
+          <span class="dev-av" aria-hidden="true">${ic('laptop')}</span>
+          <div class="idw"><span class="name">macbook</span><span class="link"><span class="dot" aria-hidden="true"></span><span class="od-truncate">linked · hermes.lab.x-muramasa.dev</span></span></div>
+          <button class="ib" type="button" data-act="menu" data-menu="id" data-key="id-more" aria-label="Device menu" aria-haspopup="menu" data-tip="Settings, unpair">${ic('more')}</button>
+        </div>`;
+      sp.classList.add('on-dark');
+      return;
+    }
+    if (A3) {
+      const chatCur = st.section === 'chat';
+      const tsec = s => {
+        const cur = st.section === s.id;
+        const m = s.mark ? sticker(s.mark, null, true) : '';
+        const c = s.count != null ? `<span class="cnt num" aria-label="${s.count} ${s.hint || ''}">${s.count}</span>` : '';
+        return `<button class="srow ${cur ? 'is-kind' : ''}" type="button" data-act="section" data-id="${s.id}" data-key="sec-${s.id}" ${cur ? 'aria-current="page"' : ''}>${ic(s.icon)}<span class="lbl">${s.label}</span>${m}${c}</button>`;
+      };
+      const tkind = k => {
+        const cur = chatCur && st.kind === k.id;
+        const m = k.mark === 'auto' ? sticker(mark, null, true) : '';
+        return `<button class="srow kid ${cur ? 'is-kind' : ''}" type="button" data-act="kind" data-id="${k.id}" data-key="kind-${k.id}" ${cur ? 'aria-current="page"' : ''}>${ic(k.icon)}<span class="lbl">${k.label}</span>${m}<span class="cnt num">${k.count}</span></button>`;
+      };
+      const kid = `kinds-${skin}${narrow ? 'n' : ''}`;
+      sp.innerHTML = `
+        <div class="sp-top"><div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
+          <button class="ib" type="button" data-act="toast" data-msg="Hide sidebar  ⌃⌘S" data-key="sbt" aria-label="Hide sidebar" data-tip="Hide sidebar  ⌃⌘S">${ic('sidebar')}</button></div>
+        <div class="sp-lbl"><span>// Trismegistus</span><i class="ln"></i><span class="num">v0.9</span></div>
+        <nav class="sp-tree" aria-label="Sections">
+          <div class="tparent ${chatCur ? 'is-open-cur' : ''}">
+            <button class="srow tp" type="button" data-act="kind" data-id="${st.kind}" data-key="sec-chat">${ic('chat')}<span class="lbl">Chats</span>${st.groupOpen ? '' : sticker(mark, null, true)}</button>
+            <button class="tfold" type="button" data-act="group" data-key="grp" aria-expanded="${st.groupOpen}" aria-controls="${kid}" aria-label="${st.groupOpen ? 'Fold' : 'Unfold'} chat kinds" data-tip="${st.groupOpen ? 'Fold' : 'Unfold'}">${ic('chev','chev')}</button>
+          </div>
+          <div class="sp-kinds" id="${kid}" ${st.groupOpen ? '' : 'hidden'}>${KINDS.map(tkind).join('')}</div>
+          ${SECS.filter(x => x.id !== 'chat').map(tsec).join('')}
+        </nav>
+        <div class="sp-id">
+          <span class="dev-av" aria-hidden="true">${ic('laptop')}</span>
+          <div class="idw"><span class="name">macbook</span><span class="link"><span class="dot" aria-hidden="true"></span><span class="od-truncate num">linked · hermes.lab.x-muramasa.dev · 38 ms</span></span></div>
+          <button class="ib" type="button" data-act="menu" data-menu="id" data-key="id-more" aria-label="Device menu" aria-haspopup="menu" data-tip="Settings, unpair">${ic('more')}</button>
+        </div>`;
+      sp.classList.add('on-dark');
+      return;
+    }
+    sp.innerHTML = `
+      <div class="sp-top"><div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
+        <button class="ib" type="button" data-act="toast" data-msg="Hide sidebar  ⌃⌘S" data-key="sbt" aria-label="Hide sidebar" data-tip="Hide sidebar  ⌃⌘S">${ic('sidebar')}</button></div>
+      <nav class="sp-nav">${SECS.map(srow).join('')}</nav>
+      <button class="grp-head" type="button" data-act="group" data-key="grp" aria-expanded="${st.groupOpen}" aria-controls="kinds-${skin}${narrow ? 'n' : ''}"><span class="lbl">Chats</span>${ic('chev','chev')}</button>
+      <div class="sp-kinds" id="kinds-${skin}${narrow ? 'n' : ''}" ${st.groupOpen ? '' : 'hidden'}>${KINDS.map(krow).join('')}</div>
+      <div class="sp-id">
+        <span class="dev-av" aria-hidden="true">${ic('laptop')}</span>
+        <div class="idw"><span class="name">macbook</span><span class="link"><span class="dot" aria-hidden="true"></span><span class="od-truncate">linked · hermes.lab.x-muramasa.dev</span></span></div>
+        <button class="ib" type="button" data-act="menu" data-menu="id" data-key="id-more" aria-label="Device menu" aria-haspopup="menu" data-tip="Settings, unpair">${ic('more')}</button>
+      </div>`;
+    if (skin !== 'b') sp.classList.add('on-dark');
+  }
+
+  /* list column */
+  const rowHTML = (c, i) => rowMarkup(c, st.sel, '', A3 ? st.convs.indexOf(c) + 1 : null);
+  const head = (label, n) => MCARDS ? missionHead(label, n) : A3 ? `<div class="lsh" role="presentation"><span>// ${label}</span><i class="ln"></i><span class="n num">${String(n).padStart(2, '0')}</span></div>` : `<div class="lsh" role="presentation">${label}<span class="n num">${n}</span></div>`;
+  const title = (label, n, suf = '') => A3 ? `<span class="lbl3">// ${esc(label)}</span>${n != null ? `<span class="big">${n}</span>` : ''}${suf ? `<span class="lbl3">${esc(suf.trim())}</span>` : ''}` : `${esc(label)}${n != null ? `<span class="sl">//</span>${n}${esc(suf)}` : ''}`;
+  function renderList() {
+    if (FULL) setHeadBtns(st.section);
+    $('.lc-tools').hidden = !(FULL && st.section === 'github');
+    if (FULL && st.section !== 'chat') { renderSecList(); return; }
+    const sec = SECS.find(s => s.id === st.section);
+    const kind = KINDS.find(k => k.id === st.kind);
+    if (st.section !== 'chat') {
+      lcTitle.innerHTML = title(sec.label, sec.count);
+      lcScroll.innerHTML = `<div class="empty"><b>${esc(sec.label)}</b>${sec.count != null ? `${sec.count} ${sec.hint}. ` : sec.hint ? `${sec.hint[0].toUpperCase() + sec.hint.slice(1)}. ` : ''}This prototype draws the Chat section only; pick Chat to see the list.</div>`;
+      return;
+    }
+    lcTitle.innerHTML = title(kind.label, kind.count);
+    if (!FULL && !['app', 'all'].includes(st.kind)) {
+      lcScroll.innerHTML = `<div class="empty"><b>${kind.count} ${esc(kind.label)} conversations</b>The sample data in this prototype holds App conversations only. Pick App or All.</div>`;
+      return;
+    }
+    const q = st.filter.trim().toLowerCase();
+    const match = c => !q || c.title.toLowerCase().includes(q) || c.preview.toLowerCase().includes(q) || c.tags.some(t => t.includes(q));
+    const inKind = c => !FULL || st.kind === 'all' || (c.kind || 'app') === st.kind;
+    const pinned = st.convs.filter(c => inKind(c) && c.pinned && match(c)), rest = st.convs.filter(c => inKind(c) && !c.pinned && match(c));
+    if (FULL && !q && !pinned.length && !rest.length) { lcScroll.innerHTML = `<div class="empty"><b>${kind.count} ${esc(kind.label)} conversations</b>None of them are in this prototype’s sample data. App, Telegram, Terminal and All have rows.</div>`; return; }
+    if (!pinned.length && !rest.length) {
+      lcScroll.innerHTML = `<div class="empty"><b>No conversation matches “${esc(st.filter)}”</b>Clear the filter to see all ${kind.count}.</div>`;
+      return;
+    }
+    if (MCARDS === 2) {
+      const live = c => c.state === 'run' || c.state === 'approval';
+      const all = pinned.concat(rest), ip = all.filter(live), pn = pinned.filter(c => !live(c)), rs = rest.filter(c => !live(c));
+      lcScroll.innerHTML = (ip.length ? `${head('In progress', ip.length)}${ip.map(rowHTML).join('')}` : '') +
+        (pn.length ? `${head('Pinned', pn.length)}${pn.map(rowHTML).join('')}` : '') +
+        (rs.length ? `${head('Conversations', rs.length)}${rs.map(rowHTML).join('')}` : '');
+      $('.ib-plus').classList.toggle('demoted', !!(conv(st.sel) && conv(st.sel).state === 'run'));
+      return;
+    }
+    lcScroll.innerHTML =
+      (pinned.length ? `${head('Pinned', pinned.length)}${pinned.map(rowHTML).join('')}` : '') +
+      (rest.length ? `${head('Conversations', rest.length)}${rest.map(rowHTML).join('')}` : '');
+    const plus = $('.ib-plus');
+    const running = conv(st.sel) && conv(st.sel).state === 'run';
+    plus.classList.toggle('demoted', !!running);
+  }
+
+  /* detail */
+  function renderDetail() {
+    if (FULL && st.section !== 'chat') { renderSecDetail(); return; }
+    const c = conv(st.sel);
+    if (!c) { dt.innerHTML = ''; return; }
+    const running = c.state === 'run';
+    let body;
+    if (c.id === 'swift') body = SWIFT_HTML;
+    else if (c.isNew) body = c.extra.length ? '' : `<div class="newchat"><b>New conversation</b>Ask Hermes anything; it runs on hermes.lab.</div>`;
+    else body = (c.ask ? `<div class="who num">You // 12:10</div><div class="you">${esc(c.ask)}</div>` : '') +
+      `<div class="who num">Hermes // 12:14</div><div class="hermes">${c.reply}</div>` +
+      (c.approve && c.state === 'approval' ? `<div class="approve"><div class="hd">${sticker('approval', c)}<span>Hermes wants to run</span></div>
+        <div class="hermes" style="padding:0"><pre><code><span class="p">$</span> ${esc(c.approve)}</code></pre></div>
+        <div class="acts"><button class="btn btn-ink" type="button" data-act="approve" data-key="approve">Approve ${ic('arrow')}</button><button class="btn btn-line" type="button" data-act="deny" data-key="deny">Deny</button></div></div>` : '');
+    body += c.extra.map(m => `<div class="who num">${m.who} // ${m.time}</div>${m.who === 'You' ? `<div class="you">${esc(m.text)}</div>` : `<div class="hermes"><p>${esc(m.text)}</p></div>`}`).join('');
+    if (running) body += `<div class="working num"><b>WORKING</b><span data-run="${c.id}">${mmss(c.run)}</span><span>· 2 tools</span></div>`;
+
+    const sub = (A3 && c.id === 'swift') ? 'Trismegistus · run_7f3a2c · seq 214 · 38 ms · started 13:52' : c.sub || (c.readOnly ? 'Cron · read-only' : c.isNew ? 'Trismegistus · not started' : `Trismegistus · last activity ${c.time}`);
+    const composer = (c.src === 'telegram' && c.readOnly)
+      ? `<div class="runline"><span>Read-only</span><span class="tm">Telegram conversation · continue it here to reply from the app</span></div>
+         <div class="inrow"><input type="text" disabled placeholder="Read-only: continue in the app to reply" aria-label="Message (read-only)"><button class="btn btn-ink" type="button" data-act="tg-continue" data-key="tg-continue">Continue in app ${ic('arrow')}</button></div>`
+      : c.readOnly
+      ? `<div class="runline"><span>Read-only</span><span class="tm">written by cron · 07:00 daily</span></div>
+         <div class="inrow"><input type="text" disabled placeholder="Cron conversations can’t be answered" aria-label="Message (disabled)"></div>`
+      : running
+      ? `<div class="runline num"><span class="sq" aria-hidden="true"></span><span>Run active</span><span class="tm" data-run="${c.id}">${mmss(c.run)}</span>
+           <span class="hints"><span><kbd>⌘↩</kbd>steer</span><span><kbd>⌘.</kbd>stop</span><span class="x"><kbd>⌘⌥T</kbd>terminal</span><span class="x"><kbd>⌘K</kbd>conversations</span></span></div>
+         <div class="inrow"><button class="ib ib-clip" type="button" data-act="toast" data-msg="Attach a file" data-key="clip" aria-label="Attach" data-tip="Attach">${ic('clip')}</button>
+           <input type="text" placeholder="Steer this run" aria-label="Steer this run" data-key="msg">
+           <button class="stopb" type="button" data-act="stop" data-key="stop" aria-label="Stop run" data-tip="Stop run  ⌘."><i></i></button>
+           <button class="btn btn-mark" type="button" data-act="send" data-key="send">Steer ${ic('arrow')}</button></div>`
+      : `<div class="runline"><span>Idle</span><span class="tm">${c.isNew ? 'no runs yet' : 'last run ' + esc(c.time)}</span>
+           <span class="hints"><span><kbd>↩</kbd>send</span><span class="x"><kbd>⌘K</kbd>conversations</span></span></div>
+         <div class="inrow"><button class="ib ib-clip" type="button" data-act="toast" data-msg="Attach a file" data-key="clip" aria-label="Attach" data-tip="Attach">${ic('clip')}</button>
+           <input type="text" placeholder="Message Hermes" aria-label="Message Hermes" data-key="msg">
+           <button class="btn btn-ink" type="button" data-act="send" data-key="send">Send ${ic('arrow')}</button></div>`;
+
+    dt.innerHTML = `
+      <header class="dt-head">
+        ${avatar(c.src)}
+        <div class="dt-ttl"><span class="t1"><span class="od-truncate">${esc(c.title)}</span>${c.pinned ? ic('pin') : ''}</span><span class="t2 od-truncate num">${esc(sub)}</span></div>
+        <div class="meter num"><span>350K / 1M · 35%</span><span class="bars" aria-hidden="true">${Array.from({length:12}, (_, i) => `<i class="${i < 4 ? 'on' : ''}"></i>`).join('')}</span></div>
+        <button class="model" type="button" data-act="toast" data-msg="Model: Opus 5.5 (claude-opus-5-5)" data-key="model" aria-label="Model, Opus 5.5">Opus 5.5 ${ic('chev')}</button>
+        <div class="dt-tools">
+          <button class="ib" type="button" data-act="term" data-key="term" aria-pressed="${st.term}" aria-label="Terminal" data-tip="Terminal  ⌘⌥T">${ic('terminal')}</button>
+          <button class="ib" type="button" data-act="toast" data-msg="Settings open in their own window  ⌘," data-key="settings" aria-label="Settings" data-tip="Settings  ⌘,">${ic('sliders')}</button>
+          <button class="ib" type="button" data-act="menu" data-menu="detail" data-key="dt-more" aria-label="Conversation actions" aria-haspopup="menu" data-tip="More">${ic('more')}</button>
+        </div>
+      </header>
+      <div class="dt-rule" aria-hidden="true"><i class="m"></i><i class="y"></i><i class="g"></i><i class="hz"></i></div>
+      <div class="dt-scroll"><div class="col">${body}</div></div>
+      <div class="term" ${st.term ? '' : 'hidden'}><pre>hermes@lab ~/trismegistus-mac $ swift build
+Building for debugging...
+[214/214] Compiling Trismegistus SidebarView.swift
+Build complete! (6.12s)</pre></div>
+      <div class="composer"><div class="col">${composer}</div></div>`;
+    if (st.cmdOpen) { const ch = dt.querySelector('.cmdchip'); if (ch) { ch.setAttribute('aria-expanded', 'true'); dt.querySelector('.cmdlist').hidden = false; } }
+    const sc = dt.querySelector('.dt-scroll');
+    sc.scrollTop = sc.scrollHeight;
+  }
+
+  /* ======== sections in the three-column layout (#a2 / #a3) ======== */
+  const plusBtn = $('.ib-plus'), moreBtn = $('.lc-head .ib'), lcTools = $('.lc-tools');
+  const HEADS = {
+    chat:{icon:'plus', act:'new', label:'New conversation', tip:'New conversation  ⌘N', menu:'list', mtip:'Rename, tags, hand off', ph:'Filter'},
+    github:{icon:'refresh', act:'toast', msg:'Board refreshed from GitHub', label:'Refresh', tip:'Refresh  ⌘R', menu:'gh', mtip:'Board options', ph:'Filter issues', quiet:true},
+    agents:{icon:'refresh', act:'toast', msg:'Runs refreshed from optiplex', label:'Refresh', tip:'Refresh  ⌘R', menu:'ag', mtip:'Run options', ph:'Filter agents', quiet:true},
+    jobs:{icon:'plus', act:'toast', msg:'New job opens the job editor', label:'New job', tip:'New job  ⌘N', menu:'jb', mtip:'Job options', ph:'Filter jobs', quiet:true},
+    commands:{icon:'refresh', act:'toast', msg:'Command log refreshed', label:'Refresh', tip:'Refresh  ⌘R', menu:'cm', mtip:'Log options', ph:'Search commands and output', quiet:true},
+  };
+  function setHeadBtns(sec) {
+    const H = HEADS[sec];
+    plusBtn.innerHTML = ic(H.icon); plusBtn.dataset.act = H.act; plusBtn.dataset.msg = H.msg || '';
+    plusBtn.setAttribute('aria-label', H.label); plusBtn.dataset.tip = H.tip;
+    plusBtn.classList.toggle('demoted', !!H.quiet);
+    moreBtn.dataset.menu = H.menu; moreBtn.dataset.tip = H.mtip; moreBtn.setAttribute('aria-label', H.mtip);
+    filterInput.placeholder = H.ph;
+  }
+  const FR = '<span class="fr" aria-hidden="true"><i class="nd tl"></i><i class="nd tr"></i><i class="nd bl"></i><i class="nd br"></i></span>';
+  const secAv = (icon, cls = 'av-app') => `<span class="av ${cls}" aria-hidden="true">${ic(icon)}</span>`;
+  function secRow({act, id, sel, av, title, right = '', l2 = '', label}) {
+    return `<button class="row ${sel ? 'is-sel on-dark is-strong' : ''}" type="button" data-act="${act}" data-id="${id}" data-key="${act}-${id}" ${sel ? 'aria-current="true"' : ''} aria-label="${esc(label || '')}">
+      ${av}<span class="row-body"><span class="hatch" aria-hidden="true"></span>
+        <span class="row-l1"><span class="row-title od-truncate">${esc(title)}</span>${right}</span>
+        <span class="row-l2">${l2}</span></span>${FR}</button>`;
+  }
+  const okTag = (word = 'ok', cls = '') => `<span class="okt ${cls}">${ic('tick')}${word}</span>`;
+  const sq = () => (st.filter || '').trim().toLowerCase();
+  const pad2 = n => String(n).padStart(2, '0');
+  function secHead(label, n, btn) {
+    const inner = A3 ? `<span>// ${label}</span><i class="ln"></i><span class="n num">${pad2(n)}</span>` : `${label}<span class="n num">${n}</span>`;
+    return btn ? `<button class="lsh lsh-btn" type="button" data-act="${btn.act}" data-key="${btn.act}" aria-expanded="${btn.open}">${inner}${ic('chev', 'chev')}</button>`
+               : `<div class="lsh" role="presentation">${inner}</div>`;
+  }
+  const emptyNote = (b, t) => `<div class="empty"><b>${b}</b>${t}</div>`;
+  const ghStatus = it => st.gh.status[it.n] || it.status;
+  const ghPrio = it => st.gh.prioOf[it.n] || it.p;
+
+  /* ----- lists ----- */
+  function ghIssueRow(it, selN) {
+    const tags = (it.tags || []).filter(t => !t.startsWith('agent')).slice(0, 2).map(t => `<span class="tag">${esc(t)}</span>`).join('');
+    return secRow({act:'gh-issue', id:it.n, sel:selN === it.n, av:secAv('pr'), title:it.t, label:`#${it.n} ${it.t}, ${ghPrio(it)}`,
+      right:`<span class="ptag">${ghPrio(it)}</span>`,
+      l2:`<span class="row-prev od-truncate num">trismegistus-mac#${it.n} · ${esc(ghStatus(it))}</span>${tags}`});
+  }
+  function renderSecList() {
+    const q = sq();
+    lcTools.innerHTML = '';
+    if (st.section === 'github') {
+      const g = st.gh;
+      lcTitle.innerHTML = g.view === 'check' ? title('Needs check', 11) : title('GitHub', 14, ' open');
+      lcTools.innerHTML = `
+        <div class="pick">
+          <select class="sel" data-ch="gh-repo" data-key="gh-repo" aria-label="Repository">${[['all','All repos'],['trismegistus-mac','trismegistus-mac'],['trismegistus','trismegistus'],['homelab','homelab']].map(([v, l]) => `<option value="${v}" ${g.repo === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+          <select class="sel" data-ch="gh-prio-f" data-key="gh-prio-f" aria-label="Priority">${[['any','Any priority'],['P1','P1'],['P2','P2']].map(([v, l]) => `<option value="${v}" ${g.prio === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        </div>
+        <div class="seg" role="group" aria-label="View">
+          <button type="button" data-act="gh-view" data-v="board" data-key="gh-v-board" aria-pressed="${g.view === 'board'}" data-tip="Board by status">${ic('board')}<span>Board</span></button>
+          <button type="button" data-act="gh-view" data-v="check" data-key="gh-v-check" aria-pressed="${g.view === 'check'}" data-tip="Needs your check">${ic('eye')}<span class="num">Needs check 11</span></button>
+        </div>`;
+      const fit = it => (g.prio === 'any' || ghPrio(it) === g.prio) && (!q || it.t.toLowerCase().includes(q) || String(it.n).includes(q.replace('#', '')));
+      if (g.repo !== 'all' && g.repo !== 'trismegistus-mac') { lcScroll.innerHTML = emptyNote(`No issues from ${esc(g.repo)}`, 'The Work board in this sample holds trismegistus-mac only. Pick All repos.'); return; }
+      if (g.view === 'check') {
+        const items = GH_GROUPS.find(x => x.id === 'check').items.filter(fit);
+        lcScroll.innerHTML = items.length ? `${secHead('trismegistus-mac', 11)}${items.map(it => ghIssueRow(it, g.csel)).join('')}<div class="more-note num">4 more need your check; they aren’t in this sample.</div>`
+          : emptyNote('Nothing matches', 'Clear the filter or the priority.');
+        return;
+      }
+      let html = '';
+      GH_GROUPS.forEach(gr => {
+        if (gr.id === 'done') {
+          html += secHead('Done', gr.n, {act:'gh-done', open:g.doneOpen});
+          if (g.doneOpen) html += `<div class="more-note num">54 closed issues. They aren’t in this prototype’s sample.</div>`;
+          return;
+        }
+        const items = gr.items.filter(fit);
+        if (!items.length && (q || g.prio !== 'any')) return;
+        html += secHead(gr.label, gr.n) + items.map(it => ghIssueRow(it, g.sel)).join('');
+        if (gr.id === 'check' && !q && g.prio === 'any') html += `<div class="more-note num">4 more need your check; they aren’t in this sample.</div>`;
+      });
+      lcScroll.innerHTML = html;
+    }
+    else if (st.section === 'agents') {
+      lcTitle.innerHTML = title('Agents', 0, ' running');
+      const runs = AG_RUNS.filter(r => !q || r.title.toLowerCase().includes(q) || r.run.includes(q));
+      lcScroll.innerHTML = runs.length ? secHead('Finished', AG_RUNS.length) + runs.map(r => secRow({act:'ag-run', id:r.id, sel:st.ag.sel === r.id, av:secAv('agents'),
+        title:r.title, label:`${r.title}, success, ${r.when}`, right:`<span class="row-time num">${esc(r.time)}</span>`,
+        l2:`<span class="row-prev od-truncate num">${esc(r.run)} · opus${r.dur ? ' · ' + r.dur : ''}</span>${okTag('success')}`})).join('')
+        : emptyNote('No run matches', 'Clear the filter to see all 6.');
+    }
+    else if (st.section === 'jobs') {
+      lcTitle.innerHTML = title('Jobs', JOBS.length);
+      const jobs = JOBS.filter(j => !q || j.title.toLowerCase().includes(q));
+      lcScroll.innerHTML = jobs.length ? secHead('Scheduled', JOBS.length) + jobs.map(j => {
+        const paused = st.jb.paused[j.id];
+        return secRow({act:'jb-job', id:j.id, sel:st.jb.sel === j.id, av:secAv('cron'), title:j.title, label:`${j.title}, ${j.cad}, ${paused ? 'paused' : 'last ok ' + j.last}`,
+          right:`<span class="row-time num">${paused ? 'paused' : 'ok ' + j.last}</span>`,
+          l2:`<span class="row-prev od-truncate num">${j.cad} · next ${paused ? '—' : j.next}</span>${j.script ? '<span class="tag">script only</span>' : ''}${j.tg ? '<span class="tag">Telegram</span>' : ''}${paused ? okTag('paused', 'paused') : okTag('ok')}`});
+      }).join('') : emptyNote('No job matches', 'Clear the filter to see all 5.');
+    }
+    else if (st.section === 'commands') {
+      const all = CMD_GROUPS.flatMap(g => g.calls);
+      lcTitle.innerHTML = title('Commands', all.length);
+      const failed = arr => arr.filter(c => c.exit !== 0).length;
+      const rows = [{id:'all', title:'All conversations', calls:all}, ...CMD_GROUPS].filter(g => !q || g.title.toLowerCase().includes(q) || g.calls.some(c => c.cmd.toLowerCase().includes(q)));
+      lcScroll.innerHTML = rows.length ? secHead('By conversation', CMD_GROUPS.length) + rows.map(g => secRow({act:'cm-sel', id:g.id, sel:st.cm.sel === g.id, av:secAv('cmd'), title:g.title,
+        label:`${g.title}, ${g.calls.length} calls`, right:`<span class="row-time num">${g.calls.length} calls</span>`,
+        l2:`<span class="row-prev od-truncate num">${failed(g.calls) ? `${failed(g.calls)} failed` : 'no failures'}</span>`})).join('')
+        : emptyNote('No command matches', 'Search looks at conversation names and command text.');
+    }
+  }
+
+  /* ----- details ----- */
+  function detailHead({icon, title: t, sub, acts = ''}) {
+    return `<header class="dt-head">
+        ${secAv(icon)}
+        <div class="dt-ttl"><span class="t1"><span class="od-truncate">${esc(t)}</span></span><span class="t2 od-truncate num">${esc(sub)}</span></div>
+        <div class="dt-acts">${acts}</div>
+        <div class="dt-tools">
+          <button class="ib" type="button" data-act="toast" data-msg="Settings open in their own window  ⌘," data-key="settings" aria-label="Settings" data-tip="Settings  ⌘,">${ic('sliders')}</button>
+          <button class="ib" type="button" data-act="menu" data-menu="sec" data-key="dt-more" aria-label="More actions" aria-haspopup="menu" data-tip="More">${ic('more')}</button>
+        </div>
+      </header>
+      <div class="dt-rule" aria-hidden="true"><i class="m"></i><i class="y"></i><i class="g"></i><i class="hz"></i></div>`;
+  }
+  function ghStrip(it) {
+    const opts = (list, cur) => list.map(v => `<option ${v === cur ? 'selected' : ''}>${v}</option>`).join('');
+    return `<div class="rostrip">
+      <label class="ro"><span class="rl">Status</span><select class="sel" data-ch="gh-status" data-n="${it.n}" data-key="gh-status">${opts(['Todo','Ready','In progress','Needs check','Done'], ghStatus(it))}</select></label>
+      <label class="ro"><span class="rl">Priority</span><select class="sel" data-ch="gh-prio" data-n="${it.n}" data-key="gh-prio">${opts(['P1','P2','P3'], ghPrio(it))}</select></label>
+      <div class="ro"><span class="rl">Tags</span>${(it.tags || ['none']).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>
+      <div class="ro"><span class="rl">Agent</span><span class="tag">${esc(st.gh.dispatched && it.n === 66 ? 'opus · queued' : it.agent || 'none')}</span></div>
+      <button class="btn btn-line ro-end" type="button" data-act="toast" data-msg="Close issue asks for confirmation first" data-key="gh-close">Close issue ${ic('tick')}</button>
+    </div>`;
+  }
+  const commentBox = n => `<div class="card cbox"><label><span class="sr">Comment on GitHub</span><textarea data-in="gh-comment" data-key="gh-comment" placeholder="Comment on GitHub"></textarea></label>
+      <div class="acts-r"><button class="btn btn-line" type="button" data-act="gh-comment" data-n="${n}" data-key="gh-comment-send" disabled>Comment ${ic('up')}</button></div></div>`;
+  function renderSecDetail() {
+    let html = '';
+    const sec = st.section;
+    if (sec === 'github') {
+      const g = st.gh, n = g.view === 'check' ? g.csel : g.sel, it = GH_ALL.find(x => x.n === n);
+      const checks = g.checks[n] || [];
+      const done = checks.filter(Boolean).length;
+      const total = n === 66 ? GH_TASKS.length : n === 68 ? GH_CHECKS.length : 0;
+      const acts = `${total ? `<span class="ro-mini num" aria-label="${done} of ${total} done">${ic('tick')}${done}/${total}</span>` : ''}
+        <button class="ib" type="button" data-act="toast" data-msg="Opens xMuramasa/trismegistus-mac#${n} on GitHub" data-key="gh-ext" aria-label="Open on GitHub" data-tip="Open on GitHub">${ic('ext')}</button>
+        <button class="btn btn-line" type="button" data-act="toast" data-msg="Starts a Chat conversation about #${n}" data-key="gh-conv">Start conversation ${ic('chat')}</button>
+        ${n === 66 ? `<button class="btn btn-mark" type="button" data-act="gh-dispatch" data-key="gh-dispatch" ${g.dispatched ? 'disabled' : ''}>${g.dispatched ? 'Dispatched' : 'Dispatch'} ${ic('play')}</button>` : ''}`;
+      html = detailHead({icon:'pr', title:it.t, sub:`xMuramasa/trismegistus-mac#${n} · open · ${ghStatus(it)}`, acts}) + ghStrip(it);
+      let body = '';
+      if (n === 66) {
+        body = `<div class="card">
+          <div class="card-by">xMuramasa</div>
+          <h2 class="card-h">${esc(it.t)}</h2>
+          <h3 class="card-sub">Decisions<span class="num">13</span></h3>
+          <table class="dtable"><tbody>${GH_DECISIONS.map((d, i) => `<tr><td class="num">${i + 1}</td><td>${esc(d)}</td></tr>`).join('')}</tbody></table>
+          ${g.decAll ? `<p class="note">The other 9 decisions are in the issue body on GitHub; this prototype holds the first 4.</p>` : ''}
+          <button class="linkbtn" type="button" data-act="gh-dec" data-key="gh-dec" aria-expanded="${g.decAll}">${g.decAll ? 'Show fewer' : 'Show all 13 decisions'} ${ic('chev', 'chev')}</button>
+          <h3 class="card-sub">Checklist<span class="num">${done}/${total} done</span></h3>
+          <div class="cklist">${GH_TASKS.map((t, i) => `<label class="ck ${checks[i] ? 'on' : ''}"><input type="checkbox" data-ch="gh-ck" data-n="66" data-i="${i}" data-key="ck-66-${i}" ${checks[i] ? 'checked' : ''}><span class="t">${esc(t)}</span></label>`).join('')}</div>
+        </div>${commentBox(66)}`;
+      } else if (n === 68) {
+        const v = g.verdict;
+        body = `<div class="card checkp">
+          <div class="cp-head"><span class="cp-sq" aria-hidden="true"></span><span>Needs your check</span><span class="num cp-n">${done}/${total}</span><span class="cp-from num">From Hermes · 10 Nov 11:26</span></div>
+          <p class="cp-lead">On screen for Martin:</p>
+          <div class="cklist">${GH_CHECKS.map((t, i) => `<label class="ck ${checks[i] ? 'on' : ''}"><span class="n num">${i + 1}</span><input type="checkbox" data-ch="gh-ck" data-n="68" data-i="${i}" data-key="ck-68-${i}" ${checks[i] ? 'checked' : ''}><span class="t">${esc(t)}</span></label>`).join('')}</div>
+          ${v === 'good' ? `<div class="cp-done">${okTag('confirmed')}<span>Commented “Confirmed on screen by Martin.” · Status Done</span></div>`
+          : v === 'bad' ? `<div class="cp-done"><span class="stk stk-failed"><span class="g">${ic('cross')}</span><span class="w">Not right</span></span><span>Your note is posted as a comment · Status Todo</span></div>`
+          : `<div class="cp-acts">
+              <button class="btn btn-mark" type="button" data-act="gh-good" data-key="gh-good">Looks good ${ic('tick')}</button>
+              <label class="cp-note"><span class="sr">What’s not right</span><input type="text" data-in="gh-note" data-key="gh-note" placeholder="What’s not right? (posted as a comment)" value="${esc(g.note)}"></label>
+              <button class="btn btn-line" type="button" data-act="gh-bad" data-key="gh-bad" ${g.note.trim() ? '' : 'disabled'}>Not right ${ic('cross')}</button>
+            </div>`}
+          <p class="cp-ex">Looks good: comments “Confirmed on screen by Martin.”, Status Done. Not right: comments your note, reopens the issue if closed, Status Todo.</p>
+        </div>
+        <div class="card"><div class="card-by">Delegate run</div>
+          <p class="num">run_trismegistus-mac-issue-68 · opus · finished 11:20 · 34 min · success</p>
+          <button class="linkbtn" type="button" data-act="goto-run" data-id="r68" data-key="goto-run">Open the run in Agents ${ic('arrow')}</button></div>`;
+      } else {
+        body = `<div class="card"><div class="card-by">xMuramasa</div><h2 class="card-h">${esc(it.t)}</h2>
+          <p class="note">The body of #${n} isn’t part of this prototype’s sample. #66 (Ready) and #68 (Needs check) are drawn in full.</p></div>${commentBox(n)}`;
+      }
+      html += `<div class="dt-scroll"><div class="col">${body}</div></div>`;
+    }
+    else if (sec === 'agents') {
+      const r = AG_RUNS.find(x => x.id === st.ag.sel);
+      const acts = `${r.issue ? `<button class="btn btn-line" type="button" data-act="goto-issue" data-n="${r.issue}" data-key="goto-issue">Open issue #${r.issue} ${ic('ext')}</button>` : ''}
+        <button class="ib" type="button" data-act="toast" data-msg="The transcript opens in a sheet" data-key="ag-tr" aria-label="Transcript" data-tip="Transcript">${ic('lines')}</button>`;
+      html = detailHead({icon:'agents', title:r.run, sub:`success · delegate · opus · ${r.when}${r.turns ? ` · ${r.turns} turns` : ''}${r.dur ? ` · ${r.dur}` : ''} · optiplex`, acts});
+      let body = `<div class="card result">
+          <div class="cp-head"><span>Result</span><span class="rtag">Success</span><span class="cp-from num">${r.turns ? `${r.turns} turns · ` : ''}${r.dur ? `${r.dur} · ` : ''}${esc(r.when)}</span></div>
+          <p>${r.result ? esc(r.result) : 'The result text and steps for this run aren’t part of this prototype’s sample; run #68 is drawn in full.'}</p></div>`;
+      if (r.steps) {
+        body += `<div class="card steps">
+          <button class="steps-h" type="button" data-act="ag-steps" data-key="ag-steps" aria-expanded="${st.ag.stepsOpen}"><span class="num">${r.steps.length} steps · 0 failed</span>${ic('chev', 'chev')}</button>
+          <div ${st.ag.stepsOpen ? '' : 'hidden'}>${r.steps.map((s, i) => {
+            const o = !!st.ag.open[i];
+            return `<div class="step"><button class="step-h" type="button" data-act="ag-step" data-i="${i}" data-key="ag-step-${i}" aria-expanded="${o}"><span class="n num">${i + 1}</span><span class="st">${esc(s)}</span><span class="step-ok">${ic('tick')}ok</span>${ic('chev', 'chev')}</button>
+              <div class="step-out" ${o ? '' : 'hidden'}>Output folded. The full step output lives in the run’s progress file, ~/.local/state/hermes-runs/trismegistus-mac-issue-68-progress.md; it isn’t part of this sample.</div></div>`;
+          }).join('')}</div></div>`;
+      }
+      html += `<div class="dt-scroll"><div class="col">${body}</div></div>`;
+    }
+    else if (sec === 'jobs') {
+      const j = JOBS.find(x => x.id === st.jb.sel), paused = st.jb.paused[j.id];
+      const acts = `<button class="btn btn-line" type="button" data-act="jb-pause" data-key="jb-pause">${paused ? 'Resume' : 'Pause'} ${ic(paused ? 'play' : 'pause')}</button>
+        <button class="btn btn-mark" type="button" data-act="toast" data-msg="${esc(j.title)} started — it shows here as running" data-key="jb-run">Run now ${ic('play')}</button>
+        <button class="btn btn-line" type="button" data-act="toast" data-msg="Edit opens the job editor" data-key="jb-edit">Edit ${ic('edit')}</button>`;
+      html = detailHead({icon:'cron', title:j.title, sub:`${paused ? 'paused' : 'scheduled'} · next ${paused ? '—' : j.nexts[0]} · last ok ${j.lastLong}${j.model ? ` · ${j.model} · ${j.extra}` : ''}${j.script ? ' · script only' : ''}`, acts});
+      let body = `<div class="ro3 card-like">
+          <div><span class="rl">Cadence</span><b>${j.cadLong}</b><span class="chip num">${esc(j.cron)}</span></div>
+          <div><span class="rl">Next 3 runs</span>${paused ? '<span>Paused — no runs scheduled</span>' : j.nexts.map(x => `<span class="num">${x}</span>`).join('')}</div>
+          <div><span class="rl">Last result</span><b class="ok">ok</b><span class="num">${j.lastLong}</span></div>
+        </div>`;
+      if (j.prompt) body += `<div class="card"><div class="card-lbl">Prompt</div>
+          <div class="prompt ${st.jb.promptAll ? '' : 'fold'}">${esc(j.prompt)}</div>
+          <button class="linkbtn" type="button" data-act="jb-prompt" data-key="jb-prompt" aria-expanded="${st.jb.promptAll}">${st.jb.promptAll ? 'Show less' : 'Show all'} ${ic('chev', 'chev')}</button></div>`;
+      else body += `<div class="card"><div class="card-lbl">${j.script ? 'Script' : 'Prompt'}</div><p class="note">${j.script ? `Script only: no model and no prompt.${j.tg ? ' Delivers to Telegram.' : ''}` : 'This job’s prompt isn’t part of this prototype’s sample; Daily AI news feed is drawn in full.'}</p></div>`;
+      html += `<div class="dt-scroll"><div class="col">${body}</div></div>`;
+    }
+    else if (sec === 'commands') {
+      const c = st.cm, groups = c.sel === 'all' ? CMD_GROUPS : CMD_GROUPS.filter(g => g.id === c.sel);
+      const all = groups.flatMap(g => g.calls), nf = all.filter(x => x.exit !== 0).length;
+      const acts = `<button class="btn btn-line" type="button" data-act="cm-one" data-key="cm-one" aria-pressed="${c.oneLine}">One line ${ic('lines')}</button>
+        <button class="btn btn-line" type="button" data-act="cm-failed" data-key="cm-failed" aria-pressed="${c.failedOnly}">Failed ${ic('warn')}</button>`;
+      html = detailHead({icon:'cmd', title:c.sel === 'all' ? 'All conversations' : groups[0].title, sub:`${all.length} calls · ${nf} failed · durations approximate`, acts});
+      const body = groups.map(g => {
+        const calls = g.calls.filter(x => !c.failedOnly || x.exit !== 0);
+        if (!calls.length) return '';
+        const gf = g.calls.filter(x => x.exit !== 0).length, folded = c.fold[g.id];
+        return `<section class="cg">
+          <div class="cg-head"><button class="cg-title" type="button" data-act="${g.conv ? 'goto-conv' : 'cm-sel'}" data-id="${g.conv || g.id}" data-key="cg-${g.id}">${esc(g.title)} ${ic('chev', 'chev-r')}</button>
+            <span class="num">${g.calls.length} calls</span>${gf ? `<span class="cg-fail num">${gf} failed</span>` : ''}
+            <button class="ib" type="button" data-act="cm-fold" data-id="${g.id}" data-key="cm-fold-${g.id}" aria-expanded="${!folded}" aria-label="${folded ? 'Unfold' : 'Fold'} ${esc(g.title)}">${ic('chev', 'chev')}</button></div>
+          <div ${folded ? 'hidden' : ''}>${calls.map(x => {
+            const o = !!c.open[x.id], fail = x.exit !== 0;
+            return `<div class="crow ${fail ? 'fail' : ''}"><button class="crow-h" type="button" data-act="cm-row" data-id="${x.id}" data-key="cm-${x.id}" aria-expanded="${o}">
+                <span class="ctool">terminal</span><code class="ccmd">${esc(x.cmd)}</code><span class="cexit num">exit ${x.exit}${fail ? ' · not found' : ''}</span><span class="cdur num">${x.dur}</span>${ic('chev', 'chev')}</button>
+              <div class="cout" ${o ? '' : 'hidden'}>${x.out ? `<pre><code>${esc(x.out)}</code></pre>` : '<p>Output isn’t part of this sample.</p>'}</div></div>`;
+          }).join('')}</div></section>`;
+      }).join('');
+      html += `<div class="dt-scroll"><div class="col cm-col ${c.oneLine ? '' : 'cm-wrap'}">${body || emptyNote('No failed calls', 'Turn Failed off to see every call.')}</div></div>`;
+    }
+    dt.innerHTML = html;
+    dt.querySelector('.dt-scroll').scrollTop = 0;
+  }
+
+  /* ----- section actions ----- */
+  const reList = () => keepFocus(() => { renderList(); renderDetail(); });
+  function secClick(a, el) {
+    const g = st.gh;
+    switch (a) {
+      case 'gh-issue': if (g.view === 'check') g.csel = +el.dataset.id; else g.sel = +el.dataset.id; g.note = ''; reList(); return true;
+      case 'gh-view': g.view = el.dataset.v; reList(); return true;
+      case 'gh-done': g.doneOpen = !g.doneOpen; keepFocus(renderList); return true;
+      case 'gh-dec': g.decAll = !g.decAll; keepFocus(renderDetail); return true;
+      case 'gh-dispatch': g.dispatched = true; keepFocus(renderDetail); say('Dispatched #66 to a delegate on optiplex — it shows up in Agents'); return true;
+      case 'gh-good': g.verdict = 'good'; g.status[68] = 'Done'; reList(); say('Commented “Confirmed on screen by Martin.” · Status Done'); return true;
+      case 'gh-bad': if (!g.note.trim()) return true; g.verdict = 'bad'; g.status[68] = 'Todo'; reList(); say('Note posted as a comment · Status Todo'); return true;
+      case 'gh-comment': { const ta = dt.querySelector('textarea'); if (ta && ta.value.trim()) { ta.value = ''; el.disabled = true; say(`Comment posted on #${el.dataset.n}`); } return true; }
+      case 'goto-run': st.section = 'agents'; st.ag.sel = el.dataset.id; st.filter = ''; filterInput.value = ''; renderAll(); return true;
+      case 'goto-issue': {
+        const n = +el.dataset.n, it = GH_ALL.find(x => x.n === n);
+        st.section = 'github'; st.filter = ''; filterInput.value = '';
+        if (it && ghStatus(it) === 'Needs check') { g.view = 'check'; g.csel = n; } else if (it) { g.view = 'board'; g.sel = n; }
+        renderAll(); return true;
+      }
+      case 'goto-conv': st.section = 'chat'; st.kind = 'app'; st.sel = el.dataset.id; st.filter = ''; filterInput.value = ''; renderAll(); return true;
+      case 'ag-run': st.ag.sel = el.dataset.id; st.ag.open = {}; reList(); return true;
+      case 'ag-steps': st.ag.stepsOpen = !st.ag.stepsOpen; keepFocus(renderDetail); return true;
+      case 'ag-step': st.ag.open[el.dataset.i] = !st.ag.open[el.dataset.i]; keepFocus(renderDetail); return true;
+      case 'jb-job': st.jb.sel = el.dataset.id; st.jb.promptAll = false; reList(); return true;
+      case 'jb-prompt': st.jb.promptAll = !st.jb.promptAll; keepFocus(renderDetail); return true;
+      case 'jb-pause': { const id = st.jb.sel; st.jb.paused[id] = !st.jb.paused[id]; reList(); say(st.jb.paused[id] ? 'Paused — no runs until you resume' : 'Resumed — next run is scheduled'); return true; }
+      case 'cm-sel': st.cm.sel = el.dataset.id; reList(); return true;
+      case 'cm-row': st.cm.open[el.dataset.id] = !st.cm.open[el.dataset.id]; keepFocus(renderDetail); return true;
+      case 'cm-fold': st.cm.fold[el.dataset.id] = !st.cm.fold[el.dataset.id]; keepFocus(renderDetail); return true;
+      case 'cm-one': st.cm.oneLine = !st.cm.oneLine; keepFocus(renderDetail); return true;
+      case 'cm-failed': st.cm.failedOnly = !st.cm.failedOnly; keepFocus(renderDetail); return true;
+    }
+    return false;
+  }
+  function secChange(t) {
+    const g = st.gh, k = t.dataset.ch;
+    if (!k) return;
+    if (k === 'gh-ck') { const n = +t.dataset.n; (g.checks[n] = g.checks[n] || [])[+t.dataset.i] = t.checked; keepFocus(renderDetail); }
+    else if (k === 'gh-repo') { g.repo = t.value; keepFocus(renderList); }
+    else if (k === 'gh-prio-f') { g.prio = t.value; keepFocus(renderList); }
+    else if (k === 'gh-status') { g.status[+t.dataset.n] = t.value; reList(); say(`Status set to ${t.value} on GitHub`); }
+    else if (k === 'gh-prio') { g.prioOf[+t.dataset.n] = t.value; reList(); say(`Priority set to ${t.value}`); }
+  }
+  function secInput(t) {
+    if (t.dataset.in === 'gh-note') { st.gh.note = t.value; const b = dt.querySelector('[data-act="gh-bad"]'); if (b) b.disabled = !t.value.trim(); }
+    else if (t.dataset.in === 'gh-comment') { const b = dt.querySelector('[data-act="gh-comment"]'); if (b) b.disabled = !t.value.trim(); }
+  }
+
+  function renderAll() { keepFocus(() => { renderPanel(); renderList(); renderDetail(); }); }
+
+  /* overlays */
+  function rel(el) {
+    const wr = win.getBoundingClientRect(), r = el.getBoundingClientRect(), s = wr.width / win.offsetWidth || 1;
+    return {x:(r.left - wr.left) / s, y:(r.top - wr.top) / s, w:r.width / s, h:r.height / s};
+  }
+  let toastT;
+  function say(msg) {
+    toast.textContent = msg; toast.hidden = false;
+    toast.classList.remove('in'); void toast.offsetWidth; toast.classList.add('in');
+    clearTimeout(toastT); toastT = setTimeout(() => { toast.hidden = true; }, 2400);
+  }
+  let menuFor = null;
+  const MENUS = {
+    list:[['Rename', 'Rename the conversation'], ['Tags', 'Edit tags'], ['Hand off', 'Hand off to another device']],
+    id:[['Settings', 'Settings open in their own window'], ['Unpair', 'Unpair asks for confirmation first', 'danger']],
+    detail:[['Copy run id', 'Copied run_7f3a2c'], ['Open transcript', 'Transcript opens in Agents'], ['Pin', 'Pinned state toggles here']],
+    gh:[['Open board on GitHub', 'Opens the Work board on GitHub'], ['Group by repo', 'Groups the board by repository'], ['Show Done', 'Done stays folded in the list; unfold it there']],
+    ag:[['Open runs folder', 'Opens ~/.local/state/hermes-runs on optiplex'], ['Hide finished', 'Finished runs hide until a new one starts']],
+    jb:[['Show paused jobs', 'No paused jobs right now'], ['Import job', 'Import reads a Hermes cron file']],
+    cm:[['Export log', 'Exports the command log as Markdown'], ['Clear search', 'Search cleared']],
+    sec:[['Copy link', 'Link copied'], ['Open in a new window', 'Opens in a new window']],
+  };
+  function openMenu(btn) {
+    closeMenu();
+    menuFor = btn;
+    menu.innerHTML = MENUS[btn.dataset.menu].map(([l, m, cls]) => `<button type="button" role="menuitem" class="${cls || ''}" data-act="menuitem" data-msg="${esc(m)}">${l}</button>`).join('');
+    menu.hidden = false;
+    const r = rel(btn), mw = 184;
+    let x = ['detail', 'sec'].includes(btn.dataset.menu) ? r.x + r.w - mw : r.x;
+    let y = r.y + r.h + 4;
+    if (btn.dataset.menu === 'id') y = r.y - 4 - (MENUS.id.length * 30 + 10);
+    menu.style.left = Math.max(8, x) + 'px'; menu.style.top = y + 'px';
+    menu.classList.remove('in'); void menu.offsetWidth; menu.classList.add('in');
+    btn.setAttribute('aria-expanded', 'true');
+    menu.querySelector('button').focus();
+  }
+  function closeMenu(restore) {
+    if (menu.hidden) return;
+    menu.hidden = true;
+    if (menuFor) { menuFor.setAttribute('aria-expanded', 'false'); if (restore && menuFor.isConnected) menuFor.focus(); }
+    menuFor = null;
+  }
+  function showTip(el) {
+    const t = el.dataset.tip; if (!t) return;
+    tip.textContent = t; tip.hidden = false;
+    const r = rel(el), tw = tip.offsetWidth;
+    let x = r.x + r.w / 2 - tw / 2;
+    x = Math.min(Math.max(8, x), win.offsetWidth - tw - 8);
+    tip.style.left = x + 'px'; tip.style.top = (r.y + r.h + 6) + 'px';
+  }
+  const hideTip = () => { tip.hidden = true; };
+  win.addEventListener('pointerover', e => { const el = e.target.closest('[data-tip]'); if (el) showTip(el); });
+  win.addEventListener('pointerout', e => { if (e.target.closest('[data-tip]')) hideTip(); });
+  win.addEventListener('focusin', e => { const el = e.target.closest('[data-tip]'); if (el && el.matches(':focus-visible')) showTip(el); else hideTip(); });
+  win.addEventListener('focusout', hideTip);
+
+  /* actions */
+  function send() {
+    const c = conv(st.sel), input = dt.querySelector('.inrow input');
+    if (!c || !input || input.disabled) return;
+    const text = input.value.trim();
+    if (!text) { input.focus(); return; }
+    const now = new Date(), tm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    c.extra.push({who:'You', time:tm, text});
+    c.preview = text; c.time = 'now';
+    if (c.state !== 'run') { c.state = 'run'; c.run = 0; }
+    keepFocus(() => { renderPanel(); renderList(); renderDetail(); });
+    const ni = dt.querySelector('.inrow input'); if (ni) ni.focus();
+  }
+
+  win.addEventListener('click', e => {
+    const el = e.target.closest('[data-act]');
+    if (!menu.hidden && !e.target.closest('.menu') && !(el && el === menuFor)) closeMenu();
+    if (!el) return;
+    const a = el.dataset.act;
+    if (a === 'section') { st.section = el.dataset.id; if (FULL) { st.filter = ''; filterInput.value = ''; } renderAll(); }
+    else if (a === 'kind') {
+      st.section = 'chat'; st.kind = el.dataset.id; st.filter = ''; filterInput.value = '';
+      if (FULL) { const cur = conv(st.sel); if (!cur || (st.kind !== 'all' && (cur.kind || 'app') !== st.kind)) { const f = st.convs.find(c => st.kind === 'all' || (c.kind || 'app') === st.kind); if (f) st.sel = f.id; } }
+      renderAll();
+    }
+    else if (FULL && secClick(a, el)) { /* handled by a section */ }
+    else if (a === 'tg-continue') { const c = conv(st.sel); c.readOnly = false; c.sub = 'Telegram · continued in the app'; renderAll(); say('Continued in the app — replies go to Telegram too'); }
+    else if (a === 'group') { st.groupOpen = !st.groupOpen; keepFocus(renderPanel); }
+    else if (a === 'row') {
+      const c = conv(el.dataset.id);
+      if (c.state === 'done' || c.state === 'failed') c.state = null; // opening marks it seen
+      st.sel = c.id; st.cmdOpen = false; renderAll();
+    }
+    else if (a === 'new') {
+      st.newN++;
+      const id = 'new' + st.newN;
+      st.convs.splice(BASE.filter(c => c.pinned).length, 0, {id, title:'New conversation', time:'now', src:'app', tags:[], extra:[], preview:'No messages yet', isNew:true});
+      st.section = 'chat'; st.kind = st.kind === 'all' ? 'all' : 'app'; st.sel = id; st.filter = ''; filterInput.value = '';
+      renderAll();
+      const ni = dt.querySelector('.inrow input'); if (ni) ni.focus();
+    }
+    else if (a === 'cmds') { st.cmdOpen = !st.cmdOpen; el.setAttribute('aria-expanded', st.cmdOpen); dt.querySelector('.cmdlist').hidden = !st.cmdOpen; }
+    else if (a === 'term') { st.term = !st.term; el.setAttribute('aria-pressed', st.term); dt.querySelector('.term').hidden = !st.term; }
+    else if (a === 'stop') { const c = conv(st.sel); c.state = null; c.extra.push({who:'Hermes', time:'now', text:'Stopped. Nothing after the last finished step was written.'}); renderAll(); say('Run stopped'); }
+    else if (a === 'send') send();
+    else if (a === 'approve') { const c = conv(st.sel); c.state = 'run'; c.run = 0; c.preview = 'Running ' + c.approve; renderAll(); say('Approved — run started'); }
+    else if (a === 'deny') { const c = conv(st.sel); c.state = null; c.extra.push({who:'Hermes', time:'now', text:'Skipped the release build. Say when you want it.'}); c.preview = 'Skipped the release build'; renderAll(); }
+    else if (a === 'menu') { if (menuFor === el) closeMenu(true); else openMenu(el); }
+    else if (a === 'menuitem') { const m = el.dataset.msg; closeMenu(true); say(m); }
+    else if (a === 'toast') say(el.dataset.msg);
+  });
+  win.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { e.preventDefault(); closeMenu(true); }
+    else if (e.key === 'Enter' && e.target.matches('.inrow input')) { e.preventDefault(); send(); }
+    else if (!menu.hidden && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      e.preventDefault();
+      const items = [...menu.querySelectorAll('button')], i = items.indexOf(document.activeElement);
+      items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus();
+    }
+  });
+  filterInput.addEventListener('input', () => { st.filter = filterInput.value; if (FULL && st.section !== 'chat') { renderList(); return; } if (st.section !== 'chat') st.section = 'chat'; renderPanel(); renderList(); });
+  win.addEventListener('change', e => { if (FULL) secChange(e.target); });
+  win.addEventListener('input', e => { if (FULL && e.target.dataset.in) secInput(e.target); });
+
+  if (open) {
+    if (open === 'telegram') { st.kind = 'telegram'; st.sel = 'tg1'; }
+    else if (open === 'github-check') { st.section = 'github'; st.gh.view = 'check'; }
+    else st.section = open;
+  }
+
+  renderAll();
+  const api = {win, st, tick() {
+    st.convs.forEach(c => { if (c.state === 'run') { c.run++; win.querySelectorAll(`[data-run="${c.id}"]`).forEach(n => { n.textContent = mmss(c.run); }); } });
+  }, focusFilter() { filterInput.focus(); }};
+  WINS.push(api);
+  return win;
+}
+
+/* ======== messages, mission style (#a3-m1, #a3-m2, -states) ======== */
+P.image = '<rect x="4" y="5" width="16" height="14"/><path d="m4 16 5-5 4 4 2-2 5 5"/><circle cx="15.5" cy="9.5" r="1.2"/>';
+P.file = '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>';
+P.clock = '<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>';
+P.chevup = '<path d="m6 15 6-6 6 6"/>';
+P.token = '<path d="M4 7h16M4 12h16M4 17h10"/>';
+const sqm = s => `<span class="sq ${s}" aria-hidden="true">${s === 'done' ? ic('tick') : s === 'fail' ? ic('cross') : ''}</span>`;
+const tile = (cls, icon, n, w) => `<div class="tile ${cls}">${ic(icon)}<span class="n num">${n}</span><span class="w">${w}</span></div>`;
+const tag = (state, glyph, word) => `<span class="stk stk-${state}"><span class="g">${ic(glyph)}</span><span class="w">${word}</span></span>`;
+const step = (s, tool, cmd, d) => `<div class="st is-${s}">${sqm(s)}<span class="tool">${tool}</span><code>${esc(cmd)}</code><span class="d num">${d}</span></div>`;
+const stepSum = (s, n, d) => `<div class="st sum is-${s}">${sqm(s)}<span class="tool">STEPS</span><b>${n}</b><span class="d num">${d}</span>${ic('chev', 'chev')}</div>`;
+const lbl = (left, right) => `<div class="lbl"><span>${left}</span>${right ? `<span class="num">${right}</span>` : ''}<i class="ln"></i></div>`;
+
+const M_T1 = {
+  you: 'i already ran open, could you use cua-driver on my mac to test the ui?', at: '13:42',
+  brief: `<p>I’m testing through macOS accessibility in the background, so I haven’t taken over your screen. That covers structure and text; screenshots need the window in front.</p>
+  <p>Checked and working:</p>
+  <ul>
+    <li><mark>#41</mark> sections: Chat, GitHub, Agents, Jobs and Commands each switch and show their list.</li>
+    <li><mark>#48</mark> chat kinds: App 10, Telegram 4, Terminal 9, One-shots 2, Cron 6.</li>
+    <li><mark>#50</mark> runs on issues: <mark>homelab#1</mark> shows its finished run and jumps to Agents with that run selected.</li>
+  </ul>
+  <p>Small defects:</p>
+  <ol>
+    <li>The chat header says “run run_”; the run id is cut down to “run_”.</li>
+    <li>Some buttons read their label twice (“Looks good, Looks good”).</li>
+  </ol>
+  <pre><code><span class="p">$</span> cua-driver inspect --app Trismegistus --depth 2
+window   "Trismegistus"  1560×1122
+  sidebar  sections=5  kinds=6  current="Chat"
+  detail   messages=4  composer=steer</code></pre>
+  <p>The cua-driver daemon is still running on your Mac. <code>cua-driver stop</code> ends it.</p>`,
+  steps: stepSum('done', '4 commands', '6.1 s · all exit 0'),
+  res: [tile('t-ok', 'terminal', '4', 'commands'), tile('t-link', 'pr', '4', 'issues'), tile('t-meta', 'clock', '7', 'min'), tile('t-meta', 'token', '18K', 'tokens')]
+};
+const M_T2 = {
+  you: 'go ahead i set it up a second screen for me to work while you check', at: '13:52',
+  steps: step('done', 'TERMINAL', 'cua-driver screenshot --window Trismegistus', '2.1 s') +
+         step('done', 'TERMINAL', 'cua-driver click "GitHub" --app Trismegistus', '0.8 s') +
+         step('run', 'TERMINAL', 'cua-driver screenshot --window Trismegistus', '00:12')
+};
+const M_FAIL = {
+  you: 'unzip the Inter 4.1 release into the fonts folder', at: '18:02',
+  brief: '<p><code>unzip</code> isn’t installed on optiplex, so nothing was extracted. <code>sudo apt install unzip</code> fixes that, or I can extract it with Python.</p>',
+  steps: step('fail', 'TERMINAL', 'unzip -l Inter-4.1.zip', 'exit 127 · not found'),
+  res: [tile('t-fail', 'cross', '1', 'failed'), tile('t-meta', 'clock', '0.1', 's')]
+};
+const M_OK = {
+  you: 'use python then', at: '18:04',
+  brief: '<p>Extracted Inter ExtraBold and Black from the 4.1 release into <mark>TrismegistusUI/Resources/Fonts</mark>. Their hashes match the 4.1 faces already bundled.</p>',
+  steps: stepSum('done', '2 commands', '1.4 s · all exit 0'),
+  res: [tile('t-file', 'file', '2', 'files'), tile('t-ok', 'terminal', '2', 'commands'), tile('t-meta', 'clock', '1', 'min')]
+};
+const M_APPR = {
+  you: 'redeploy the relay with the terminal route', at: '18:10',
+  brief: '<p>The relay image is built (<mark>0adef6bd6f06</mark>). Restarting it drops both devices for about 5 s; they reconnect on their own.</p>',
+  approve: `<div class="approve"><div class="hd">// HERMES WANTS TO RUN</div>
+    <pre><code><span class="p">$</span> docker compose up -d trismegistus-relay</code></pre>
+    <div class="acts"><button class="btn btn-mark" type="button">Once ${ic('arrow')}</button><button class="btn btn-line" type="button">This session</button><button class="btn btn-deny" type="button">Deny ${ic('cross')}</button></div></div>`
+};
+
+function m1Turn(t, state, replyLbl) {
+  const ov = state === 'appr' ? `<span class="ovtag">${tag('approval', 'diamond', 'Approval')}</span>` : '';
+  let r = `<div class="obj is-${state}">${sqm(state)}<div class="band">${ov}<p>${esc(t.you)}</p><span class="tm num">${t.at}</span></div></div>`;
+  r += `<div class="reply">${replyLbl}`;
+  if (t.brief) r += `<div class="hermes">${t.brief}</div>`;
+  if (t.approve) r += t.approve;
+  if (t.steps) r += `<div class="steps">${t.steps}</div>`;
+  if (t.res) r += `<div class="res">${lbl('// Results')}${t.res.join('')}</div>`;
+  return r + '</div>';
+}
+function m2Card(t, state, loc, opts = {}) {
+  const ov = state === 'appr' ? `<span class="ovtag">${tag('approval', 'diamond', 'Approval')}</span>` : '';
+  if (opts.folded) return `<section class="mc folded is-${state}">${ov}<div class="mc-h">${sqm(state)}<div class="mc-t"><h3>${esc(t.you)}</h3><div class="loc">${loc}</div></div>
+    <div class="mini">${t.res.join('')}</div><button class="fold" type="button" aria-label="Unfold">${ic('chev')}</button></div></section>`;
+  let b = '';
+  if (t.brief) b += `<div class="hermes">${t.brief}</div>`;
+  if (t.approve) b += t.approve;
+  if (t.steps) b += `<div class="steps">${t.steps}</div>`;
+  if (opts.working) b += opts.working;
+  if (t.res) b += `<div class="res">${lbl('// Results')}${t.res.join('')}</div>`;
+  return `<section class="mc is-${state}">${ov}<div class="mc-h">${sqm(state)}<div class="mc-t"><h3>${esc(t.you)}</h3><div class="loc">${loc}</div></div>
+    <button class="fold" type="button" aria-label="Fold">${ic('chevup')}</button></div><div class="mc-rule"></div><div class="mc-b">${b}</div></section>`;
+}
+const pinLoc = (who, rest) => `<span class="pin" aria-hidden="true"></span><b>${who}</b><span class="num">${rest}</span>`;
+const WORKING = `<div class="working num"><b>WORKING</b><span>00:38</span><span>· step 3 of 3</span></div>`;
+
+function mComposer(mode) {
+  const hints = `<span class="hints"><span><kbd>⌘↩</kbd>steer</span><span><kbd>⌘.</kbd>stop</span><span class="x"><kbd>⌘⌥T</kbd>terminal</span><span class="x"><kbd>⌘K</kbd>conversations</span></span>`;
+  if (mode === 'appr') return `<div class="runline num"><span class="sq" style="background:var(--magenta);border:0" aria-hidden="true"></span><span>Waiting for you</span><span class="tm">approval asked 18:11</span>${hints}</div>
+    <div class="track"><button class="ib-clip" type="button" aria-label="Attach">${ic('clip')}</button><input type="text" placeholder="Steer this run"><button class="stopc" type="button" aria-label="Stop run"><i></i></button><button class="trk plain" type="button">Steer<span class="ring">${ic('arrow')}</span></button></div>`;
+  return `<div class="runline num"><span class="sq" aria-hidden="true"></span><span>Run active</span><span class="tm">00:38</span>${hints}</div>
+    <div class="track"><button class="ib-clip" type="button" aria-label="Attach">${ic('clip')}</button><input type="text" placeholder="Steer this run"><button class="stopc" type="button" aria-label="Stop run"><i></i></button><button class="trk" type="button">Steer<span class="ring">${ic('arrow')}</span></button></div>`;
+}
+
+function missionView(win, v) {
+  const dt = win.querySelector('.dt');
+  const scroll = dt.querySelector('.dt-scroll .col'), comp = dt.querySelector('.composer .col');
+  dt.classList.add('msn');
+  let body = '', mode = 'run';
+  if (v === 'm1') {
+    body = m1Turn(M_T1, 'done', lbl('// Hermes', '13:49 · 7 min')) +
+           m1Turn(M_T2, 'run', `<div class="working num" style="margin:0 0 6px"><b>WORKING</b><span>00:38</span><span>· step 3 of 3</span></div>`);
+  } else if (v === 'm1-states') {
+    mode = 'appr';
+    body = m1Turn(M_FAIL, 'fail', lbl('// Hermes', '18:02 · 0.1 s')) + m1Turn(M_OK, 'done', lbl('// Hermes', '18:05 · 1 min')) +
+           m1Turn(M_APPR, 'appr', lbl('// Hermes', '18:11'));
+  } else if (v === 'm2') {
+    dt.classList.add('msn2');
+    body = m2Card(Object.assign({}, M_T1, {brief: M_T1.brief.replace(/<pre>[\s\S]*?<\/pre>/, '')}), 'done', pinLoc('You 13:42', '→ Hermes 13:49 · 7 min')) +
+           m2Card(M_T2, 'run', pinLoc('You 13:52', '→ Hermes working'), {working: WORKING});
+  } else if (v === 'm2-states') {
+    dt.classList.add('msn2'); mode = 'appr';
+    body = `<div class="hist">${lbl('// Earlier today', '3 folded')}</div>` +
+           m2Card({you: 'build the a2 window and install it on my mac', res: [tile('t-ok', 'terminal', '6', 'cmds'), tile('t-file', 'file', '14', 'files')]}, 'done', pinLoc('You 11:02', '→ Hermes 11:36 · 34 min'), {folded: true}) +
+           m2Card(M_FAIL, 'fail', pinLoc('You 18:02', '→ Hermes 18:02 · 0.1 s'), {folded: true}) +
+           m2Card(M_OK, 'done', pinLoc('You 18:04', '→ Hermes 18:05 · 1 min'), {folded: true}) +
+           m2Card(M_APPR, 'appr', pinLoc('You 18:10', '→ Hermes asks 18:11'));
+  }
+  scroll.innerHTML = body;
+  comp.innerHTML = mComposer(mode);
+  const sc = dt.querySelector('.dt-scroll'); sc.scrollTop = sc.scrollHeight;
+}
+
+/* ---------- 18: search (trismegistus-mac #76, hermes-relay #34) ---------- */
+const SR_Q = 'android';
+const SR_TITLE_HIT = {id:'androidapp', title:'Android app', time:'6 d', src:'app', preview:'Phone check list for the S21: pairing, chat, approvals', tags:[]};
+// Real hits for "android" from Hermes' index (2026-11-11), newest first, one card per conversation.
+const SR_HITS = [
+  {title:'Workflow refiner', src:'app', time:'15:44', n:5, snip:'…plus Docker images for Swift, Gradle/JDK and the <mark>Android</mark> build. Not installed: Rust, Elixir, Deno, Java, or any C compiler…',
+   more:['…2. trismegistus-mac and trismegistus-<mark>android</mark>: the protocol sync scripts and the contract-test path. 3. hermes-dispatch…']},
+  {title:'Swift app', src:'app', time:'13:43', n:11, pinned:true, snip:'…trismegistus#28 (P1): push notifications to the <mark>Android</mark> app through ntfy. The <mark>Android</mark> app has its own items waiting for a check…',
+   more:['…card titles are 800 weight in capitals (SWIFT APP, <mark>ANDROID</mark> APP), and the headings 900. That’s poster or comic lettering…']},
+  {title:'linkedin larp', src:'app', time:'14:25', n:1, snip:'…cross-platform/dev breadth: Swift/Xcode on macOS, <mark>Android</mark>, self-hosted tooling across a Mac/Linux/<mark>Android</mark> setup…', more:[]},
+  {title:'lab maintenance', src:'app', time:'Tue', n:1, snip:'…gradle and the two <mark>Android</mark> build images, because trismegistus-<mark>android</mark> and tablet-kiosk build with them…', more:[]},
+  {title:'Trismegistus', src:'app', time:'Mon', n:5, snip:'…computer use, and an iOS/<mark>Android</mark> companion that pings you when an agent needs you and lets you reply from the phone…',
+   more:['…dispatch profiles are missing for trismegistus-<mark>android</mark> and endfield-dotfiles, the board has no tab for tablet-kiosk…']},
+  {title:'Android app', src:'app', time:'6 d', n:9, sel:true, snip:'…a hidden phone the size of your S21 FE, using the <mark>Android</mark> 37 image <mark>Android</mark> Studio had already installed. Your own emulators…',
+   more:['…MEDIA:/home/muramasa/Projects/trismegistus-<mark>android</mark>/design/review-2026-11-05/compare-1.jpg…']},
+  {title:'Endfield library', src:'app', time:'6 d', n:1, snip:'…or Phone (412×892). I added a phone size so the <mark>Android</mark> drafts can use it too. The numbers come straight from the app’s background code…', more:[]},
+  {title:'Daily news', src:'cron', time:'7 d', n:2, snip:'…Google ships <mark>Android</mark> 17 QPR2 to Pixels; Samsung’s One UI 9 beta adds…', more:[]},
+];
+function srCard(h, sel) {
+  return `<button class="row mc-row sr-card ${sel ? 'is-sel is-strong' : ''}" type="button">
+    ${mcEmblem(h.src)}<span class="mc-div" aria-hidden="true"></span>
+    <span class="mc-body">
+      <span class="mc-title"><span class="t">${esc(h.title)}</span>${h.pinned ? `<span class="pin">${ic('pin')}</span>` : ''}</span>
+      <span class="sr-snip">${h.snip}</span>
+    </span>
+    <span class="mc-side"><span class="mc-time num">${esc(h.time)}</span><span class="sr-n num">${h.n} ${h.n === 1 ? 'hit' : 'hits'}</span></span>
+  </button>`;
+}
+function srGroup(h, sel) {
+  const lines = [h.snip, ...h.more].slice(0, 2);
+  return `<div class="sr-grp ${sel ? 'is-sel' : ''}">
+    <div class="sr-gh">${mcEmblem(h.src)}<span class="t">${esc(h.title)}</span><span class="n num">${h.n}</span></div>
+    ${lines.map((l, i) => `<button class="sr-line ${sel && i === 0 ? 'is-cur' : ''}" type="button"><span class="tm num">${i === 0 ? esc(h.time) : ''}</span><span class="s">${l}</span></button>`).join('')}
+    ${h.n > lines.length ? `<button class="sr-more" type="button">${h.n - lines.length} more in this conversation</button>` : ''}
+  </div>`;
+}
+const SR_HEAD = (n, extra = '') => `<div class="mg"><span class="ms" aria-hidden="true">${ic('search')}</span><span class="ml">In messages</span><span class="mn num">${n} conversations</span>${extra}</div>`;
+function srList(win, mode, opts = {}) {
+  const lc = win.querySelector('.lc-scroll'), input = win.querySelector('.lc-search input');
+  input.value = opts.q != null ? opts.q : SR_Q;
+  input.setAttribute('value', input.value);
+  win.querySelector('.lc-search').classList.add('sr-on');
+  const title = missionHead('Conversations', 1) + missionRow(SR_TITLE_HIT, null);
+  let body = '';
+  if (mode === 'cards') body = SR_HEAD(SR_HITS.length) + SR_HITS.map(h => srCard(h, h.sel && opts.sel)).join('');
+  else body = SR_HEAD(SR_HITS.length) + SR_HITS.map(h => srGroup(h, h.sel && opts.sel)).join('');
+  lc.innerHTML = title + body;
+  const t = win.querySelector('.lc-title');
+  if (t) t.innerHTML = `<span class="lbl3">// Search</span><span class="big">${SR_HITS.length + 1}</span>`;
+}
+const FINDBAR = (q, count, extra = '') => `<div class="fb" role="search">
+  <label class="fld">${ic('search')}<input type="text" value="${esc(q)}" placeholder="Find in conversation" aria-label="Find in conversation">${q ? `<span class="x" aria-hidden="true">${ic('cross')}</span>` : ''}</label>
+  <span class="cnt num ${count === 'No matches' ? 'none' : ''}">${count}</span>
+  <button class="ib" type="button" aria-label="Previous match" data-tip="Previous  ⇧↩"><span class="flip">${ic('chev')}</span></button>
+  <button class="ib" type="button" aria-label="Next match" data-tip="Next  ↩">${ic('chev')}</button>
+  ${extra}<span class="fsp"></span><span class="hint"><kbd>esc</kbd>close</span>
+</div>`;
+function srDetail(win, opts = {}) {
+  const dt = win.querySelector('.dt');
+  const t1 = dt.querySelector('.dt-ttl .t1 .od-truncate'), t2 = dt.querySelector('.dt-ttl .t2');
+  if (t1) t1.textContent = 'Android app';
+  if (t2) t2.textContent = 'Trismegistus · 150 messages · last activity 6 d';
+  const pin = dt.querySelector('.dt-ttl .t1 svg'); if (pin) pin.remove();
+  dt.querySelector('.dt-rule').insertAdjacentHTML('afterend', FINDBAR(SR_Q, '3 of 9'));
+  dt.querySelector('.dt-scroll .col').innerHTML = `
+    <div class="who num">You // 5 Nov 18:02</div><div class="you">can you test the phone layout without my phone? i'm out</div>
+    <div class="who num">Hermes // 5 Nov 18:09</div><div class="hermes"><p>Yes. I started a hidden emulator on optiplex and ran the build on it, so nothing on your side changed.</p></div>
+    <div class="who num">You // 5 Nov 18:31</div><div class="you">which phone did you use?</div>
+    <div class="who num">Hermes // 5 Nov 18:33</div><div class="hermes hit-msg"><p>A hidden phone the size of your S21 FE, using the <mark>Android</mark> 37 image <mark class="cur">Android</mark> Studio had already installed. Your own emulators are untouched.</p>
+      <p>The chat, the approval sheet and the image picker all fit; the composer wraps at the same width as on your phone.</p></div>
+    <div class="who num">You // 5 Nov 18:40</div><div class="you">nice, send me the screenshots</div>
+    <div class="who num">Hermes // 5 Nov 18:41</div><div class="hermes"><p>Here they are, next to the drafts: MEDIA:/home/muramasa/Projects/trismegistus-<mark>android</mark>/design/review-2026-11-05/compare-1.jpg</p></div>`;
+  dt.querySelector('.composer .col').innerHTML = `<div class="runline"><span>Idle</span><span class="tm">last run 6 d</span>
+      <span class="hints"><span><kbd>↩</kbd>send</span><span class="x"><kbd>⌘K</kbd>conversations</span></span></div>
+    <div class="inrow"><button class="ib ib-clip" type="button" aria-label="Attach">${ic('clip')}</button>
+      <input type="text" placeholder="Message Hermes" aria-label="Message Hermes">
+      <button class="btn btn-ink" type="button">Send ${ic('arrow')}</button></div>`;
+  const sc = dt.querySelector('.dt-scroll'); sc.scrollTop = 0;
+}
+function searchView(win, v) {
+  win.classList.add('mcw', 'srw');
+  if (v === 's1') srList(win, 'cards');
+  else if (v === 's2') srList(win, 'groups');
+  else if (v === 's3') { srList(win, 'cards', {sel: true}); srDetail(win); }
+  win.querySelectorAll('.lc .row.is-sel').forEach(r => { if (!r.classList.contains('sr-card')) r.classList.remove('is-sel'); });
+}
+function searchStates() {
+  const win = document.createElement('div');
+  win.className = 'win skin-a3 win-states mcw srw';
+  win.style.setProperty('--w', '1000px');
+  const card = (h, sel) => `<div class="sr-col">${srCard(h, sel)}</div>`;
+  const cell = (cap, body) => `<div class="st-cell"><div class="cap">${cap}</div>${body}</div>`;
+  win.innerHTML = `${contours(1000, 1122)}<div class="st-grid">
+    <div class="st-left">
+      ${cell('Searching · after 2 characters and a 300 ms pause; title matches show at once',
+        `<label class="lc-search sr-on">${ic('search')}<input type="search" value="andr" autocomplete="off"><span class="spin" aria-hidden="true"></span></label>
+         ${missionHead('Conversations', 1)}<div class="sr-col">${missionRow(SR_TITLE_HIT, null)}</div>
+         ${SR_HEAD('…')}<div class="sr-note">Searching messages…</div>`)}
+      ${cell('One character · titles only, as today',
+        `<label class="lc-search">${ic('search')}<input type="search" value="a" autocomplete="off"><kbd>⌘K</kbd></label>
+         <div class="sr-note">Type one more character to search inside messages.</div>`)}
+      ${cell('No message says it',
+        `${SR_HEAD('0')}<div class="sr-note">No message in any conversation says “zebra”.</div>`)}
+      ${cell('Agents helper down · the titles still filter',
+        `${SR_HEAD('—')}<div class="sr-note warn">Searching inside messages needs the agents helper on optiplex.<code>systemctl --user start trismegistus-agents</code></div>`)}
+      ${cell('More than 50 hits · the newest 50; a narrower query finds older ones',
+        `${card(SR_HITS[1])}<div class="sr-note">Showing the newest 50 matches. Add a word to narrow it.</div>`)}
+    </div>
+    <div class="st-right">
+      ${cell('⌘F in the open conversation · empty', FINDBAR('', ''))}
+      ${cell('Typing · every match in the loaded transcript, the current one solid', FINDBAR('emulator', '1 of 4'))}
+      ${cell('No matches', FINDBAR('zebra', 'No matches'))}
+      ${cell('Opened from a search hit older than the loaded messages', FINDBAR('android', 'Loading earlier messages…'))}
+      ${cell('Marks in the transcript · others light, the current solid with an ink underline, its message with the yellow edge',
+        `<div class="col sr-demo"><div class="who num">Hermes // 5 Nov 18:33</div><div class="hermes hit-msg"><p>A hidden phone the size of your S21 FE, using the <mark>Android</mark> 37 image <mark class="cur">Android</mark> Studio had already installed.</p></div>
+         <div class="who num">You // 5 Nov 18:40</div><div class="you">does it run the <mark>android</mark> 36 image too?</div></div>`)}
+    </div></div>`;
+  return win;
+}
+
+/* ---------- routing ---------- */
+const stage = document.getElementById('stage');
+function route() {
+  const h = location.hash.slice(1);
+  MCARDS = 0;
+  const SEC_RE = /^(a2|a3)-(github-check|github|agents|jobs|commands|telegram)$/;
+  const v = (['a', 'b', 'a2', 'a3', 'all', 'compare', 'a-narrow', 'b-narrow', 'a2-narrow', 'a3-narrow', 'a2-states', 'a3-states'].includes(h) || SEC_RE.test(h) || /^a3-m[12](-states)?$/.test(h) || /^a3-c(1|2|-states)$/.test(h) || /^a3-s(1|2|3|-states)$/.test(h)) ? h : 'all';
+  WINS.length = 0;
+  stage.innerHTML = '';
+  let w = 1560, hgt = 1122;
+  if (v === 'all' || v === 'compare') {
+    hgt = 561;
+    (v === 'all' ? ['a', 'a2'] : ['a2', 'a3']).forEach(s => { const f = document.createElement('div'); f.className = 'frame'; f.appendChild(createWin(s, false)); stage.appendChild(f); });
+  } else if (h === 'a3-s-states') {
+    w = 1000; hgt = 'auto';
+    stage.appendChild(searchStates());
+  } else if (/^a3-s[123]$/.test(h)) {
+    MCARDS = 1;
+    const w0 = createWin('a3', false); stage.appendChild(w0); searchView(w0, h.slice(3));
+  } else if (/^a3-c(1|2|-states)$/.test(h)) {
+    MCARDS = h === 'a3-c2' ? 2 : 1;
+    const w0 = h === 'a3-c-states' ? createStates('a3') : createWin('a3', false);
+    w0.classList.add('mcw'); stage.appendChild(w0);
+    if (h === 'a3-c-states') { w = 520; w0.querySelectorAll('.cap').forEach(n => { if (n.textContent.startsWith('Tagged')) n.textContent = 'Tagged: tags show in the detail header and the filter'; }); }
+  } else if (/^a3-m[12](-states)?$/.test(h)) {
+    const w0 = createWin('a3', false); stage.appendChild(w0); missionView(w0, h.slice(3));
+    if (h.endsWith('-states')) { const t1 = w0.querySelector('.dt-ttl .t1 .od-truncate'), t2 = w0.querySelector('.dt-ttl .t2'); if (t1) t1.textContent = 'Trismegistus'; if (t2) t2.textContent = 'Trismegistus · run_8c41d0 · waiting for approval since 18:11'; }
+  } else if (SEC_RE.test(v)) {
+    const [, sk, op] = v.match(SEC_RE);
+    stage.appendChild(createWin(sk, false, op));
+  } else if (v.endsWith('-states')) {
+    w = 520;
+    stage.appendChild(createStates(v.split('-')[0]));
+  } else {
+    const [skin, mod] = v.split('-');
+    const narrow = mod === 'narrow';
+    w = narrow ? 1180 : 1560;
+    stage.appendChild(createWin(skin, narrow));
+  }
+  document.documentElement.style.width = document.body.style.width = w + 'px';
+  document.documentElement.style.height = document.body.style.height = hgt + 'px';
+}
+window.addEventListener('hashchange', route);
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); if (WINS[0]) WINS[0].focusFilter(); }
+});
+setInterval(() => WINS.forEach(w => w.tick()), 1000);
+route();
+})();
+</script>
+</body>
+</html>
