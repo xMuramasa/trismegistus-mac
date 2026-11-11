@@ -167,7 +167,9 @@ struct ConversationSidebar: View {
         } else if query.count >= MessageSearch.minLength, let search {
             SearchGroupHead(detail: Self.hitsDetail(search), isFirst: isFirst).sidebarRow()
             switch search.phase {
-            case .idle, .searching where search.conversations.isEmpty:
+            case .idle:
+                SearchNote("Searching messages…").sidebarRow()
+            case .searching where search.conversations.isEmpty:
                 SearchNote("Searching messages…").sidebarRow()
             case .none:
                 SearchNote("No message in any conversation says “\(query)”.").sidebarRow()
