@@ -25,19 +25,24 @@ struct SidebarHeader<Trailing: View, Extra: View>: View {
 
 /// A list column's filter field with its ⌘K key cap, its right edge pulled in so the soft shadow has the same margin as
 /// the rest of the column.
+/// `busy` (#76): a spinner in place of the key cap while the chat list searches inside messages.
 struct SidebarFilter: View {
     let prompt: String
     @Binding var text: String
     let focus: FocusState<Bool>.Binding
+    var busy = false
 
-    init(_ prompt: String, text: Binding<String>, focus: FocusState<Bool>.Binding) {
+    init(_ prompt: String, text: Binding<String>, focus: FocusState<Bool>.Binding, busy: Bool = false) {
         self.prompt = prompt
         self._text = text
         self.focus = focus
+        self.busy = busy
     }
 
     var body: some View {
-        EndfieldTextField(prompt, text: $text, focus: focus, hint: "⌘K").padding(.trailing, Space.xs)
+        EndfieldTextField(prompt, text: $text, focus: focus, hint: busy ? nil : "⌘K")
+            .overlay(alignment: .trailing) { if busy { SearchSpinner().padding(.trailing, Space.s) } }
+            .padding(.trailing, Space.xs)
     }
 }
 

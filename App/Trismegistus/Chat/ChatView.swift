@@ -9,8 +9,17 @@ struct ChatView: View {
     let sessionID: String
     var compact: Bool = true
     var onShowCommands: ((String) -> Void)? = nil
+    /// ⌘F's bar (#76, the window's): shown while it is on this conversation.
+    var find: Binding<FindRequest?> = .constant(nil)
+    var findFocus: FocusState<Bool>.Binding? = nil
 
     @Environment(AppModel.self) private var model
+    /// ⌘F's matches and the current one.
+    @State private var steps = FindSteps()
+    /// A search hit older than the loaded messages: the earlier ones are on their way.
+    @State private var loadingEarlier = false
+    /// The transcript's unfolded chips: find reads the thinking panels that are open.
+    @State private var openRows: Set<String> = []
     @State private var draft = ""
     /// Failed prompts already retried or steered (the outbox keeps failed prompts until the history reloads).
     @State private var hidden: Set<String> = []
@@ -42,16 +51,20 @@ struct ChatView: View {
 
     var body: some View {
         let items = self.items
+        let marks = findMarks
+        let counts = marks.map { findCounts(items, $0) } ?? []
         VStack(spacing: 0) {
+            if find.wrappedValue?.sessionID == sessionID, !compact, let findFocus { findBar(findFocus) }
             if let approval { banner(approval) }
             // The composer block lies over the scroll view's bottom, never under it (#52, `DockedScroll`).
-            DockedScroll {
+            DockedScroll(reveal: marks == nil ? nil : steps.match?.itemID) {
                 LazyVStack(alignment: .leading, spacing: compact ? Space.m : Space.xl) {
                     OlderParts(tipID: id, compact: compact)
                     historyStatus
                     ChatTranscript(
                         items: items, sessionID: id, events: state?.events ?? [], onShowCommands: showCommands, retry: retry(_:),
-                        editing: $editing, resend: canRewind ? resend(_:) : nil)
+                        editing: $editing, resend: canRewind ? resend(_:) : nil, openRows: $openRows,
+                        findMarks: rowMarks(counts, marks))
                     if let run { working(run) } else if let info, SessionCapabilities(info).canHandOff, Self.stalled(items) { stallRow(info) }
                 }
                 // The window: Space.m under the header's title rule.
@@ -83,6 +96,9 @@ struct ChatView: View {
             workOpen = false
         }
         .onChange(of: id) { editing = nil }
+        // ⌘F (#76): the matches follow the transcript and the query, the current one staying where it was.
+        .onChange(of: counts.map { "\($0.itemID) \($0.count)" }, initial: true) { steps = FindSteps(counts: counts, keeping: steps) }
+        .task(id: [find.wrappedValue?.id.uuidString ?? "", "\(state?.historyLoaded == true)"]) { await land() }
         // A retry or edit the relay refused: the turns are back, and so is the editor with the text sent.
         .onChange(of: state?.outbox.filter { $0.rewindTo != nil && $0.isFailed } ?? []) { _, failed in
             for p in failed where hidden.insert(p.id).inserted {
@@ -98,6 +114,72 @@ struct ChatView: View {
             self.editing = nil
         }
         .handoffSheet($handingOff)
+    }
+
+    // MARK: Find in the conversation (#76, design 18c)
+
+    /// The bar's query as marks; nil while the bar is closed, on another conversation or empty.
+    private var findMarks: FindMarks? {
+        guard !compact, let request = find.wrappedValue, request.sessionID == sessionID else { return nil }
+        let marks = FindMarks(query: request.query)
+        return marks.isEmpty ? nil : marks
+    }
+
+    /// Each row's matches: your messages, Hermes' answers (as `MarkdownView` draws them) and the thinking panels that are
+    /// open; a row counts only when it holds every word.
+    private func findCounts(_ items: [ChatItem], _ marks: FindMarks) -> [(itemID: String, count: Int)] {
+        items.map { item in
+            let count = switch item {
+            case .user(_, let text, _, _, _): marks.count(in: [text])
+            case .prompt(let p, _): marks.count(in: [p.text])
+            case .answer(_, let text, _): marks.count(in: AnswerMessage.parts(text, role: .message))
+            case .thinking(let id, let steps, _) where openRows.contains(id): marks.count(in: steps.map(\.thought))
+            default: 0
+            }
+            return (item.id, count)
+        }
+    }
+
+    /// The marks of each row with matches, the current match's row with its index there.
+    private func rowMarks(_ counts: [(itemID: String, count: Int)], _ marks: FindMarks?) -> [String: FindMarks] {
+        guard let marks else { return [:] }
+        var rows: [String: FindMarks] = [:]
+        for row in counts where row.count > 0 {
+            var own = marks
+            own.current = steps.currentIndex(in: row.itemID)
+            rows[row.itemID] = own
+        }
+        return rows
+    }
+
+    private func findBar(_ focus: FocusState<Bool>.Binding) -> some View {
+        let status: FindBar.Status = loadingEarlier ? .loading
+            : findMarks == nil ? .empty
+            : steps.position.map { .matches(current: $0, total: steps.total) } ?? .none
+        return FindBar(
+            query: Binding(get: { find.wrappedValue?.query ?? "" }, set: { find.wrappedValue?.query = $0 }), status: status,
+            focus: focus, onPrevious: { steps.previous() }, onNext: { steps.next() }
+        ) {
+            find.wrappedValue = nil
+            focus.wrappedValue = false
+        }
+    }
+
+    /// Opened from a search hit: the pages before the loaded messages until the hit's row is in the transcript (the bar
+    /// says so meanwhile), then its first match is current, which scrolls it into view.
+    private func land() async {
+        guard let request = find.wrappedValue, request.sessionID == sessionID, let hit = request.hit, state?.historyLoaded == true
+        else { return }
+        let row = "h-\(hit)"
+        if !items.contains(where: { $0.id == row }) {
+            loadingEarlier = true
+            _ = await model.store?.loadEarlier(id, through: String(hit))
+            loadingEarlier = false
+        }
+        guard find.wrappedValue?.id == request.id else { return }
+        find.wrappedValue?.hit = nil
+        if let marks = findMarks { steps = FindSteps(counts: findCounts(items, marks), keeping: steps) }
+        steps.select(itemID: row)
     }
 
     /// The last answer or error says the model stopped answering (Hermes' stall messages).
@@ -343,6 +425,15 @@ struct ChatView: View {
     }
 }
 
+/// ⌘F's bar on a conversation (#76): its query and, opened from a search hit, the message to land on.
+struct FindRequest: Equatable {
+    let id = UUID()
+    var sessionID: String
+    var query: String
+    /// Hermes' id of the hit's message, until the chat has landed on it.
+    var hit: Int64? = nil
+}
+
 /// The rows of a conversation.
 extension EnvironmentValues {
     /// The window's chat (older parts included): answers as plain text, no yellow bar (#32).
@@ -361,7 +452,15 @@ struct ChatTranscript: View {
     var editing: Binding<ChatTimeline.Rewindable?> = .constant(nil)
     /// Sends a message again in place of itself and what follows (retry, edit); nil where neither is offered.
     var resend: (@MainActor (ChatTimeline.Rewindable) -> Void)? = nil
-    @State private var expanded: Set<String> = []
+    /// The unfolded chips, when the caller keeps them (find reads the open thinking panels); else the transcript does.
+    var openRows: Binding<Set<String>>? = nil
+    /// ⌘F's marks of the rows with matches (#76).
+    var findMarks: [String: FindMarks] = [:]
+    @State private var ownOpenRows: Set<String> = []
+    private var expanded: Set<String> {
+        get { openRows?.wrappedValue ?? ownOpenRows }
+        nonmutating set { if let openRows { openRows.wrappedValue = newValue } else { ownOpenRows = newValue } }
+    }
     /// The row under the pointer: its actions show.
     @State private var hovered: String?
     /// How far a 24 pt action button hangs above its 10 pt label line; less than the window's 20 pt gap between rows,
@@ -375,6 +474,8 @@ struct ChatTranscript: View {
         let last = offer == nil ? nil : ChatTimeline.retry(items)
         ForEach(Array(items.enumerated()), id: \.element.id) { i, item in
             row(item, offer: offer, last: last)
+                .environment(\.findMarks, findMarks[item.id])
+                .id(item.id) // ⌘F scrolls to it
                 .rewound(cut.map { i > $0 } ?? false)
                 // The whole row is hover ground, not just its text and boxes: an empty stretch (the label line right of
                 // its words) used to count as outside, so the pencil hid on the way to it and flickered. The ground
@@ -581,7 +682,7 @@ private struct UserMessage<Actions: View>: View {
         VStack(alignment: .leading, spacing: Space.xs) {
             MessageLabelLine(label, showsActions: hovered) { actions }
             if !images.isEmpty { MessageImages(sessionID: sessionID, images: images) }
-            if !text.isEmpty || images.isEmpty { UserMessageText(text) }
+            if !text.isEmpty || images.isEmpty { FindableUserText(text) }
         }
     }
 }
@@ -657,6 +758,8 @@ private struct AnswerMessage: View {
     @Environment(\.plainAnswers) private var plain
     /// The window's a3 chat (#71): 14 pt.
     @Environment(\.hairlineControls) private var hairline
+    /// ⌘F (#76): the yellow edge while the current match is in it (`MarkdownView` marks the words).
+    @Environment(\.findMarks) private var marks
 
     private final class Parsed {
         let parts: [MarkdownPart<MarkdownBlock>]
@@ -669,8 +772,8 @@ private struct AnswerMessage: View {
         return cache
     }()
 
-    /// Per role too: the popover and the window can show the same answer.
-    private static func parts(_ text: String, role: TypeRole) -> [MarkdownPart<MarkdownBlock>] {
+    /// Per role too: the popover and the window can show the same answer. Find counts on these (#76).
+    static func parts(_ text: String, role: TypeRole) -> [MarkdownPart<MarkdownBlock>] {
         let key = "\(role)\n\(text)" as NSString
         if let hit = parsed.object(forKey: key) { return hit.parts }
         let parts = MarkdownPart.parse(text, role: role)
@@ -704,6 +807,7 @@ private struct AnswerMessage: View {
                 }
             }
             .padding(.horizontal, plain ? Space.m : 0)
+            .findEdge(marks)
             .fixedSize(horizontal: false, vertical: true)
         }
     }

@@ -165,6 +165,35 @@ public final class SessionStore {
         }
     }
 
+    /// Messages per page of `loadEarlier`, Hermes' default page.
+    public static let earlierPage = 500
+
+    /// A search hit older than the loaded history (#76; the window loads the last 500 messages): fetches the history
+    /// from its start, a page at a time, up to the first message loaded, and puts it before them. True when
+    /// `messageID` (Hermes' id) is in the history then.
+    /// shortcut: pages go oldest first from the very start (the relay's `offset` paging), so a hit near the end of a
+    /// conversation of thousands of messages fetches all before it; a `before=<id>` page would be quicker.
+    public func loadEarlier(_ id: String, through messageID: String) async -> Bool {
+        guard let first = sessions[id]?.history.first?.id else { return false }
+        if sessions[id]?.history.contains(where: { $0.id == messageID }) == true { return true }
+        var older: [HistoryMessage] = []
+        var offset = 0
+        while true {
+            guard let page = try? await rest.messages(id, offset: offset, limit: Self.earlierPage) else { return false }
+            if let i = page.messages.firstIndex(where: { $0.id == first }) {
+                older += page.messages[..<i]
+                break
+            }
+            older += page.messages
+            offset += page.count
+            // The end, and the loaded part never came: something moved; leave the history as it is.
+            if page.count < Self.earlierPage { return false }
+        }
+        guard sessions[id]?.history.first?.id == first else { return false } // reloaded meanwhile from elsewhere
+        sessions[id]?.history.insert(contentsOf: older, at: 0)
+        return older.contains { $0.id == messageID }
+    }
+
     /// Hermes stores a step's thinking when its tool round ends, and the runs API doesn't stream it: fetch the end of the
     /// history 1 s after the last `tool.completed`, one fetch at a time, for the WORKING line (`SessionState.thought`).
     /// The live timeline stays as it is.

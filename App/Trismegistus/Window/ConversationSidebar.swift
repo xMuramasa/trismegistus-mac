@@ -4,13 +4,16 @@ import TrismegistusUI
 
 /// The Chat section's list column (#68): `…` (Rename, Tags, Hand off for the open conversation), `APP // 10`, the yellow
 /// `+`; the filter (⌘K) and tag chips; In progress (a waiting approval or a live run), Pinned and Conversations groups
-/// (#72, design 15b) over one mission card per conversation of the kind picked in the section panel's Chats group (#48).
+/// (#72, design 15b) over one mission card per conversation of the kind picked in the section panel's Chats group (#48);
+/// under them, from 2 characters, the conversations whose messages say the filter's text (#76, design 18a), every kind.
 struct ConversationSidebar: View {
     typealias Groups = (inProgress: [SessionOverview], pinned: [SessionOverview], rest: [SessionOverview])
 
     @Binding var selection: String?
     /// The Filter field's focus (⌘K).
     var filterFocus: FocusState<Bool>.Binding
+    /// A message hit picked, with the query it matched.
+    var onOpenHit: (SearchHit, String) -> Void = { _, _ in }
 
     @Environment(AppModel.self) private var model
     /// The tab, shared with the popover.
@@ -20,6 +23,8 @@ struct ConversationSidebar: View {
     @State private var tagFilter: String?
     @State private var createFailed = false
     @State private var actions = ConversationActions()
+    /// Searching inside messages as the filter is typed (#76); made with the first keystroke.
+    @State private var search: MessageSearch?
 
     private var tags: [String: [String]] { model.store?.tags ?? [:] }
     /// One per thread: its newest part (title, tags and pin come from it).
@@ -105,10 +110,15 @@ struct ConversationSidebar: View {
                         .sidebarRow()
                     ForEach(groups.rest) { conversation($0) }
                 }
+                messageHits(isFirst: count == 0)
             }
             .sidebarList()
         }
         .confirmsDelete(actions, store: model.store)
+        .onChange(of: filter) { _, text in
+            if search == nil, let rest = model.store?.rest { search = MessageSearch(rest: rest) }
+            search?.update(text)
+        }
         .onChange(of: ordered) { old, new in
             // A handed-off conversation leaves the list for the part that continues it: the window stays on the thread.
             if let selection, let tip = model.store?.threadTip(of: selection), tip != selection {
@@ -148,6 +158,49 @@ struct ConversationSidebar: View {
         }
     }
 
+    /// The In messages group (#76, design 18a and its states): under the title matches, one hit card per conversation
+    /// with a message saying the filter's text, every kind, newest hit first; or the line that says why there are none.
+    @ViewBuilder private func messageHits(isFirst: Bool) -> some View {
+        let query = filter.trimmingCharacters(in: .whitespacesAndNewlines)
+        if query.count == MessageSearch.minLength - 1 {
+            SearchNote("Type one more character to search inside messages.").sidebarRow()
+        } else if query.count >= MessageSearch.minLength, let search {
+            SearchGroupHead(detail: Self.hitsDetail(search), isFirst: isFirst).sidebarRow()
+            switch search.phase {
+            case .idle, .searching where search.conversations.isEmpty:
+                SearchNote("Searching messages…").sidebarRow()
+            case .none:
+                SearchNote("No message in any conversation says “\(query)”.").sidebarRow()
+            case .unavailable:
+                SearchNote("Searching inside messages needs the agents helper on optiplex.",
+                           command: "systemctl --user start trismegistus-agents").sidebarRow()
+            case .failed(let message):
+                SearchNote(message).sidebarRow()
+            case .results, .searching: // while searching, the previous answer's cards stay (no flash per keystroke)
+                ForEach(search.conversations) { hits in
+                    HitRow(hits: hits, info: model.sessions.first { $0.id == hits.id }, isSelected: selection == hits.id) {
+                        onOpenHit(hits.newest, search.query)
+                    }
+                    .missionCell(isSelected: selection == hits.id)
+                    .sidebarRow()
+                }
+                if search.more {
+                    SearchNote("Showing the newest \(MessageSearch.limit) matches. Add a word to narrow it.").sidebarRow()
+                }
+            }
+        }
+    }
+
+    /// The In messages head's count: `8 conversations`, `…` while searching, `—` when it couldn't.
+    @MainActor private static func hitsDetail(_ search: MessageSearch) -> String {
+        switch search.phase {
+        case .idle: "… conversations"
+        case .searching where search.conversations.isEmpty: "… conversations"
+        case .unavailable, .failed: "— conversations"
+        case .none, .results, .searching: search.conversations.count == 1 ? "1 conversation" : "\(search.conversations.count) conversations"
+        }
+    }
+
     /// A conversation's row, with its tag editor under it while that is open.
     private func conversation(_ overview: SessionOverview) -> some View {
         VStack(spacing: 0) {
@@ -183,7 +236,7 @@ struct ConversationSidebar: View {
                 PlusButton("New conversation", isPrimary: open.flatMap { model.store?.overview[$0.id]?.run } == nil) { create() }
             }
             .padding(.horizontal, -Space.l)
-            SidebarFilter("Filter", text: $filter, focus: filterFocus)
+            SidebarFilter("Filter", text: $filter, focus: filterFocus, busy: search?.phase == .searching)
             if !tagCounts.isEmpty { tagFilterBar }
             ActionError(message: createFailed ? "Could not create a conversation. Try again." : nil)
             ActionError(message: actions.error)
@@ -221,6 +274,51 @@ struct ConversationSidebar: View {
     }
 
     static func title(_ info: SessionInfo) -> String { info.title ?? info.preview ?? "New conversation" }
+
+    /// The emblem of a conversation's source.
+    static func source(_ source: String?) -> SessionSource {
+        switch source {
+        case "api_server": .trismegistus
+        case "telegram": .telegram
+        case "cron": .cron
+        default: .cli
+        }
+    }
+}
+
+/// A message hit's card (#76, design 18a): the conversation's emblem, title and pin, its newest matching line with the
+/// query's words marked, and that line's time over the hit count. A click opens it at that message.
+private struct HitRow: View {
+    let hits: SearchConversation
+    let info: SessionInfo?
+    let isSelected: Bool
+    let open: () -> Void
+    @State private var hovered = false
+
+    var body: some View {
+        let hit = hits.newest
+        Button(action: open) {
+            MissionCard(
+                name: info.map(ConversationSidebar.title) ?? hit.sessionTitle ?? "New conversation",
+                source: ConversationSidebar.source(hit.sessionSource ?? info?.source), activity: Self.time(hit.date, now: Date()),
+                preview: hit.snippet, isSelected: isSelected, isPinned: info?.isPinned == true, hits: hits.count, marks: hit.marks)
+        }
+        .buttonStyle(.plain)
+        .environment(\.rowHovered, hovered)
+        .onHover { hovered = $0 }
+        .accessibilityHint("Opens the conversation at this message")
+    }
+
+    /// `15:44` today, `Tue` this week, `6 d` before.
+    static func time(_ date: Date, now: Date) -> String {
+        let calendar = Calendar.current
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: date), to: calendar.startOfDay(for: now)).day ?? 0
+        switch days {
+        case ...0: return date.formatted(.clock.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
+        case 1...5: return date.formatted(.clock.weekday(.abbreviated))
+        default: return "\(days) d"
+        }
+    }
 }
 
 /// The kind tabs over a list's `summary`; the window's sidebar and the popover share them and the choice
@@ -279,7 +377,7 @@ private struct ConversationRow: View {
             // The tags stay in the filter and the detail header (#72).
             let row = MissionCard(
                 name: overview.info.map(ConversationSidebar.title) ?? "New conversation",
-                source: source, activity: Self.age(overview.lastActivity, now: context.date),
+                source: ConversationSidebar.source(overview.source), activity: Self.age(overview.lastActivity, now: context.date),
                 // The relay's preview as it is; with no title the preview is the title already.
                 preview: overview.info?.title == nil ? nil : overview.info?.preview, isSelected: isSelected,
                 isReadOnly: overview.isReadOnly, isPinned: overview.info?.isPinned == true,
@@ -290,15 +388,6 @@ private struct ConversationRow: View {
             } else {
                 row
             }
-        }
-    }
-
-    private var source: SessionSource {
-        switch overview.source {
-        case "api_server": .trismegistus
-        case "telegram": .telegram
-        case "cron": .cron
-        default: .cli
         }
     }
 

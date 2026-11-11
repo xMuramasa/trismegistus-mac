@@ -29,6 +29,9 @@ struct MainWindow: View {
     /// The session list the Commands log fetched last, for its list's titles.
     @State private var commandSessions: [SessionInfo]?
     @FocusState private var filterFocused: Bool
+    /// ⌘F's bar on the open conversation (#76), nil while closed.
+    @State private var find: FindRequest?
+    @FocusState private var findFocused: Bool
 
     /// A stored selection as the lists take it: `""` is none.
     private func optional(_ value: Binding<String>) -> Binding<String?> {
@@ -47,12 +50,31 @@ struct MainWindow: View {
         Binding(get: { chatSelection.wrappedValue }, set: { $0.map(open) })
     }
 
-    private func open(_ id: String) {
+    private func open(_ id: String) { open(id, source: nil) }
+
+    /// `source`: the kind to switch to when the conversation isn't listed (a search hit knows its own).
+    private func open(_ id: String, source: String?) {
         section = .chat
         selectedSession = id
         // The kind of the thread's newest part (the row shown); All stays All, and an unlisted id leaves the kind alone.
         let tip = model.store?.threadTip(of: id) ?? id
-        if chatKind != .all, let info = model.sessions.first(where: { $0.id == tip }) { chatKind = ConversationKind(source: info.source) }
+        let listed = model.sessions.first { $0.id == tip }
+        if chatKind != .all, listed != nil || source != nil { chatKind = ConversationKind(source: listed?.source ?? source) }
+    }
+
+    /// A message hit from the list (#76, design 18c): its conversation, switching the kind as the filter's "elsewhere" row
+    /// does, scrolled to the message with the find bar on the query and its current match there.
+    private func openHit(_ hit: SearchHit, query: String) {
+        open(hit.sessionID, source: hit.sessionSource)
+        find = FindRequest(sessionID: hit.sessionID, query: query, hit: hit.messageID)
+        findFocused = true
+    }
+
+    /// ⌘F: opens the bar on the open conversation, or focuses it.
+    private func findInConversation() {
+        guard section == .chat, let id = chatSelection.wrappedValue else { return }
+        if find?.sessionID != id { find = FindRequest(sessionID: id, query: "") }
+        findFocused = true
     }
 
     /// The chip's "Show in Commands": this conversation's calls, whatever the search was.
@@ -79,7 +101,10 @@ struct MainWindow: View {
         .selectsChatFromNotifications(model.notifications, selection: opening)
         .shows(section == .chat ? chatSelection.wrappedValue : nil, in: .window)
         .focusedSceneValue(\.sidebar, SidebarActions(isShown: panelShown, toggle: togglePanel, find: { filterFocused = true },
-                                                     section: section, select: { section = $0 }, toggleTerminal: toggleTerminal))
+                                                     section: section, select: { section = $0 }, toggleTerminal: toggleTerminal,
+                                                     findInConversation: section == .chat && chatSelection.wrappedValue != nil ? findInConversation : nil))
+        // Another conversation closes the bar and its marks (a hit's own conversation keeps it: it set both).
+        .onChange(of: selectedSession) { _, id in if find?.sessionID != id { find = nil } }
         .frame(minWidth: Size.windowMin.width, minHeight: Size.windowMin.height)
         .background(WindowFrameMemory(name: "TrismegistusMainWindow"))
         .onAppear {
@@ -145,7 +170,7 @@ struct MainWindow: View {
 
     @ViewBuilder private var list: some View {
         switch section {
-        case .chat: ConversationSidebar(selection: chatSelection, filterFocus: $filterFocused)
+        case .chat: ConversationSidebar(selection: chatSelection, filterFocus: $filterFocused, onOpenHit: openHit)
         case .github: GitHubSidebar(selection: optional($selectedIssue), filterFocus: $filterFocused)
         case .agents: AgentsSidebar(selection: optional($selectedAgent), filterFocus: $filterFocused)
         case .jobs: JobsSidebar(selection: optional($selectedJob), filterFocus: $filterFocused)
@@ -161,7 +186,7 @@ struct MainWindow: View {
             VStack(spacing: 0) {
                 if let id = chatSelection.wrappedValue {
                     ConversationHeader(sessionID: id)
-                    ChatView(sessionID: id, compact: false, onShowCommands: showCommands)
+                    ChatView(sessionID: id, compact: false, onShowCommands: showCommands, find: $find, findFocus: $findFocused)
                 } else {
                     Text("No conversation selected").typeRole(.caption).foregroundStyle(Ink.text.muted)
                         .padding(Space.s).background(Ink.surface.window)
@@ -215,6 +240,8 @@ struct SidebarActions {
     let section: WindowSection
     let select: @MainActor (WindowSection) -> Void
     let toggleTerminal: @MainActor () -> Void
+    /// ⌘F (#76); nil with no conversation open in Chat.
+    let findInConversation: (@MainActor () -> Void)?
 }
 
 extension FocusedValues {
@@ -222,11 +249,17 @@ extension FocusedValues {
 }
 
 /// View menu: the five sections (⌘1…⌘5), show or hide the section panel (⌃⌘S, the system's key for a sidebar), ⌘K for
-/// the current section's filter and ⌘⌥T for the terminal drawer (Chat only). Disabled unless the main window is key.
+/// the current section's filter and ⌘⌥T for the terminal drawer (Chat only). Edit menu: ⌘F, find in the open conversation
+/// (#76; before the text system's Find items, so it comes first). Disabled unless the main window is key.
 struct SidebarMenuCommands: Commands {
     @FocusedValue(\.sidebar) private var sidebar
 
     var body: some Commands {
+        CommandGroup(before: .textEditing) {
+            Button("Find in Conversation") { sidebar?.findInConversation?() }
+                .keyboardShortcut("f")
+                .disabled(sidebar?.findInConversation == nil)
+        }
         CommandGroup(before: .sidebar) {
             ForEach(WindowSection.allCases) { section in
                 Toggle(section.title, isOn: Binding(get: { sidebar?.section == section }, set: { _ in sidebar?.select(section) }))

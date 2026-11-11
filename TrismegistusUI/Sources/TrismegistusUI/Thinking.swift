@@ -51,14 +51,17 @@ public struct ThinkingPanel: View {
     }
 
     let steps: [Step]
+    /// ⌘F's marks over the thoughts (#76), the current one counted from the first step's.
+    @Environment(\.findMarks) private var marks
 
     public init(steps: [Step]) { self.steps = steps }
 
     public var body: some View {
+        let before = marks.map { m in steps.reduce(into: [0]) { $0.append($0[$0.count - 1] + m.count(AttributedString($1.thought))) } }
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(steps.enumerated()), id: \.offset) { i, step in
                 if i > 0 { Rectangle().fill(Ink.line.step).frame(height: Stroke.hairline) }
-                row(i + 1, step)
+                row(i + 1, step, marks: before.flatMap { b in marks?.after(b[i]) })
             }
         }
         .padding(.vertical, Space.xs)
@@ -66,12 +69,12 @@ public struct ThinkingPanel: View {
         .rounded(Radius.control, fill: Ink.surface.thinking, edge: Ink.line.rule)
     }
 
-    private func row(_ number: Int, _ step: Step) -> some View {
+    private func row(_ number: Int, _ step: Step, marks: FindMarks?) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Space.s) {
             Text(verbatim: number < 10 ? "0\(number)" : "\(number)").typeRole(.stepNumber).monospacedDigit()
                 .foregroundStyle(Ink.text.muted)
                 .frame(width: Size.thinking.number, alignment: .leading)
-            FoldingThought(text: step.thought).frame(maxWidth: .infinity, alignment: .leading)
+            FoldingThought(text: step.thought, marks: marks).frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: 0) {
                 Text(verbatim: "→ ").typeRole(.caption)
                 Text(verbatim: step.tool ?? "answer").typeRole(.stepTool).foregroundStyle(Ink.text.secondary)
@@ -89,6 +92,7 @@ public struct ThinkingPanel: View {
 /// A thought: 13 pt secondary at 1.45 line height, folded to `Size.thinking.lines` until its `more` is clicked.
 struct FoldingThought: View {
     let text: String
+    var marks: FindMarks? = nil
     @State private var isOpen = false
     @State private var shown: CGFloat = 0
     @State private var full: CGFloat = 0
@@ -96,16 +100,22 @@ struct FoldingThought: View {
     /// The text runs past its folded lines.
     var folds: Bool { full > shown + 1 }
 
+    /// ⌘F's current match is in this thought: it unfolds so the match shows.
+    private var holdsCurrent: Bool {
+        guard let marks, let current = marks.current else { return false }
+        return current >= 0 && current < marks.count(AttributedString(text))
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Space.xxs) {
             thought
-                .lineLimit(isOpen ? nil : Int(Size.thinking.lines))
+                .lineLimit(isOpen || holdsCurrent ? nil : Int(Size.thinking.lines))
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { shown = $0 }
                 .background(alignment: .topLeading) {
                     thought.fixedSize(horizontal: false, vertical: true).hidden()
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { full = $0 }
                 }
-            if !isOpen, folds {
+            if !isOpen, !holdsCurrent, folds {
                 Button { isOpen = true } label: {
                     Text(verbatim: "more").underline(true, color: Ink.line.rule).typeRole(.body).foregroundStyle(Ink.text.primary)
                 }
@@ -116,7 +126,7 @@ struct FoldingThought: View {
     }
 
     private var thought: some View {
-        Text(verbatim: text).typeRole(.body).lineSpacing(Size.thinking.lineGap).foregroundStyle(Ink.text.secondary)
+        Text(marks?.marked(text) ?? AttributedString(text)).typeRole(.body).lineSpacing(Size.thinking.lineGap).foregroundStyle(Ink.text.secondary)
             .textSelection(.enabled)
     }
 }

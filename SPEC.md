@@ -90,6 +90,7 @@ TrismegistusKit/
     State/         SessionStore (@Observable): sessions, per-session event list, run status, pending approvals,
                    dedupe by (session_id, seq); the rules from trismegistus issues #10/#11 (replay_gap filter,
                    late history) implemented and tested here from day one
+    Search/        MessageSearch (the chat list's search inside messages, #76), FindSteps (⌘F's matches and stepping)
     Keychain/      TokenStore protocol + KeychainTokenStore + InMemoryTokenStore (tests)
     Terminal/      TerminalLink (actor): one shell over `/api/terminal`, read one frame at a time with `next()`;
                    TerminalSocket: the socket with binary frames and close codes
@@ -309,6 +310,36 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   (`FittedHeader`) keeps the title 120 pt where it can: first the context meter shows only its percentage, then the
   model pill drops `claude-`; the effort pill and the icon buttons never hide. At 1560 pt that holds; at 1180 pt (a
   484 pt detail) both steps leave the title about 20 pt.
+- **Search and find** (#76, design 18 `#a3-s1`, `#a3-s3`, `#a3-s-states` in `design/opendesign/18-search/`; relay
+  hermes-relay#34): the chat list's filter still filters titles at once; from 2 characters (trimmed), 300 ms after the
+  last keystroke, it also asks `GET /api/search?q=&limit=50` (Hermes' own message index through the agents helper: your
+  messages and Hermes' answers in every conversation Hermes keeps, any source; never tool calls). The newest request wins:
+  each keystroke cancels the search before it, and the relay's 409 `busy` for a superseded one is dropped (`MessageSearch`
+  in the Kit; the numbers are its constants). Under the title groups an **In messages** head (the mission group head with
+  the search glyph and `8 conversations`) leads one hit card per conversation, newest hit first, whatever kind the panel
+  has picked: the mission card 72 pt tall with the source's emblem, the title and pin, its newest matching line as a
+  two-line preview with the relay's marks light yellow (60 %) in ink, and that line's time (`15:44` today, `Tue` this
+  week, `6 d`) over `5 hits` at the right. States: a spinner replaces the filter's `⌘K` cap and `Searching messages…`
+  sits under `… conversations`; one character says `Type one more character to search inside messages.`; nothing found
+  `No message in any conversation says “zebra”.`; the helper down (503 `hermes_unavailable`) `Searching inside messages
+  needs the agents helper on optiplex.` with `systemctl --user start trismegistus-agents` under it; more than 50 `Showing
+  the newest 50 matches. Add a word to narrow it.` after the cards. A hit opens its conversation (switching the panel's
+  kind to its own, as the filter's elsewhere row does, from the relay's `session_source` when the list doesn't have it),
+  with the find bar on the query and the hit's message (`h-<message_id>`) as the current match. The window loads a
+  conversation's last 500 messages; for an older hit the store fetches the history from its start, 500 a page, up to the
+  first message loaded and puts it before them (`SessionStore.loadEarlier`; history reloads keep those), while the bar
+  says `Loading earlier messages…`.
+  **Find in the conversation:** ⌘F (Edit ▸ Find in Conversation, before the text system's Find items; disabled with no
+  conversation open in Chat) opens or focuses a 44 pt bar under the title rule: white at 88 % with a rule hairline, the
+  field (search glyph, the query, a clear button) up to 320 pt with an ink edge while focused, the count (`3 of 9`, `No
+  matches` in terminal red, `Loading earlier messages…`), previous and next (`Previous ⇧↩`, `Next ↩`) and `esc close` at
+  the right. It matches the loaded transcript only: your messages, Hermes' answers as drawn (code blocks too), and the
+  thinking panels that are open; case-insensitive, every word of the query as the relay's search reads it (a quoted
+  phrase is one word; a trailing `*` and AND, OR, NOT are dropped), a message counting only when it holds every word.
+  Every match is light yellow, the current one solid yellow with an ink underline, and the message holding it has a 3 pt
+  yellow left edge (a folded thought holding it unfolds). While the field has the focus ↩ steps on and ⇧↩ back, wrapping,
+  as the arrows do; the current match's message scrolls to the middle (`FindSteps` keeps the current match where it was
+  as the transcript or the query changes). Esc, the bar's close or another conversation closes it and clears the marks.
 - **Markdown:** prose with `AttributedString(markdown:)`; fenced code blocks are split out and drawn as views with a
   language label and a copy button.
 - **Images** (#43, #44, #45; relay trismegistus#25, #26): a message takes up to 4 images by drop onto the chat column, the

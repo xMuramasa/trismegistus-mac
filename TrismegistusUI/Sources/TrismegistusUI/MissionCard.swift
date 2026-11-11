@@ -7,6 +7,8 @@ import SwiftUI
 /// lock; the age over a short hatch at the right; the state as a pill half over the top edge. No tags and no index.
 /// Hover: white with a contour edge and a soft shadow. Selected: an ink frame, a yellow wash from the left and faint
 /// stripes. Lay it in `missionCell`, which leaves the pill its room above.
+/// A search hit (#76, design 18a) is the same card 72 pt tall: the newest matching line as a two-line preview with the
+/// query's words marked (`marks`, UTF-16 ranges), and the hit's time over `N hits` at the right.
 public struct MissionCard: View {
     let name: String
     let source: SessionSource
@@ -19,11 +21,14 @@ public struct MissionCard: View {
     let needsApproval: Bool
     /// FAILED or DONE, once the run alerts exist (#66); approval and a run win over it.
     let finished: StickerState?
+    /// A search hit's card: how many hits the conversation has (#76).
+    let hits: Int?
+    let marks: [NSRange]
 
     public init(
         name: String, source: SessionSource, activity: String, preview: String? = nil, isSelected: Bool = false,
         isReadOnly: Bool = false, isPinned: Bool = false, runElapsed: String? = nil, needsApproval: Bool = false,
-        finished: StickerState? = nil
+        finished: StickerState? = nil, hits: Int? = nil, marks: [NSRange] = []
     ) {
         self.name = name
         self.source = source
@@ -35,7 +40,12 @@ public struct MissionCard: View {
         self.runElapsed = runElapsed
         self.needsApproval = needsApproval
         self.finished = finished
+        self.hits = hits
+        self.marks = marks
     }
+
+    /// `5 hits`, `1 hit`.
+    var hitCount: String? { hits.map { $0 == 1 ? "1 hit" : "\($0) hits" } }
 
     @Environment(\.rowHovered) private var isHovered
 
@@ -46,7 +56,8 @@ public struct MissionCard: View {
 
     /// What VoiceOver reads.
     var spoken: String {
-        ([name, state?.spoken, activity, isReadOnly ? "read-only" : nil, isPinned ? "pinned" : nil] as [String?])
+        ([name, state?.spoken, activity, hitCount, hits == nil ? nil : preview, isReadOnly ? "read-only" : nil,
+          isPinned ? "pinned" : nil] as [String?])
             .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
     }
 
@@ -54,32 +65,52 @@ public struct MissionCard: View {
         // Semibold is for a state and the selection: a quiet card stays at 500.
         let strong = state != nil || isSelected
         HStack(spacing: 0) {
-            emblem
-            Rectangle().fill(isSelected ? Ink.mission.dividerSelected : Ink.line.rule)
-                .frame(width: Stroke.hairline, height: Size.mission.divider)
-                .padding(.trailing, Space.m)
+            // A hit card is taller: the emblem and the divider keep their place under its top edge.
+            HStack(spacing: 0) {
+                emblem
+                Rectangle().fill(isSelected ? Ink.mission.dividerSelected : Ink.line.rule)
+                    .frame(width: Stroke.hairline, height: Size.mission.divider)
+                    .frame(height: Size.mission.height)
+                    .padding(.trailing, Space.m)
+            }
+            .frame(maxHeight: .infinity, alignment: .top)
             VStack(alignment: .leading, spacing: Space.xxs) {
                 HStack(spacing: Size.mission.textGap) {
                     Text(name).typeRole(.missionTitle, weight: strong ? .semibold : nil).foregroundStyle(Ink.text.primary).lineLimit(1)
                     if isPinned { Image(systemName: Symbol.pinOutline).font(.system(size: Icon.sticker)).foregroundStyle(Ink.text.secondary) }
                 }
-                HStack(spacing: Size.mission.textGap) {
-                    if isReadOnly { Image(systemName: Symbol.lockOutline).font(.system(size: Icon.m)) }
-                    Text(preview ?? "").typeRole(.callout).lineLimit(1)
+                if hits != nil {
+                    Text(FindMarks.snippet(preview ?? "", marks: marks)).typeRole(.callout).foregroundStyle(Ink.text.secondary)
+                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                } else {
+                    HStack(spacing: Size.mission.textGap) {
+                        if isReadOnly { Image(systemName: Symbol.lockOutline).font(.system(size: Icon.m)) }
+                        Text(preview ?? "").typeRole(.callout).lineLimit(1)
+                    }
+                    .foregroundStyle(Ink.text.secondary)
                 }
-                .foregroundStyle(Ink.text.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            VStack(alignment: .trailing, spacing: Size.mission.sideGap) {
-                Text(activity).typeRole(.caption).monospacedDigit().foregroundStyle(Ink.text.secondary).lineLimit(1).fixedSize()
-                Hatch.across(Size.mission.hatchPitch).stroke(Ink.line.contour, lineWidth: Stroke.selection)
-                    .frame(width: Size.mission.hatchWidth, height: Size.mission.hatchHeight).clipped()
-                    .accessibilityHidden(true)
+            if let hitCount {
+                VStack(alignment: .trailing, spacing: Size.mission.hitGap) {
+                    Text(activity).typeRole(.caption).monospacedDigit().lineLimit(1).fixedSize()
+                    Text(verbatim: hitCount).typeRole(.label).monospacedDigit().lineLimit(1).fixedSize()
+                }
+                .foregroundStyle(Ink.text.secondary)
+                .padding(.trailing, Size.mission.sideInset)
+                .frame(minWidth: Size.mission.hitColumn, alignment: .trailing)
+            } else {
+                VStack(alignment: .trailing, spacing: Size.mission.sideGap) {
+                    Text(activity).typeRole(.caption).monospacedDigit().foregroundStyle(Ink.text.secondary).lineLimit(1).fixedSize()
+                    Hatch.across(Size.mission.hatchPitch).stroke(Ink.line.contour, lineWidth: Stroke.selection)
+                        .frame(width: Size.mission.hatchWidth, height: Size.mission.hatchHeight).clipped()
+                        .accessibilityHidden(true)
+                }
+                .padding(.trailing, Size.mission.sideInset).padding(.bottom, Size.mission.sideBottom)
+                .frame(minWidth: Size.mission.column, maxHeight: .infinity, alignment: .bottomTrailing)
             }
-            .padding(.trailing, Size.mission.sideInset).padding(.bottom, Size.mission.sideBottom)
-            .frame(minWidth: Size.mission.column, maxHeight: .infinity, alignment: .bottomTrailing)
         }
-        .frame(height: Size.mission.height)
+        .frame(height: hits == nil ? Size.mission.height : Size.mission.hitHeight)
         .background { ground }
         .overlay { edge }
         .overlay(alignment: .topTrailing) {

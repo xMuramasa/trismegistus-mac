@@ -120,10 +120,15 @@ public struct MarkdownView<Extra, ExtraView: View>: View {
         self.extra = extra
     }
 
+    /// ⌘F's marks for this answer (#76): each part marks its own matches, the current one counted from the first part's.
+    @Environment(\.findMarks) private var marks
+
     public var body: some View {
+        let before = marks.map { m in parts.reduce(into: [0]) { $0.append($0[$0.count - 1] + m.matches(in: $1)) } }
         VStack(alignment: .leading, spacing: 0) {
             ForEach(parts.indices, id: \.self) { i in
-                block(parts[i]).padding(.top, i == parts.startIndex ? 0 : gap(after: parts[i - 1], before: parts[i]))
+                block(parts[i], marks: before.flatMap { b in marks?.after(b[i]) })
+                    .padding(.top, i == parts.startIndex ? 0 : gap(after: parts[i - 1], before: parts[i]))
             }
         }
     }
@@ -135,16 +140,20 @@ public struct MarkdownView<Extra, ExtraView: View>: View {
         }
     }
 
-    @ViewBuilder private func block(_ part: MarkdownPart<Extra>) -> some View {
+    @ViewBuilder private func block(_ part: MarkdownPart<Extra>, marks: FindMarks?) -> some View {
         switch part {
         case .prose(let text):
-            MarkdownLine(text: text, role: role, gap: lineGap)
+            MarkdownLine(text: marks?.marked(text) ?? text, role: role, gap: lineGap)
         case .heading(let text):
-            MarkdownLine(text: text, role: .headline, gap: lineGap).accessibilityAddTraits(.isHeader)
+            MarkdownLine(text: marks?.marked(text) ?? text, role: .headline, gap: lineGap).accessibilityAddTraits(.isHeader)
         case .list(let items):
-            MarkdownList(items: items, role: role, gap: lineGap)
+            MarkdownList(items: items, role: role, gap: lineGap, marks: marks)
         case .code(let language, let code):
-            CodeBlockView(language: language, code: code)
+            if let marks, marks.matches(in: part) > 0 {
+                FindableCodeBlock(language: language, code: code, marks: marks)
+            } else {
+                CodeBlockView(language: language, code: code)
+            }
         case .extra(let value):
             extra(value)
         }
@@ -172,21 +181,27 @@ private struct MarkdownList: View {
     var nested = false
     var role = TypeRole.body
     var gap = Space.xxs
+    /// ⌘F's marks from this list's first item on (#76).
+    var marks: FindMarks? = nil
     /// #71 (`.skin-a3 .hermes ul li::before`): bullets are `secondary` squares at every depth.
     @Environment(\.hairlineControls) private var hairline
 
     var body: some View {
+        let before = marks.map { m in items.reduce(into: [0]) { $0.append($0[$0.count - 1] + m.count($1)) } }
         // Task rows sit further apart: their boxes need the air.
         VStack(alignment: .leading, spacing: items.allSatisfy(\.isTask) ? Space.xs : Space.xxs) {
             ForEach(items.indices, id: \.self) { i in
                 let item = items[i]
+                let marks = before.flatMap { b in self.marks?.after(b[i]) }
                 VStack(alignment: .leading, spacing: Space.xxs) {
                     HStack(alignment: .firstTextBaseline, spacing: 0) {
                         marker(item.marker).frame(minWidth: item.indent, alignment: .leading)
-                        MarkdownLine(text: item.text, role: role, color: item.isDone ? Ink.text.secondary : Ink.text.primary, gap: gap)
+                        MarkdownLine(text: marks?.marked(item.text) ?? item.text, role: role,
+                                     color: item.isDone ? Ink.text.secondary : Ink.text.primary, gap: gap)
                     }
                     if !item.children.isEmpty {
-                        MarkdownList(items: item.children, nested: true, role: role, gap: gap).padding(.leading, item.indent)
+                        MarkdownList(items: item.children, nested: true, role: role, gap: gap, marks: marks.map { $0.after($0.count(item.text)) })
+                            .padding(.leading, item.indent)
                     }
                 }
             }

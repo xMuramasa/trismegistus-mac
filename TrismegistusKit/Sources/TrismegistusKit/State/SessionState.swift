@@ -173,7 +173,9 @@ public struct SessionState: Sendable, Equatable {
     /// trismegistus #11: history that arrives after live events already holds every finished turn. Keep only the
     /// live events of the run still going and the prompts the relay hasn't acknowledged, so nothing shows twice.
     public mutating func applyHistory(_ messages: [HistoryMessage]) {
-        history = messages
+        // Messages loaded before the window's page (`SessionStore.loadEarlier`, #76) stay before it.
+        let earlier = messages.first.flatMap { f in history.firstIndex { $0.id == f.id } }.map { history[..<$0] } ?? []
+        history = earlier + messages
         historyLoaded = true
         historyError = nil
         historyStale = false

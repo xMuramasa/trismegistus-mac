@@ -285,6 +285,17 @@ public struct RelayREST: Sendable {
         return (page.items, page.count)
     }
 
+    /// Messages that say `query` in every conversation Hermes keeps, newest first (#76, relay hermes-relay#34). `query`
+    /// is 2-200 characters after trimming and `limit` 1-100 (else 400 `bad_request`). A newer search from this device
+    /// makes the relay answer this one 409 `busy`; 503 `hermes_unavailable` while the agents helper is down.
+    public func search(_ query: String, limit: Int = MessageSearch.limit) async throws -> SearchPage {
+        var components = URLComponents()
+        components.queryItems = [URLQueryItem(name: "q", value: query), URLQueryItem(name: "limit", value: String(limit))]
+        // URLComponents leaves `+` as is, which a server reads as a space.
+        let q = (components.percentEncodedQuery ?? "").replacingOccurrences(of: "+", with: "%2B")
+        return try decode(SearchPage.self, try await call("GET", "/api/search?" + q))
+    }
+
     /// Manager only (403 `forbidden`). `mime` is `image/png`, `image/jpeg` or `image/gif`; at most 8 MiB (413
     /// `too_large`). The same bytes again answer the same id.
     public func uploadAttachment(_ data: Data, mime: String) async throws -> AttachmentRef {

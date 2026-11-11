@@ -184,6 +184,15 @@ public enum Ink {
         public let dividerSelected = Palette.ink.opacity(Opacity.missionDivider)
     }
     public static let mission = Mission()
+    public struct Find: Sendable {
+        /// #76 (design 18c): every match of ⌘F's query in the transcript and the query's words in a hit card's preview
+        public let match = Palette.yellow.opacity(Opacity.findMatch)
+        /// the current match, solid, with an ink underline; the 3 pt edge of the message holding it
+        public let current = Palette.yellow
+        /// the find bar under the title rule, white at 88 %
+        public let bar = Palette.raised.opacity(Opacity.sectionCard)
+    }
+    public static let find = Find()
 }
 
 /// `opacity`: opacities.
@@ -230,6 +239,8 @@ public enum Opacity {
     public static let missionDivider: Double = 0.25
     /// #75: what an edit removes, dimmed under the open editor
     public static let rewound: Double = 0.38
+    /// #76: a find match in the transcript and a search hit's marked word, yellow at 60 %
+    public static let findMatch: Double = 0.6
 }
 
 /// `space`: the strict spacing scale; literals round up to the next step.
@@ -494,7 +505,7 @@ public enum Size {
         public let grabber: CGFloat = 32
     }
     public static let composer = Composer()
-    /// #72 (design 13 #a3-c2): a chat entry's mission card: its height, the inset from the list's sides, the gap between cards; the emblem's and the age's 52 pt columns, the triangle and where it sits, how far the glyph sits above the column's centre, the divider; the age's column insets and the gap over its hatch; the hatch (its pitch across the lines); the gap before the pin and the lock; the selected card's wash (55 % this far in, gone by `wash`) and its stripes' pitch across the lines
+    /// #72 (design 13 #a3-c2): a chat entry's mission card: its height, the inset from the list's sides, the gap between cards; the emblem's and the age's 52 pt columns, the triangle and where it sits, how far the glyph sits above the column's centre, the divider; the age's column insets and the gap over its hatch; the hatch (its pitch across the lines); the gap before the pin and the lock; the selected card's wash (55 % this far in, gone by `wash`) and its stripes' pitch across the lines; a search hit's card (#76, design 18a): its height, the time and hit-count column and the gap between them
     public struct Mission: Sendable {
         public let height: CGFloat = 56
         public let inset: CGFloat = 10
@@ -516,6 +527,9 @@ public enum Size {
         public let washMid: CGFloat = 46
         public let wash: CGFloat = 150
         public let stripePitch: CGFloat = 6
+        public let hitHeight: CGFloat = 72
+        public let hitColumn: CGFloat = 62
+        public let hitGap: CGFloat = 6
     }
     public static let mission = Mission()
     /// the state pill on a mission card's top edge: its height, how far its top sits above the card, its inset from the card's right; its paddings and the gap after its glyph
@@ -549,6 +563,15 @@ public enum Size {
         public let thumb: CGFloat = 18
     }
     public static let messageAction = MessageAction()
+    /// #76 (design 18c): ⌘F's find bar: its height, the field's width (at most), the count's least width, the field's clear button; the spinner in the list's filter while it searches
+    public struct Find: Sendable {
+        public let bar: CGFloat = 44
+        public let field: CGFloat = 320
+        public let count: CGFloat = 96
+        public let clear: CGFloat = 16
+        public let spinner: CGFloat = 12
+    }
+    public static let find = Find()
 }
 
 /// `radius`: the corner radius scale (#68): s, m, l, xl.
