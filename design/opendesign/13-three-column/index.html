@@ -677,6 +677,108 @@ kbd,.kbd{font-family:inherit;font-size:var(--t-label);font-weight:600;line-heigh
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none !important;transition:none !important}
 }
+/* ======== messages, mission style (a3-m1 objectives, a3-m2 mission cards) ======== */
+.msn .dt-scroll{padding:20px 28px 16px}
+.msn .col{max-width:668px}
+.msn .lbl{display:flex;align-items:center;gap:8px;height:16px;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--secondary);white-space:nowrap}
+.msn .lbl .num{letter-spacing:.04em;font-weight:500}
+.msn .lbl .ln{flex:1;height:1px;background:var(--contour)}
+.msn .lbl b{color:var(--ink);font-weight:600}
+.msn .sq{flex:none;display:grid;place-items:center;width:12px;height:12px;border:1.5px solid var(--secondary);background:var(--raised);color:var(--raised);--od-icon-size:10px;box-sizing:border-box}
+.msn .sq svg{stroke-width:2.6}
+.msn .is-done>.sq,.msn .sq.done{background:var(--dark-panel);border-color:var(--dark-panel)}
+.msn .is-run>.sq,.msn .sq.run{background:var(--yellow);border-color:var(--ink)}
+.msn .is-fail>.sq,.msn .sq.fail{background:var(--term-red);border-color:var(--term-red)}
+.msn .is-appr>.sq,.msn .sq.appr{background:var(--magenta);border-color:var(--magenta)}
+.msn mark{display:inline-block;background:none;color:var(--ink);font-weight:600;line-height:1.25;padding:0 1px;box-shadow:inset 0 -6px 0 rgba(255,250,0,.95)}
+.msn .hermes{padding:0;font-size:15px;line-height:1.6}
+.msn .hermes p{margin:0 0 10px}
+.msn .hermes ul,.msn .hermes ol{margin:0 0 10px}
+.msn .hermes pre{margin:0 0 10px}
+.msn .hermes pre code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12.5px}
+/* the objective: your message as a band, its square outside on the left */
+.msn .obj{position:relative;display:flex;align-items:flex-start;gap:12px;margin:18px 0 12px}
+.msn .obj>.sq{margin-top:14px}
+.msn .band{position:relative;flex:1;display:flex;align-items:baseline;gap:16px;min-height:42px;padding:10px 14px;background:rgba(255,255,255,.92);border-radius:4px;font-size:15px;font-weight:500;line-height:1.45}
+.msn .band p{margin:0;flex:1}
+.msn .band .tm{flex:none;font-size:11px;font-weight:400;color:var(--secondary)}
+.msn .ovtag{position:absolute;top:-10px;right:10px}
+.msn .ovtag .stk{height:18px;box-shadow:0 1px 4px rgba(25,25,25,.12)}
+.msn .reply{margin-left:24px}
+.msn .reply>.lbl{margin:0 0 8px}
+/* steps: the run's tool calls as sub-objectives */
+.msn .steps{margin:6px 0 4px;border-top:1px solid var(--rule)}
+.msn .st{display:flex;align-items:center;gap:10px;height:34px;padding:0 8px 0 2px;border-bottom:1px solid var(--rule);font-size:13px;color:var(--ink);--od-icon-size:14px}
+.msn .st .sq{width:10px;height:10px;--od-icon-size:8px}
+.msn .st .tool{flex:none;width:66px;font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--secondary)}
+.msn .st code{flex:1;min-width:0;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.msn .st .d{flex:none;font-size:11px;color:var(--secondary)}
+.msn .st.is-run{font-weight:600}
+.msn .st.is-run .d{color:var(--ink);font-weight:600}
+.msn .st.is-fail .d{color:var(--term-red);font-weight:600}
+.msn .st.sum b{font-weight:600}
+.msn .st.sum .d{margin-right:auto}
+.msn .st .chev{color:var(--secondary)}
+/* results: what the turn produced, as tiles with a coloured foot bar */
+.msn .res{display:flex;align-items:flex-end;gap:8px;margin:14px 0 6px}
+.msn .res>.lbl{flex:1;align-self:flex-end;margin-bottom:6px}
+.msn .tile{position:relative;flex:none;display:flex;flex-direction:column;justify-content:flex-start;gap:6px;width:80px;height:74px;padding:8px 9px 10px;background:var(--raised);border:1px solid var(--rule);border-radius:4px;box-shadow:inset 0 -3px 0 var(--bar);--od-icon-size:16px;color:var(--secondary);box-sizing:border-box}
+.msn .tile .n{display:block;margin-top:auto;font-size:20px;font-weight:500;line-height:20px;color:var(--ink)}
+.msn .tile .w{display:block;font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;line-height:10px;margin-top:-2px}
+.msn .t-ok{--bar:var(--term-green)}
+.msn .t-fail{--bar:var(--term-red)}
+.msn .t-link{--bar:var(--blue)}
+.msn .t-file{--bar:var(--dark-panel)}
+.msn .t-meta{--bar:var(--contour)}
+.msn .working{margin:2px 0 0;gap:8px}
+.msn .working::after{content:"";flex:1;height:2px;background:linear-gradient(90deg,var(--yellow) 0 34%,var(--rule) 34% 100%)}
+/* approval block */
+.msn .approve{margin:8px 0 4px;padding:12px 14px;background:var(--raised);border:1px solid var(--rule);border-radius:4px;box-shadow:inset 3px 0 0 var(--magenta)}
+.msn .approve .hd{font-size:10px;font-weight:600;letter-spacing:.14em;color:var(--secondary)}
+.msn .approve pre{background:var(--sunken);color:var(--ink);border:1px solid var(--rule);border-radius:4px;padding:10px 12px;margin:0 0 12px}
+.msn .approve pre code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12.5px}
+.msn .approve pre .p{color:var(--term-green)}
+.msn .btn-deny{background:var(--raised);color:var(--term-red);border-color:var(--term-red)}
+/* composer: the game's Track button as the send row */
+.msn .composer{padding:10px 16px 12px}
+.msn .runline{margin-bottom:8px}
+.msn .track{display:flex;align-items:center;gap:8px;height:46px;padding:0 5px 0 10px;background:var(--raised);border:1px solid var(--contour);border-radius:23px}
+.msn .track input{flex:1;min-width:0;height:36px;border:0;background:none;font:inherit;font-size:14px;color:var(--ink);outline:0;padding:0 4px}
+.msn .track input::placeholder{color:var(--secondary)}
+.msn .track .ib-clip{width:30px;height:30px;border:0;background:none;color:var(--secondary);--od-icon-size:16px;display:grid;place-items:center}
+.msn .stopc{flex:none;display:grid;place-items:center;width:34px;height:34px;padding:0;border:1px solid var(--rule);border-radius:50%;background:var(--raised)}
+.msn .stopc i{display:block;width:10px;height:10px;background:var(--term-red)}
+.msn .trk{flex:none;display:flex;align-items:center;gap:12px;height:36px;padding:0 4px 0 16px;border:1px solid var(--yellow);border-radius:18px;background:var(--yellow);font-size:11px;font-weight:600;letter-spacing:.14em;color:var(--ink);text-transform:uppercase}
+.msn .trk.plain{background:var(--raised);border-color:var(--rule)}
+.msn .trk .ring{display:grid;place-items:center;width:28px;height:28px;border:1.5px solid var(--ink);border-radius:50%;box-sizing:border-box;--od-icon-size:14px}
+.msn .trk.plain .ring{border-color:var(--secondary)}
+/* a3-m2: every turn a mission card, your words as its title */
+.msn2 .mc{position:relative;margin:0 0 14px;padding:14px 16px 12px 20px;background:rgba(255,255,255,.9);border:1px solid var(--rule);border-radius:4px;box-shadow:inset 3px 0 0 var(--bar,var(--contour))}
+.msn2 .mc.is-done{--bar:var(--term-green)}
+.msn2 .mc.is-run{--bar:var(--yellow);border-color:var(--contour)}
+.msn2 .mc.is-fail{--bar:var(--term-red)}
+.msn2 .mc.is-appr{--bar:var(--magenta)}
+.msn2 .mc-h{display:flex;align-items:flex-start;gap:12px}
+.msn2 .mc-h>.sq{margin-top:7px}
+.msn2 .mc-t{flex:1;min-width:0}
+.msn2 .mc h3{margin:0;font-size:19px;font-weight:500;line-height:1.35;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.msn2 .loc{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px;color:var(--secondary);white-space:nowrap}
+.msn2 .loc .pin{flex:none;width:8px;height:8px;background:var(--yellow);box-shadow:0 0 0 1px var(--ink)}
+.msn2 .loc b{font-weight:600;color:var(--ink)}
+.msn2 .mc .fold{flex:none;width:26px;height:26px;display:grid;place-items:center;border:1px solid var(--rule);border-radius:4px;background:var(--raised);color:var(--secondary);--od-icon-size:14px;padding:0}
+.msn2 .mc-rule{height:1px;margin:12px 0 12px 24px;background:var(--rule)}
+.msn2 .mc-b{margin-left:24px}
+.msn2 .mc.folded{padding-top:10px;padding-bottom:10px}
+.msn2 .mc.folded h3{font-size:15px;-webkit-line-clamp:1}
+.msn2 .mc.folded .loc{margin-top:3px}
+.msn2 .mini{display:flex;gap:6px;align-self:center}
+.msn2 .mini .tile{width:auto;height:34px;flex-direction:row;align-items:center;gap:6px;padding:0 9px 2px 8px;--od-icon-size:14px}
+.msn2 .mini .tile .n{font-size:14px;line-height:16px;margin:0}
+.msn2 .mini .tile .w{margin:0}
+.msn2 .hist{display:flex;align-items:center;gap:8px;margin:0 0 10px}
+.msn .runline .sq{width:8px;height:8px;border:0;background:var(--term-green)}
+.msn .runline .tm{text-transform:none;letter-spacing:0}
+.msn2 .mini .tile svg{flex:none}
 </style>
 </head>
 <body>
@@ -1688,18 +1790,145 @@ Build complete! (6.12s)</pre></div>
   return win;
 }
 
+/* ======== messages, mission style (#a3-m1, #a3-m2, -states) ======== */
+P.image = '<rect x="4" y="5" width="16" height="14"/><path d="m4 16 5-5 4 4 2-2 5 5"/><circle cx="15.5" cy="9.5" r="1.2"/>';
+P.file = '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>';
+P.clock = '<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>';
+P.chevup = '<path d="m6 15 6-6 6 6"/>';
+P.token = '<path d="M4 7h16M4 12h16M4 17h10"/>';
+const sqm = s => `<span class="sq ${s}" aria-hidden="true">${s === 'done' ? ic('tick') : s === 'fail' ? ic('cross') : ''}</span>`;
+const tile = (cls, icon, n, w) => `<div class="tile ${cls}">${ic(icon)}<span class="n num">${n}</span><span class="w">${w}</span></div>`;
+const tag = (state, glyph, word) => `<span class="stk stk-${state}"><span class="g">${ic(glyph)}</span><span class="w">${word}</span></span>`;
+const step = (s, tool, cmd, d) => `<div class="st is-${s}">${sqm(s)}<span class="tool">${tool}</span><code>${esc(cmd)}</code><span class="d num">${d}</span></div>`;
+const stepSum = (s, n, d) => `<div class="st sum is-${s}">${sqm(s)}<span class="tool">STEPS</span><b>${n}</b><span class="d num">${d}</span>${ic('chev', 'chev')}</div>`;
+const lbl = (left, right) => `<div class="lbl"><span>${left}</span>${right ? `<span class="num">${right}</span>` : ''}<i class="ln"></i></div>`;
+
+const M_T1 = {
+  you: 'i already ran open, could you use cua-driver on my mac to test the ui?', at: '13:42',
+  brief: `<p>I’m testing through macOS accessibility in the background, so I haven’t taken over your screen. That covers structure and text; screenshots need the window in front.</p>
+  <p>Checked and working:</p>
+  <ul>
+    <li><mark>#41</mark> sections: Chat, GitHub, Agents, Jobs and Commands each switch and show their list.</li>
+    <li><mark>#48</mark> chat kinds: App 10, Telegram 4, Terminal 9, One-shots 2, Cron 6.</li>
+    <li><mark>#50</mark> runs on issues: <mark>homelab#1</mark> shows its finished run and jumps to Agents with that run selected.</li>
+  </ul>
+  <p>Small defects:</p>
+  <ol>
+    <li>The chat header says “run run_”; the run id is cut down to “run_”.</li>
+    <li>Some buttons read their label twice (“Looks good, Looks good”).</li>
+  </ol>
+  <pre><code><span class="p">$</span> cua-driver inspect --app Trismegistus --depth 2
+window   "Trismegistus"  1560×1122
+  sidebar  sections=5  kinds=6  current="Chat"
+  detail   messages=4  composer=steer</code></pre>
+  <p>The cua-driver daemon is still running on your Mac. <code>cua-driver stop</code> ends it.</p>`,
+  steps: stepSum('done', '4 commands', '6.1 s · all exit 0'),
+  res: [tile('t-ok', 'terminal', '4', 'commands'), tile('t-link', 'pr', '4', 'issues'), tile('t-meta', 'clock', '7', 'min'), tile('t-meta', 'token', '18K', 'tokens')]
+};
+const M_T2 = {
+  you: 'go ahead i set it up a second screen for me to work while you check', at: '13:52',
+  steps: step('done', 'TERMINAL', 'cua-driver screenshot --window Trismegistus', '2.1 s') +
+         step('done', 'TERMINAL', 'cua-driver click "GitHub" --app Trismegistus', '0.8 s') +
+         step('run', 'TERMINAL', 'cua-driver screenshot --window Trismegistus', '00:12')
+};
+const M_FAIL = {
+  you: 'unzip the Inter 4.1 release into the fonts folder', at: '18:02',
+  brief: '<p><code>unzip</code> isn’t installed on optiplex, so nothing was extracted. <code>sudo apt install unzip</code> fixes that, or I can extract it with Python.</p>',
+  steps: step('fail', 'TERMINAL', 'unzip -l Inter-4.1.zip', 'exit 127 · not found'),
+  res: [tile('t-fail', 'cross', '1', 'failed'), tile('t-meta', 'clock', '0.1', 's')]
+};
+const M_OK = {
+  you: 'use python then', at: '18:04',
+  brief: '<p>Extracted Inter ExtraBold and Black from the 4.1 release into <mark>TrismegistusUI/Resources/Fonts</mark>. Their hashes match the 4.1 faces already bundled.</p>',
+  steps: stepSum('done', '2 commands', '1.4 s · all exit 0'),
+  res: [tile('t-file', 'file', '2', 'files'), tile('t-ok', 'terminal', '2', 'commands'), tile('t-meta', 'clock', '1', 'min')]
+};
+const M_APPR = {
+  you: 'redeploy the relay with the terminal route', at: '18:10',
+  brief: '<p>The relay image is built (<mark>0adef6bd6f06</mark>). Restarting it drops both devices for about 5 s; they reconnect on their own.</p>',
+  approve: `<div class="approve"><div class="hd">// HERMES WANTS TO RUN</div>
+    <pre><code><span class="p">$</span> docker compose up -d trismegistus-relay</code></pre>
+    <div class="acts"><button class="btn btn-mark" type="button">Once ${ic('arrow')}</button><button class="btn btn-line" type="button">This session</button><button class="btn btn-deny" type="button">Deny ${ic('cross')}</button></div></div>`
+};
+
+function m1Turn(t, state, replyLbl) {
+  const ov = state === 'appr' ? `<span class="ovtag">${tag('approval', 'diamond', 'Approval')}</span>` : '';
+  let r = `<div class="obj is-${state}">${sqm(state)}<div class="band">${ov}<p>${esc(t.you)}</p><span class="tm num">${t.at}</span></div></div>`;
+  r += `<div class="reply">${replyLbl}`;
+  if (t.brief) r += `<div class="hermes">${t.brief}</div>`;
+  if (t.approve) r += t.approve;
+  if (t.steps) r += `<div class="steps">${t.steps}</div>`;
+  if (t.res) r += `<div class="res">${lbl('// Results')}${t.res.join('')}</div>`;
+  return r + '</div>';
+}
+function m2Card(t, state, loc, opts = {}) {
+  const ov = state === 'appr' ? `<span class="ovtag">${tag('approval', 'diamond', 'Approval')}</span>` : '';
+  if (opts.folded) return `<section class="mc folded is-${state}">${ov}<div class="mc-h">${sqm(state)}<div class="mc-t"><h3>${esc(t.you)}</h3><div class="loc">${loc}</div></div>
+    <div class="mini">${t.res.join('')}</div><button class="fold" type="button" aria-label="Unfold">${ic('chev')}</button></div></section>`;
+  let b = '';
+  if (t.brief) b += `<div class="hermes">${t.brief}</div>`;
+  if (t.approve) b += t.approve;
+  if (t.steps) b += `<div class="steps">${t.steps}</div>`;
+  if (opts.working) b += opts.working;
+  if (t.res) b += `<div class="res">${lbl('// Results')}${t.res.join('')}</div>`;
+  return `<section class="mc is-${state}">${ov}<div class="mc-h">${sqm(state)}<div class="mc-t"><h3>${esc(t.you)}</h3><div class="loc">${loc}</div></div>
+    <button class="fold" type="button" aria-label="Fold">${ic('chevup')}</button></div><div class="mc-rule"></div><div class="mc-b">${b}</div></section>`;
+}
+const pinLoc = (who, rest) => `<span class="pin" aria-hidden="true"></span><b>${who}</b><span class="num">${rest}</span>`;
+const WORKING = `<div class="working num"><b>WORKING</b><span>00:38</span><span>· step 3 of 3</span></div>`;
+
+function mComposer(mode) {
+  const hints = `<span class="hints"><span><kbd>⌘↩</kbd>steer</span><span><kbd>⌘.</kbd>stop</span><span class="x"><kbd>⌘⌥T</kbd>terminal</span><span class="x"><kbd>⌘K</kbd>conversations</span></span>`;
+  if (mode === 'appr') return `<div class="runline num"><span class="sq" style="background:var(--magenta);border:0" aria-hidden="true"></span><span>Waiting for you</span><span class="tm">approval asked 18:11</span>${hints}</div>
+    <div class="track"><button class="ib-clip" type="button" aria-label="Attach">${ic('clip')}</button><input type="text" placeholder="Steer this run"><button class="stopc" type="button" aria-label="Stop run"><i></i></button><button class="trk plain" type="button">Steer<span class="ring">${ic('arrow')}</span></button></div>`;
+  return `<div class="runline num"><span class="sq" aria-hidden="true"></span><span>Run active</span><span class="tm">00:38</span>${hints}</div>
+    <div class="track"><button class="ib-clip" type="button" aria-label="Attach">${ic('clip')}</button><input type="text" placeholder="Steer this run"><button class="stopc" type="button" aria-label="Stop run"><i></i></button><button class="trk" type="button">Steer<span class="ring">${ic('arrow')}</span></button></div>`;
+}
+
+function missionView(win, v) {
+  const dt = win.querySelector('.dt');
+  const scroll = dt.querySelector('.dt-scroll .col'), comp = dt.querySelector('.composer .col');
+  dt.classList.add('msn');
+  let body = '', mode = 'run';
+  if (v === 'm1') {
+    body = m1Turn(M_T1, 'done', lbl('// Hermes', '13:49 · 7 min')) +
+           m1Turn(M_T2, 'run', `<div class="working num" style="margin:0 0 6px"><b>WORKING</b><span>00:38</span><span>· step 3 of 3</span></div>`);
+  } else if (v === 'm1-states') {
+    mode = 'appr';
+    body = m1Turn(M_FAIL, 'fail', lbl('// Hermes', '18:02 · 0.1 s')) + m1Turn(M_OK, 'done', lbl('// Hermes', '18:05 · 1 min')) +
+           m1Turn(M_APPR, 'appr', lbl('// Hermes', '18:11'));
+  } else if (v === 'm2') {
+    dt.classList.add('msn2');
+    body = m2Card(Object.assign({}, M_T1, {brief: M_T1.brief.replace(/<pre>[\s\S]*?<\/pre>/, '')}), 'done', pinLoc('You 13:42', '→ Hermes 13:49 · 7 min')) +
+           m2Card(M_T2, 'run', pinLoc('You 13:52', '→ Hermes working'), {working: WORKING});
+  } else if (v === 'm2-states') {
+    dt.classList.add('msn2'); mode = 'appr';
+    body = `<div class="hist">${lbl('// Earlier today', '3 folded')}</div>` +
+           m2Card({you: 'build the a2 window and install it on my mac', res: [tile('t-ok', 'terminal', '6', 'cmds'), tile('t-file', 'file', '14', 'files')]}, 'done', pinLoc('You 11:02', '→ Hermes 11:36 · 34 min'), {folded: true}) +
+           m2Card(M_FAIL, 'fail', pinLoc('You 18:02', '→ Hermes 18:02 · 0.1 s'), {folded: true}) +
+           m2Card(M_OK, 'done', pinLoc('You 18:04', '→ Hermes 18:05 · 1 min'), {folded: true}) +
+           m2Card(M_APPR, 'appr', pinLoc('You 18:10', '→ Hermes asks 18:11'));
+  }
+  scroll.innerHTML = body;
+  comp.innerHTML = mComposer(mode);
+  const sc = dt.querySelector('.dt-scroll'); sc.scrollTop = sc.scrollHeight;
+}
+
 /* ---------- routing ---------- */
 const stage = document.getElementById('stage');
 function route() {
   const h = location.hash.slice(1);
   const SEC_RE = /^(a2|a3)-(github-check|github|agents|jobs|commands|telegram)$/;
-  const v = (['a', 'b', 'a2', 'a3', 'all', 'compare', 'a-narrow', 'b-narrow', 'a2-narrow', 'a3-narrow', 'a2-states', 'a3-states'].includes(h) || SEC_RE.test(h)) ? h : 'all';
+  const v = (['a', 'b', 'a2', 'a3', 'all', 'compare', 'a-narrow', 'b-narrow', 'a2-narrow', 'a3-narrow', 'a2-states', 'a3-states'].includes(h) || SEC_RE.test(h) || /^a3-m[12](-states)?$/.test(h)) ? h : 'all';
   WINS.length = 0;
   stage.innerHTML = '';
   let w = 1560, hgt = 1122;
   if (v === 'all' || v === 'compare') {
     hgt = 561;
     (v === 'all' ? ['a', 'a2'] : ['a2', 'a3']).forEach(s => { const f = document.createElement('div'); f.className = 'frame'; f.appendChild(createWin(s, false)); stage.appendChild(f); });
+  } else if (/^a3-m[12](-states)?$/.test(h)) {
+    const w0 = createWin('a3', false); stage.appendChild(w0); missionView(w0, h.slice(3));
+    if (h.endsWith('-states')) { const t1 = w0.querySelector('.dt-ttl .t1 .od-truncate'), t2 = w0.querySelector('.dt-ttl .t2'); if (t1) t1.textContent = 'Trismegistus'; if (t2) t2.textContent = 'Trismegistus · run_8c41d0 · waiting for approval since 18:11'; }
   } else if (SEC_RE.test(v)) {
     const [, sk, op] = v.match(SEC_RE);
     stage.appendChild(createWin(sk, false, op));

@@ -199,3 +199,15 @@ Magenta and yellow never appear as text on light grounds. The 2-digit card index
 Sections other than Chat have no composer; the detail scrolls to the bottom edge of the window instead.
 
 - **#a2 section panel is now the tree, as built** (every #a2 hash): Chats with its fold chevron, its kinds indented under it, then GitHub, Agents, Jobs and Commands, with the device row at the bottom. The yellow block sits on the deepest visible current row: the current kind in Chat, Chats itself when folded, otherwise the current section. Chats shows Chat's strongest state only while folded. Ink panel, 40 px rows and B2 type are unchanged; #a3 and #b are untouched.
+
+## #a3-m1 / #a3-m2: messages after Endfield's mission screen (#70, proposal)
+
+Drawn by hand into the prototype (2026-11-10), not by OpenDesign: the a3 window with the chat transcript and composer replaced; the CSS is the `.msn` block, the markup `missionView()`. Both share the marks:
+
+- **Your message is the objective:** a white band (92 %) with a 12 px state square outside it on the left: dark-panel with a tick (done), yellow with an ink edge (running), terminal-red with a cross (failed), magenta (waiting for approval). The APPROVAL tag sits on the band's top edge, like the game's "Timed".
+- **The reply is the briefing:** 15 px / 1.6 text, no bubble, under a `// HERMES  13:49 · 7 min` label line. References Hermes can open (issues, files, image ids) get a 6 px yellow highlighter under ink text and weight 600.
+- **Steps** are the run's tool calls as rows (10 px square, tool, the command in JetBrains Mono 12 px, duration); one folded summary row once the turn ends, expanded while it runs.
+- **Results** are tiles (80 x 74, hairline, radius 4) with a 3 px foot bar per kind: terminal-green commands (all exit 0), terminal-red failures, blue references, dark-panel files, contour time and tokens. All computable from what the relay sends.
+- **The composer is the Track pill:** 46 px pill with a contour hairline; attach, field, a 34 px stop circle, and STEER as a yellow 36 px pill ending in a 28 px ink ring with the arrow. While an approval waits, Once is the yellow action and STEER turns plain.
+
+`#a3-m1` (14a, objectives) restyles the stream. `#a3-m2` (14b, mission cards) makes each turn a card: your words as its 19 px / 500 title (two lines at most), a pin line (8 px yellow square with an ink edge, `You 13:42 → Hermes 13:49 · 7 min`), a hairline, then briefing, steps and results; a 3 px left bar in the state colour; folded cards keep title, pin line and small tiles. `#a3-m2` drops the code block from the first turn so both cards fit; its style is 14a's.
