@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Trismegistus — QoL: thinking, effort, retry, edit</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F2F2F2; --raised:#FFFFFF; --sunken:#E5E5E5; --rule:#D9D9D9; --ink:#191919;
+  --dark-panel:#35373C; --secondary:#666666; --muted:#999999; --yellow:#FFFA00; --blue:#0040E8;
+  --green:#00FFA2; --magenta:#FF1AAC; --red:#E5332A; --term-green:#00875A; --term-red:#C4271F;
+  --contour:#C8C8C0;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#fff}
+body{font-family:"Inter",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;font-size:15px;line-height:1.45}
+.lbl,.meter,.tm,.n,.to,.chip,.working span,.ttl span{font-variant-numeric:tabular-nums}
+#stage{display:flex;gap:0}
+.frame{position:relative;width:1000px;background:var(--paper);overflow:hidden;display:flex;flex-direction:column}
+.frame.full{height:1122px}
+.frame::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(var(--rule),var(--rule)),linear-gradient(var(--rule),var(--rule));
+  background-size:9px 1px,1px 9px;background-position:46px 50px,50px 46px;background-repeat:no-repeat;opacity:0}
+.grid{position:absolute;inset:0;pointer-events:none;
+  background:
+   radial-gradient(circle at center, transparent 0 0) ;}
+.cross{position:absolute;width:9px;height:9px;pointer-events:none}
+.cross::before,.cross::after{content:"";position:absolute;background:#D0D0D0}
+.cross::before{left:4px;top:0;width:1px;height:9px}
+.cross::after{top:4px;left:0;height:1px;width:9px}
+/* header */
+.hd{position:relative;z-index:2;display:flex;align-items:center;gap:12px;height:52px;padding:0 16px 0 16px;background:rgba(255,255,255,.72);border-bottom:0}
+.av{width:30px;height:30px;border-radius:4px;background:var(--dark-panel);color:#fff;font-weight:600;font-size:14px;display:grid;place-items:center;flex:none}
+.ttl{flex:1;min-width:0;display:flex;flex-direction:column}
+.ttl b{font-weight:600;font-size:15px;line-height:1.2}
+.ttl span{font-size:12px;color:var(--secondary)}
+.meter{font-size:12px;color:var(--ink)}
+.pill{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px 0 12px;border:1px solid var(--rule);border-radius:15px;background:#fff;font-size:13px;white-space:nowrap}
+.pill .sep{color:var(--muted)}
+.pill.open{border-color:var(--ink)}
+.chev{width:10px;height:10px;flex:none}
+.ib{width:30px;height:30px;border:1px solid var(--rule);border-radius:4px;background:#fff;display:grid;place-items:center;flex:none}
+.ib svg{width:16px;height:16px}
+.rule4{position:relative;z-index:2;height:4px;display:flex}
+.rule4 i{display:block;height:4px}
+.rule4 .m{width:48px;background:var(--magenta)}.rule4 .y{width:120px;background:var(--yellow)}.rule4 .g{flex:1;background:var(--green)}
+/* transcript */
+.scroll{position:relative;z-index:1;flex:1;overflow:hidden;padding:18px 16px 0}
+.lbl{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;letter-spacing:.14em;color:var(--secondary);text-transform:uppercase;margin:0 0 6px;height:18px}
+.lbl .acts{margin-left:auto;display:flex;gap:4px;letter-spacing:0;text-transform:none}
+.you{background:#fff;border:1px solid var(--rule);border-radius:4px;padding:8px 12px;margin:0 0 18px;font-size:15px}
+.hermes{padding:0 12px;margin:0 0 12px;font-size:15px}
+.hermes p{margin:0 0 10px}
+.hermes ul{list-style:none;margin:0 0 10px}
+.hermes li{position:relative;padding-left:18px}
+.hermes li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;background:var(--secondary)}
+.hermes code{background:var(--sunken);padding:1px 5px;font-size:.93em;border-radius:3px}
+.chips{display:flex;gap:8px;margin:0 0 18px}
+.chip{display:inline-flex;align-items:center;gap:8px;height:24px;padding:0 9px;background:rgba(255,255,255,.75);border:1px solid var(--rule);border-radius:4px;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
+.chip.open{border-color:var(--ink);background:#fff}
+.chip .g{font-size:11px;letter-spacing:0;font-weight:600}
+.working{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--secondary);margin:0 0 14px}
+.working b{font-size:10px;letter-spacing:.14em;color:var(--ink);font-weight:600}
+.working::after{content:"";flex:1;height:2px;background:linear-gradient(90deg,var(--rule) 0 52%,var(--yellow) 52% 77%,var(--rule) 77% 100%)}
+/* thinking: steps panel (variant A) */
+.thk{background:rgba(255,255,255,.8);border:1px solid var(--rule);border-radius:4px;margin:-10px 0 18px;padding:4px 0}
+.thk .row{display:grid;grid-template-columns:34px 1fr auto;gap:10px;padding:8px 12px;border-top:1px solid #ECECEC;font-size:13px;color:var(--secondary);line-height:1.45}
+.thk .row:first-child{border-top:0}
+.thk .n{font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--muted);padding-top:2px}
+.thk .to{font-size:11px;color:var(--muted);white-space:nowrap;padding-top:2px}
+.thk .to b{color:var(--secondary);font-weight:500}
+.thk .more{color:var(--ink);text-decoration:underline;text-decoration-color:var(--rule);text-underline-offset:3px}
+/* thinking: inline block (variant B) */
+.thin{margin:0 12px 12px;padding:2px 0 2px 12px;border-left:2px solid var(--rule);font-size:13px;color:var(--secondary)}
+.thin .h{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--secondary);text-transform:uppercase;margin:0 0 3px}
+.thin .h .chev{width:9px;height:9px}
+.thin p{margin:0 0 6px}
+.thin.folded p{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0}
+/* composer */
+.composer{position:relative;z-index:2;margin:0 8px 8px;border:1px solid var(--rule);border-radius:8px;background:rgba(255,255,255,.86);padding:10px 12px 12px}
+.runline{display:flex;align-items:center;gap:10px;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;margin:0 0 9px;height:18px}
+.runline .sq{width:6px;height:6px;background:var(--term-green)}
+.runline .tm{font-size:12px;font-weight:400;letter-spacing:0;color:var(--secondary);text-transform:none}
+.hints{margin-left:auto;display:flex;gap:14px;font-size:12px;font-weight:400;letter-spacing:0;color:var(--secondary);text-transform:none}
+kbd{font-family:inherit;font-size:11px;font-weight:600;padding:2px 5px;border:1px solid var(--rule);border-radius:4px;background:#fff;color:var(--secondary);margin-right:4px}
+.inrow{display:flex;align-items:flex-end;gap:8px}
+.clip{width:36px;height:36px;border-radius:4px;display:grid;place-items:center;flex:none;color:var(--secondary)}
+.clip svg{width:18px;height:18px}
+.field{flex:1;min-height:36px;border:1px solid var(--contour);border-radius:4px;background:#fff;padding:7px 10px;font-size:15px;color:var(--muted)}
+.field.typed{color:var(--ink)}
+.send{width:36px;height:36px;border-radius:4px;background:var(--yellow);display:grid;place-items:center;flex:none}
+.send.plain{background:#fff;border:1px solid var(--rule)}
+.send svg{width:16px;height:16px}
+.btnw{height:30px;padding:0 12px;border:1px solid var(--rule);border-radius:4px;background:#fff;font-size:13px;display:inline-flex;align-items:center;gap:8px}
+.btnw.y{background:var(--yellow);border-color:var(--yellow);font-weight:600}
+.btnw svg{width:14px;height:14px}
+/* native menu */
+.menu{position:absolute;z-index:9;width:250px;background:rgba(246,246,246,.97);border:1px solid #CFCFCF;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:5px;font-size:13px}
+.menu .sec{font-size:11px;font-weight:600;color:var(--muted);padding:6px 10px 3px 26px}
+.menu .it{position:relative;display:flex;align-items:center;height:22px;padding:0 10px 0 26px;border-radius:4px}
+.menu .it .k{position:absolute;left:9px;font-size:12px;font-weight:600}
+.menu .it .r{margin-left:auto;color:var(--muted);font-size:12px}
+.menu .it.hl{background:#2F6BF6;color:#fff}
+.menu .it.hl .r{color:#E4ECFF}
+.menu .it.dis{color:#B0B0B0}
+.menu hr{border:0;border-top:1px solid #DADADA;margin:5px 8px}
+.menu .note{font-size:11px;color:var(--muted);padding:4px 10px 3px 26px;line-height:1.35}
+/* hover actions */
+.hov{width:24px;height:24px;border:1px solid var(--rule);border-radius:4px;background:#fff;display:grid;place-items:center;color:var(--ink)}
+.hov svg{width:13px;height:13px}
+.tip{position:absolute;z-index:9;background:var(--ink);color:#fff;font-size:12px;padding:4px 8px;border-radius:4px;white-space:nowrap;letter-spacing:0;text-transform:none;font-weight:400}
+.cursor{position:absolute;z-index:10;width:14px;height:20px}
+/* edit in place (17a) */
+.edit{background:#fff;border:1px solid var(--ink);border-radius:4px;margin:0 0 18px;box-shadow:inset 3px 0 0 var(--yellow)}
+.edit .tx{padding:8px 12px 6px 14px;font-size:15px}
+.edit .tx .caret{display:inline-block;width:1.5px;height:17px;background:var(--ink);vertical-align:-3px;margin-left:1px}
+.edit .ft{display:flex;align-items:center;gap:8px;padding:8px 8px 8px 14px;border-top:1px solid #ECECEC}
+.edit .ft .w{flex:1;font-size:12px;color:var(--secondary)}
+.edit .ft .w b{color:var(--ink);font-weight:600}
+.dim{opacity:.38}
+.cut{display:flex;align-items:center;gap:10px;margin:-6px 0 14px;font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--secondary);text-transform:uppercase}
+.cut::before,.cut::after{content:"";flex:1;height:0;border-top:1px dashed var(--muted)}
+.img{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 4px 0 4px;border:1px solid var(--rule);border-radius:4px;background:#fff;font-size:12px;color:var(--secondary)}
+.img i{width:18px;height:18px;border-radius:3px;background:linear-gradient(135deg,#9BB 0,#577 100%)}
+.img .x{width:16px;height:16px;display:grid;place-items:center;color:var(--secondary)}
+/* failed */
+.fail{display:flex;align-items:center;gap:10px;margin:0 0 18px;padding:8px 10px 8px 12px;background:#fff;border:1px solid var(--rule);border-left:3px solid var(--red);border-radius:4px;font-size:13px;color:var(--secondary)}
+.fail b{font-size:10px;letter-spacing:.14em;color:var(--term-red);font-weight:600}
+.fail .acts{margin-left:auto;display:flex;gap:6px}
+/* states sheet */
+.sheet{width:1000px;background:var(--paper);padding:20px 16px 8px}
+.cap{font-size:12px;font-weight:600;color:var(--ink);margin:0 0 8px;display:flex;gap:8px;align-items:center}
+.cap span{font-weight:400;color:var(--secondary)}
+.cell{border-top:1px solid var(--rule);padding:14px 0 6px}
+.cell:first-child{border-top:0;padding-top:0}
+.note2{font-size:12px;color:var(--secondary);margin:2px 0 12px}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+const I = {
+  chev: '<svg class="chev" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5l3 3 3-3"/></svg>',
+  chevr: '<svg class="chev" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3.5 2l3 3-3 3"/></svg>',
+  term: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><path d="M4 6l2 2-2 2M8 10.5h4"/></svg>',
+  sliders: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h12M2 8h12M2 12h12"/><circle cx="5" cy="4" r="1.6" fill="#fff"/><circle cx="10.5" cy="8" r="1.6" fill="#fff"/><circle cx="6.5" cy="12" r="1.6" fill="#fff"/></svg>',
+  more: '<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="12.5" cy="8" r="1.3"/></svg>',
+  clip: '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12.5 6.5l-5.2 5.2a1.8 1.8 0 01-2.5-2.5l6-6a3 3 0 014.2 4.2l-6.4 6.4a4.2 4.2 0 01-6-6L7.8 2.6"/></svg>',
+  up: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 13V3M4 7l4-4 4 4"/></svg>',
+  arrow: '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7h10M8 3l4 4-4 4"/></svg>',
+  retry: '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M11.6 7.6A4.6 4.6 0 117 2.4c1.5 0 2.8.7 3.6 1.8"/><path d="M11 1.6v3h-3"/></svg>',
+  pencil: '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.2 2.3l2.5 2.5-7 7H2.2V9.3z"/><path d="M8 3.5l2.5 2.5"/></svg>',
+  copy: '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="4.5" y="4.5" width="7.5" height="7.5" rx="1"/><path d="M9.5 2H3a1 1 0 00-1 1v6.5"/></svg>',
+  x: '<svg viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2l6 6M8 2l-6 6"/></svg>',
+  ther: '<span class="g">∴</span>',
+  cursor: '<svg class="cursor" viewBox="0 0 14 20"><path d="M1 1v15l4-3.6 2.6 6 2.4-1-2.6-5.8H13z" fill="#111" stroke="#fff" stroke-width="1.2"/></svg>',
+};
+
+function crosses(w, h) {
+  let s = '';
+  for (let y = 70; y < h; y += 96) for (let x = 60; x < w; x += 96) s += `<i class="cross" style="left:${x}px;top:${y}px"></i>`;
+  return s;
+}
+function header(pill, opts = {}) {
+  return `<header class="hd"><div class="av">T</div><div class="ttl"><b>Swift app</b><span>Trismegistus · run_7f3a2c · seq 214 · started 13:52</span></div>
+    <span class="meter">350K / 1M · 35%</span>${pill}
+    <span class="ib">${I.term}</span><span class="ib">${I.sliders}</span><span class="ib">${I.more}</span></header>
+    <div class="rule4"><i class="m"></i><i class="y"></i><i class="g"></i></div>`;
+}
+const PILL_A = (open) => `<span class="pill${open ? ' open' : ''}">claude-opus-5-5 <span class="sep">·</span> High ${I.chev}</span>`;
+const PILL_PLAIN = `<span class="pill">claude-opus-5-5 ${I.chev}</span>`;
+const PILL_D = (open) => `<span class="pill">claude-opus-5-5 ${I.chev}</span><span class="pill${open ? ' open' : ''}">${I.ther} High ${I.chev}</span>`;
+
+function composer(mode) {
+  if (mode === 'run') return `<div class="composer"><div class="runline"><span class="sq"></span>Run active <span class="tm">00:38</span>
+      <span class="hints"><span><kbd>⌘↩</kbd>steer</span><span><kbd>⌘.</kbd>stop</span></span></div>
+      <div class="inrow"><span class="clip">${I.clip}</span><div class="field">Steer this run</div><span class="btnw y" style="height:36px">STEER ${I.arrow}</span></div></div>`;
+  if (mode === 'edit') return `<div class="composer" style="border-color:var(--ink)"><div class="runline">Editing <span class="tm">your message of 13:52 · the turn after it is removed when you send</span>
+      <span class="hints"><span><kbd>esc</kbd>cancel</span><span><kbd>⌘↩</kbd>send</span></span></div>
+      <div class="inrow"><span class="clip">${I.clip}</span><div class="field typed">go ahead, but test on the second screen only and leave the main one alone</div><span class="send">${I.up}</span></div></div>`;
+  if (mode === 'quiet') return `<div class="composer"><div class="runline">Ready <span class="hints"><span><kbd>⌘↩</kbd>send</span><span><kbd>⌘K</kbd>conversations</span></span></div>
+      <div class="inrow"><span class="clip">${I.clip}</span><div class="field">Message Hermes</div><span class="send plain">${I.up}</span></div></div>`;
+  return `<div class="composer"><div class="runline">Ready <span class="hints"><span><kbd>⌘↩</kbd>send</span><span><kbd>⌘K</kbd>conversations</span></span></div>
+      <div class="inrow"><span class="clip">${I.clip}</span><div class="field">Message Hermes</div><span class="send">${I.up}</span></div></div>`;
+}
+
+const ASK1 = 'i already ran open, could you use cua-driver on my mac to test the ui?';
+const ASK2 = 'go ahead i set it up a second screen for me to work while you check';
+const ANS1 = `<p>I’m testing through macOS accessibility in the background, so I haven’t taken over your screen.</p>
+  <p style="margin-bottom:2px">Checked and working:</p>
+  <ul><li><b>#41, sections:</b> Chat, GitHub, Agents, Jobs and Commands each switch and show their list.</li>
+  <li><b>#48, chat kinds:</b> App 10, Telegram 4, Terminal 9, One-shots 2, Cron 6.</li></ul>
+  <p>The cua-driver daemon is still running on your Mac. <code>cua-driver stop</code> ends it.</p>`;
+const ANS2 = `<p>Done on the second screen only. The Settings window opens with ⌘, and its three tabs switch; the window kept its size across a relaunch.</p>
+  <p>One thing to look at: the Agents list scrolls back to the top when a run finishes.</p>`;
+const STEPS = [
+  ['I want to check what the window exposes before clicking anything, so I’ll read the accessibility tree first rather than take a screenshot.', 'terminal', 'cua-driver inspect --depth 2'],
+  ['The tree has the sidebar sections as buttons. I’ll press each one and read the list title back, which tells me the section switched without needing his screen.', 'terminal', '5 presses'],
+  ['Chat kinds: the counts come from the panel’s rows. Telegram shows 4, which matches the relay’s list, so that part is fine.', 'terminal', 'cua-driver read'],
+  ['Everything I was asked to check works. I should tell him the daemon is still running so he can stop it, and keep the report short.', 'answer', ''],
+];
+function thinkChip(open, n = 4) { return `<span class="chip${open ? ' open' : ''}">${I.ther} Thinking · ${n} steps ${I.chev}</span>`; }
+const CMDCHIP = `<span class="chip"><span class="g">&gt;_</span> 4 commands · 6.1 s ${I.chev}</span>`;
+function thkPanel() {
+  return `<div class="thk">${STEPS.map((s, i) => `<div class="row"><span class="n">0${i + 1}</span><span>${s[0]}</span>
+     <span class="to">${s[1] === 'answer' ? '→ <b>answer</b>' : `→ <b>${s[1]}</b> · ${s[2]}`}</span></div>`).join('')}</div>`;
+}
+function inlineThink(folded, text, meta) {
+  return `<div class="thin${folded ? ' folded' : ''}"><div class="h">${I.ther} Thinking <span style="font-weight:400;letter-spacing:0;text-transform:none;color:var(--muted)">${meta}</span> ${folded ? I.chevr : I.chev}</div>${text}</div>`;
+}
+
+function frame(inner, cls = 'full') {
+  const f = document.createElement('div'); f.className = 'frame ' + cls; f.innerHTML = crosses(1000, 1122) + inner; return f;
+}
+
+const V = {};
+/* 16a — thinking as a chip beside the commands chip; effort inside the model pill + menu */
+V['16a'] = () => frame(header(PILL_A(false)) + `<div class="scroll">
+  <div class="lbl">You // 13:42</div><div class="you">${ASK1}</div>
+  <div class="lbl">Hermes // 13:49</div><div class="hermes">${ANS1}</div>
+  <div class="chips">${thinkChip(true)}${CMDCHIP}</div>${thkPanel()}
+  <div class="lbl">You // 13:52</div><div class="you">${ASK2}</div>
+  <div class="working"><b>WORKING</b><span>00:38 · 2 tools · thinking: “The Settings tabs are buttons too; I’ll press each and read the title.”</span></div>
+  </div>` + composer('run'));
+
+/* 16b — thinking inline above each answer, folded to its first line */
+V['16b'] = () => frame(header(PILL_A(false)) + `<div class="scroll">
+  <div class="lbl">You // 13:42</div><div class="you">${ASK1}</div>
+  <div class="lbl">Hermes // 13:49</div>
+  ${inlineThink(false, STEPS.map(s => `<p>${s[0]}</p>`).join(''), '· 4 steps · 1,240 characters')}
+  <div class="hermes">${ANS1}</div>
+  <div class="chips">${CMDCHIP}</div>
+  <div class="lbl">You // 13:52</div><div class="you">${ASK2}</div>
+  <div class="lbl">Hermes // working</div>
+  ${inlineThink(true, `<p>The Settings tabs are buttons too; I’ll press each and read the window title back before reporting.</p>`, '· step 3')}
+  <div class="working"><b>WORKING</b><span>00:38 · 2 tools</span></div>
+  </div>` + composer('run'));
+
+/* 16c — the model menu with an Effort section (native NSMenu) */
+V['16c'] = () => {
+  const f = frame(header(PILL_A(true)) + `<div class="scroll">
+    <div class="lbl">You // 13:42</div><div class="you">${ASK1}</div>
+    <div class="lbl">Hermes // 13:49</div><div class="hermes">${ANS1}</div>
+    <div class="chips">${thinkChip(false)}${CMDCHIP}</div>
+    </div>` + composer());
+  const m = document.createElement('div'); m.className = 'menu'; m.style.cssText = 'left:664px;top:46px';
+  m.innerHTML = `<div class="sec">Anthropic</div>
+    <div class="it"><span class="k">✓</span>claude-opus-5-5</div><div class="it">claude-sonnet-5</div><div class="it">claude-fable-5.1</div>
+    <div class="sec">GitHub Copilot</div><div class="it">claude-sonnet-5.5</div><div class="it">claude-opus-5.5</div>
+    <hr><div class="sec">Effort</div>
+    <div class="it">Default <span class="r">Hermes’ setting</span></div>
+    <div class="it">Off <span class="r">no thinking</span></div>
+    <div class="it">Low</div><div class="it">Medium</div>
+    <div class="it hl"><span class="k">✓</span>High</div>
+    <div class="it">Extra high</div><div class="it">Max</div>
+    <div class="note">Applies from the next message. Higher effort thinks longer and uses more of your limit.</div>`;
+  f.appendChild(m); return f;
+};
+
+/* 16d — effort as its own pill next to the model pill */
+V['16d'] = () => {
+  const f = frame(header(PILL_D(true)) + `<div class="scroll">
+    <div class="lbl">You // 13:42</div><div class="you">${ASK1}</div>
+    <div class="lbl">Hermes // 13:49</div><div class="hermes">${ANS1}</div>
+    <div class="chips">${thinkChip(false)}${CMDCHIP}</div>
+    </div>` + composer());
+  const m = document.createElement('div'); m.className = 'menu'; m.style.cssText = 'left:770px;top:46px;width:220px';
+  m.innerHTML = `<div class="sec">Effort</div>
+    <div class="it">Default <span class="r">Hermes’ setting</span></div>
+    <div class="it">Off <span class="r">no thinking</span></div>
+    <div class="it">Low</div><div class="it">Medium</div>
+    <div class="it hl"><span class="k">✓</span>High</div>
+    <div class="it">Extra high</div><div class="it">Max</div>
+    <div class="note">Applies from the next message.</div>`;
+  f.appendChild(m); return f;
+};
+
+/* 16 states */
+V['16-states'] = () => {
+  const s = document.createElement('div'); s.className = 'sheet';
+  s.innerHTML = `
+  <div class="cell"><div class="cap">Folded (default) <span>· every answer with stored thinking gets the chip; the count is the steps that thought</span></div>
+    <div class="lbl">Hermes // 13:49</div><div class="hermes"><p>The cua-driver daemon is still running on your Mac. <code>cua-driver stop</code> ends it.</p></div>
+    <div class="chips">${thinkChip(false)}${CMDCHIP}</div></div>
+  <div class="cell"><div class="cap">Unfolded <span>· one row per step, in order, with what the step led to; long steps fold to 3 lines with “more”</span></div>
+    <div class="chips" style="margin-bottom:18px">${thinkChip(true, 2)}${CMDCHIP}</div>
+    <div class="thk"><div class="row"><span class="n">01</span><span>I want to check what the window exposes before clicking anything, so I’ll read the accessibility tree first rather than take a screenshot. The tree should list the sidebar sections as buttons with their titles, and if it doesn’t I’ll fall back to… <span class="more">more</span></span><span class="to">→ <b>terminal</b> · cua-driver inspect</span></div>
+    <div class="row"><span class="n">02</span><span>Everything I was asked to check works. I should tell him the daemon is still running so he can stop it.</span><span class="to">→ <b>answer</b></span></div></div></div>
+  <div class="cell"><div class="cap">During a run <span>· the latest stored step’s thought, one line, after the WORKING time; the chip appears when the run ends</span></div>
+    <div class="working"><b>WORKING</b><span>00:38 · 2 tools · thinking: “The Settings tabs are buttons too; I’ll press each and read the title.”</span></div></div>
+  <div class="cell"><div class="cap">No thinking <span>· effort Off, a model without reasoning, or an older conversation: no chip at all</span></div>
+    <div class="lbl">Hermes // 13:49</div><div class="hermes"><p>Done. The relay is back up.</p></div><div class="chips">${CMDCHIP}</div></div>
+  <div class="cell"><div class="cap">Model pill <span>· Default shows the model alone; a chosen effort is added after a dot; read-only conversations show the model as text, no effort</span></div>
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">${PILL_PLAIN}${PILL_A(false)}<span class="pill">claude-opus-5-5 <span class="sep">·</span> Off ${I.chev}</span><span style="font-size:13px;color:var(--secondary)">claude-opus-5-5</span></div></div>`;
+  return s;
+};
+
+/* 17a — hover actions + edit in place */
+V['17a'] = () => {
+  const f = frame(header(PILL_A(false)) + `<div class="scroll">
+    <div class="lbl">You // 13:42</div><div class="you">${ASK1}</div>
+    <div class="lbl">Hermes // 13:49</div><div class="hermes">${ANS1}</div>
+    <div class="chips">${thinkChip(false)}${CMDCHIP}</div>
+    <div class="lbl">You // 13:52</div>
+    <div class="edit"><div class="tx">go ahead, but test on the second screen only and leave the main one alone<span class="caret"></span></div>
+      <div class="ft"><span class="w">Sends from here: <b>Hermes’ answer below is removed</b>. Files it changed stay as they are.</span>
+      <span class="btnw">Cancel <kbd style="margin:0 0 0 2px">esc</kbd></span><span class="btnw y">Send ${I.arrow}</span></div></div>
+    <div class="dim"><div class="lbl">Hermes // 14:01</div><div class="hermes">${ANS2}</div><div class="chips">${thinkChip(false, 3)}<span class="chip"><span class="g">&gt;_</span> 7 commands · 12 s ${I.chev}</span></div></div>
+    </div>` + composer('quiet'));
+  return f;
+};
+
+/* 17b — hover actions shown; edit in the composer */
+V['17b'] = () => {
+  const f = frame(header(PILL_A(false)) + `<div class="scroll">
+    <div class="lbl">You // 13:42 <span class="acts"><span class="hov">${I.pencil}</span></span></div><div class="you">${ASK1}</div>
+    <div class="lbl">Hermes // 13:49</div><div class="hermes">${ANS1}</div>
+    <div class="chips">${thinkChip(false)}${CMDCHIP}</div>
+    <div class="lbl">You // 13:52 <span style="color:var(--ink)">· editing</span></div><div class="you" style="border-color:var(--ink);box-shadow:inset 3px 0 0 var(--yellow)">${ASK2}</div>
+    <div class="cut">removed when you send</div>
+    <div class="dim"><div class="lbl">Hermes // 14:01</div><div class="hermes">${ANS2}</div><div class="chips">${thinkChip(false, 3)}<span class="chip"><span class="g">&gt;_</span> 7 commands · 12 s ${I.chev}</span></div></div>
+    </div>` + composer('edit'));
+  const t = document.createElement('div'); t.className = 'tip'; t.style.cssText = 'left:822px;top:73px'; t.textContent = 'Edit and send again';
+  f.appendChild(t);
+  return f;
+};
+
+/* 17 states */
+V['17-states'] = () => {
+  const s = document.createElement('div'); s.className = 'sheet';
+  s.innerHTML = `
+  <div class="cell"><div class="cap">Hover your message <span>· pencil at the end of its label line; every message of yours in app conversations, not only the last</span></div>
+    <div class="lbl">You // 13:52 <span class="acts"><span class="hov">${I.pencil}</span></span></div><div class="you">${ASK2}</div></div>
+  <div class="cell"><div class="cap">Hover the last answer <span>· retry (runs your last message again and replaces this answer) and copy the whole answer</span></div>
+    <div class="lbl">Hermes // 14:01 <span class="acts"><span class="hov">${I.copy}</span><span class="hov">${I.retry}</span></span></div><div class="hermes"><p>Done on the second screen only. The Settings window opens with ⌘, and its three tabs switch.</p></div></div>
+  <div class="cell"><div class="cap">A failed run <span>· retry sits on the failure line; it sends the same message again (with its images)</span></div>
+    <div class="fail"><b>FAILED</b> Hermes answered 529: the provider is overloaded. <span class="acts"><span class="hov">${I.retry}</span></span></div></div>
+  <div class="cell"><div class="cap">Editing a message with images <span>· the images come along; × drops one before sending</span></div>
+    <div class="edit"><div class="tx">is this the right blur radius for the sidebar?<span class="caret"></span></div>
+    <div style="display:flex;gap:6px;padding:0 12px 8px 14px"><span class="img"><i></i>screenshot-1.png <span class="x">${I.x}</span></span><span class="img"><i></i>reference.jpg <span class="x">${I.x}</span></span></div>
+    <div class="ft"><span class="w">Sends from here: <b>3 later messages and their answers are removed</b>. Files Hermes changed stay as they are.</span><span class="btnw">Cancel</span><span class="btnw y">Send ${I.arrow}</span></div></div></div>
+  <div class="cell"><div class="cap">Not offered <span>· during a run (steer or stop it instead), in read-only conversations (Telegram, cron, CLI) and on other devices’ messages still sending</span></div>
+    <div class="lbl">You // 13:52</div><div class="you">${ASK2}</div><div class="working"><b>WORKING</b><span>00:38 · 2 tools</span></div></div>`;
+  return s;
+};
+
+function route() {
+  const h = location.hash.slice(1) || '16a';
+  const st = document.getElementById('stage'); st.innerHTML = '';
+  st.appendChild(V[h]());
+  document.documentElement.style.width = document.body.style.width = '1000px';
+}
+window.addEventListener('hashchange', route);
+route();
+</script>
+</body>
+</html>
