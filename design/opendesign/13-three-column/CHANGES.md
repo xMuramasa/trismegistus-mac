@@ -211,3 +211,20 @@ Drawn by hand into the prototype (2026-11-10), not by OpenDesign: the a3 window 
 - **The composer is the Track pill:** 46 px pill with a contour hairline; attach, field, a 34 px stop circle, and STEER as a yellow 36 px pill ending in a 28 px ink ring with the arrow. While an approval waits, Once is the yellow action and STEER turns plain.
 
 `#a3-m1` (14a, objectives) restyles the stream. `#a3-m2` (14b, mission cards) makes each turn a card: your words as its 19 px / 500 title (two lines at most), a pin line (8 px yellow square with an ink edge, `You 13:42 → Hermes 13:49 · 7 min`), a hairline, then briefing, steps and results; a 3 px left bar in the state colour; folded cards keep title, pin line and small tiles. `#a3-m2` drops the code block from the first turn so both cards fit; its style is 14a's.
+
+## #a3-c1 / #a3-c2: chat entries as Endfield mission cards (#70, proposal)
+
+What Martin asked for ("refactor the chat entries with the mission cards design to make them cleaner"); the `#a3-m*` transcript drafts above came from misreading his first message and are parked. Reference: his recording, `own-recording/12m14s-mission-list-dark.jpg`. CSS: the `.mcw` block; markup: `missionRow()`, `missionHead()`.
+
+| Part | Today's a3 card | Mission card |
+| --- | --- | --- |
+| Card | 46 px at a 50 px pitch, index 01–11, 26 px avatar | 56 px, 12 px apart (room for the tag), white 90 %, `rule` hairline, radius 4 |
+| Left edge | none | 3 px bar: yellow run, magenta approval, terminal-red failed, terminal-green done, `contour` idle |
+| Source | 26 px rounded-square avatar | 30 px `contour` triangle outline with the source glyph inside in `secondary`, then a 22 px divider hairline |
+| Text | title 13 px, time, preview with tags and the tag | title 14 px (500; 600 with a state or selected) + pin; preview 12 px `secondary` (+ lock when read-only); tags leave the card |
+| Right edge | time on line 1 | age 11 px over a 14 x 10 hatch |
+| State | 18 px tag on the preview line | 19 px pill half over the top edge: RUN yellow with an ink ring, clock and time (the game's "Timed"); APPROVAL magenta, ink text (5.0:1); FAILED / DONE white with a red cross / green check |
+| Selected | white, yellow frame + glow, bracket corners | 1.5 px ink frame, yellow wash from the left (gone by 150 px), faint 135° stripes |
+| Group heads | `// PINNED ——— 04` label line | 22 px yellow square, ink glyph (pin / chat), label 14 px, count, `contour` hairline under |
+
+`#a3-c2` adds an **In progress** group on top (live run or waiting approval), under a small right-aligned label with a yellow bracket, like the game's current mission. About 13 cards fit in the window against about 19 today.

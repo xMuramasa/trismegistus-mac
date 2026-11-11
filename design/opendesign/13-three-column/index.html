@@ -779,6 +779,56 @@ kbd,.kbd{font-family:inherit;font-size:var(--t-label);font-weight:600;line-heigh
 .msn .runline .sq{width:8px;height:8px;border:0;background:var(--term-green)}
 .msn .runline .tm{text-transform:none;letter-spacing:0}
 .msn2 .mini .tile svg{flex:none}
+/* ======== chat entries as Endfield mission cards (#a3-c1, #a3-c2, #a3-c-states) ======== */
+.mcw .lc-scroll{padding-top:4px}
+.mcw .mg{position:relative;display:flex;align-items:center;gap:10px;height:30px;margin:14px 12px 12px;padding-bottom:0}
+.mcw .mg:first-child{margin-top:8px}
+.mcw .mg .ms{flex:none;display:grid;place-items:center;width:22px;height:22px;background:var(--yellow);color:var(--ink);border-radius:2px;box-shadow:0 0 0 1px var(--ink);--od-icon-size:14px}
+.mcw .mg .ms svg{stroke-width:2}
+.mcw .mg .ml{font-size:14px;font-weight:500;color:var(--ink);letter-spacing:0}
+.mcw .mg .mn{font-size:12px;font-weight:400;color:var(--secondary)}
+.mcw .mg::after{content:"";position:absolute;left:32px;right:0;bottom:-5px;height:1px;background:var(--contour)}
+.mcw .mg.ip{justify-content:flex-end;height:20px;margin-bottom:10px}
+.mcw .mg.ip .ml{font-size:12px;color:var(--secondary)}
+.mcw .mg.ip::after{left:0;right:6px;bottom:auto;top:50%}
+.mcw .mg.ip .ml{position:relative;z-index:1;background:transparent;padding-left:8px}
+.mcw .mg.ip .br{position:relative;z-index:1;flex:none;width:4px;height:14px;border:1.5px solid var(--yellow);border-left:0;box-shadow:1px 0 0 var(--ink)}
+.skin-a3.mcw .row.mc-row{display:flex;align-items:stretch;gap:0;width:calc(100% - 20px);height:56px;margin:0 10px 12px;padding:0;background:rgba(255,255,255,.9);border:1px solid var(--rule);border-radius:4px;box-shadow:none;overflow:visible}
+.skin-a3.mcw .row.mc-row::before{content:"";position:absolute;left:-1px;top:-1px;bottom:-1px;width:3px;background:var(--bar,var(--contour));border-radius:4px 0 0 4px}
+.mcw .mc-row.is-run{--bar:var(--yellow)}
+.mcw .mc-row.is-approval{--bar:var(--magenta)}
+.mcw .mc-row.is-failed{--bar:var(--term-red)}
+.mcw .mc-row.is-done{--bar:var(--term-green)}
+.mcw .mc-emb{position:relative;flex:none;display:grid;place-items:center;width:52px;color:var(--secondary);--od-icon-size:13px}
+.mcw .mc-emb .tri{position:absolute;left:11px;top:13px;width:30px;height:28px;color:var(--contour)}
+.mcw .mc-emb .tri svg{width:30px;height:28px;stroke-width:1.2}
+.mcw .mc-emb .gl{position:relative;margin-top:-6px;display:grid;place-items:center}
+.mcw .mc-emb .gl b{font-size:12px;font-weight:600;line-height:1;color:var(--secondary)}
+.mcw .mc-div{flex:none;align-self:center;width:1px;height:22px;background:var(--rule);margin-right:12px}
+.mcw .mc-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.mcw .mc-title{display:flex;align-items:center;gap:6px;min-width:0;font-size:14px;font-weight:500;line-height:19px;color:var(--ink);--od-icon-size:12px}
+.mcw .mc-title .t{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.mcw .mc-row.is-strong .mc-title{font-weight:600}
+.mcw .mc-title .pin{flex:none;color:var(--secondary)}
+.mcw .mc-sub{display:flex;align-items:center;gap:6px;min-width:0;font-size:12px;line-height:16px;color:var(--secondary);--od-icon-size:11px}
+.mcw .mc-sub .p{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.mcw .mc-sub .lock{flex:none}
+.mcw .mc-side{flex:none;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-end;gap:5px;width:52px;padding:0 10px 9px 0}
+.mcw .mc-time{font-size:11px;color:var(--secondary);line-height:1}
+.mcw .mc-hatch{display:block;width:14px;height:10px;background:repeating-linear-gradient(135deg,var(--contour) 0 1.5px,transparent 1.5px 4px)}
+.mcw .mc-tag{position:absolute;top:-10px;right:10px;z-index:2;display:inline-flex;align-items:center;gap:5px;height:19px;padding:0 9px 0 6px;border-radius:10px;background:var(--raised);color:var(--ink);font-size:11px;font-weight:600;line-height:1;white-space:nowrap;box-shadow:0 1px 3px rgba(25,25,25,.18),0 0 0 1px rgba(25,25,25,.06);--od-icon-size:12px}
+.mcw .mc-tag svg{stroke-width:2.2}
+.mcw .mc-tag.run{background:var(--yellow);box-shadow:0 1px 3px rgba(25,25,25,.18),0 0 0 1px var(--ink)}
+.mcw .mc-tag.approval{background:var(--magenta)}
+.mcw .mc-tag.failed svg{color:var(--term-red)}
+.mcw .mc-tag.done svg{color:var(--term-green)}
+.skin-a3.mcw .row.mc-row.is-sel{border-color:var(--ink);box-shadow:0 0 0 .5px var(--ink),0 2px 10px rgba(25,25,25,.10);background:linear-gradient(90deg,rgba(255,250,0,.95) 0,rgba(255,250,0,.55) 46px,rgba(255,250,0,0) 150px),repeating-linear-gradient(135deg,rgba(25,25,25,.035) 0 1px,transparent 1px 6px),var(--raised)}
+.mcw .mc-row.is-sel .mc-emb .tri{color:rgba(25,25,25,.28)}
+.mcw .mc-row.is-sel .mc-emb{color:var(--ink)}
+.mcw .mc-row.is-sel .mc-div{background:rgba(25,25,25,.25)}
+.skin-a3.mcw .row.mc-row.is-hover{background:var(--raised);border-color:var(--contour);box-shadow:0 1px 6px rgba(25,25,25,.08)}
+.mcw .mc-row .fr,.mcw .mc-row .hatch,.mcw .mc-row .idx{display:none!important}
+.mcw .cap{padding:6px 12px 8px}
 </style>
 </head>
 <body>
@@ -928,6 +978,38 @@ function contours(w, h) {
   return `<svg class="contours" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">${out}</svg>`;
 }
 
+/* ======== chat entries as Endfield mission cards ======== */
+let MCARDS = 0;   // 0 off, 1 = today's groups, 2 = with an In progress group on top
+P.tri = '<path d="M3 4h18l-9 16z"/>';
+P.clock2 = '<circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/>';
+P.bang = '<path d="M9 5v9M15 5v9M9 18v1M15 18v1"/>';
+function mcEmblem(src) {
+  const g = src === 'cron' ? ic('cron') : src === 'telegram' ? ic('telegram') : src === 'terminal' ? ic('terminal') : '<b>T</b>';
+  return `<span class="mc-emb" aria-hidden="true"><span class="tri">${ic('tri')}</span><span class="gl">${g}</span></span>`;
+}
+function mcTag(c) {
+  if (!c.state) return '';
+  if (c.state === 'run') return `<span class="mc-tag run">${ic('clock2')}<span class="num" data-run="${c.id}">${mmss(c.run)}</span></span>`;
+  const glyph = {approval: 'diamond', failed: 'cross', done: 'check'}[c.state];
+  return `<span class="mc-tag ${c.state}">${ic(glyph)}<span>${STATE_WORD[c.state]}</span></span>`;
+}
+function missionRow(c, selId, extra = '') {
+  const sel = selId === c.id;
+  return `<button class="row mc-row ${c.state ? 'is-' + c.state : ''} ${sel ? 'is-sel' : ''} ${c.state || sel ? 'is-strong' : ''} ${extra}" type="button" data-act="row" data-id="${c.id}" data-key="row-${c.id}" ${sel ? 'aria-current="true"' : ''}
+      aria-label="${esc(c.title)}, ${c.state ? STATE_LONG[c.state] + ', ' : ''}${esc(c.time)}${c.pinned ? ', pinned' : ''}">
+    ${mcTag(c)}${mcEmblem(c.src)}<span class="mc-div" aria-hidden="true"></span>
+    <span class="mc-body">
+      <span class="mc-title"><span class="t">${esc(c.title)}</span>${c.pinned ? `<span class="pin">${ic('pin')}</span>` : ''}</span>
+      <span class="mc-sub">${c.readOnly || c.src === 'cron' ? `<span class="lock">${ic('lock')}</span>` : ''}<span class="p">${esc(c.preview)}</span></span>
+    </span>
+    <span class="mc-side"><span class="mc-time num">${esc(c.time)}</span><span class="mc-hatch" aria-hidden="true"></span></span>
+  </button>`;
+}
+function missionHead(label, n, glyph) {
+  if (label === 'In progress') return `<div class="mg ip" role="presentation"><span class="ml">In progress</span><span class="br" aria-hidden="true"></span></div>`;
+  return `<div class="mg" role="presentation"><span class="ms" aria-hidden="true">${ic(glyph || (label === 'Pinned' ? 'pin' : 'chat'))}</span><span class="ml">${esc(label)}</span><span class="mn num">${n}</span></div>`;
+}
+
 /* ---------- pieces ---------- */
 function sticker(state, conv, glyphOnly) {
   if (!state) return '';
@@ -944,6 +1026,7 @@ function avatar(src) {
 }
 
 function rowMarkup(c, selId, extra = '', idx = null) {
+  if (MCARDS) return missionRow(c, selId, extra);
   const sel = selId === c.id;
   const tags = c.tags.slice(0, 2).map(t => `<span class="tag">${esc(t)}</span>`).join('') + (c.tags.length > 2 ? `<span class="tag-more num">+${c.tags.length - 2}</span>` : '');
   return `<button class="row ${sel ? 'is-sel on-dark' : ''} ${c.state || sel ? 'is-strong' : ''} ${extra}" type="button" data-act="row" data-id="${c.id}" data-key="row-${c.id}" ${sel ? 'aria-current="true"' : ''}
@@ -1261,7 +1344,7 @@ function createWin(skin, narrow, open) {
 
   /* list column */
   const rowHTML = (c, i) => rowMarkup(c, st.sel, '', A3 ? st.convs.indexOf(c) + 1 : null);
-  const head = (label, n) => A3 ? `<div class="lsh" role="presentation"><span>// ${label}</span><i class="ln"></i><span class="n num">${String(n).padStart(2, '0')}</span></div>` : `<div class="lsh" role="presentation">${label}<span class="n num">${n}</span></div>`;
+  const head = (label, n) => MCARDS ? missionHead(label, n) : A3 ? `<div class="lsh" role="presentation"><span>// ${label}</span><i class="ln"></i><span class="n num">${String(n).padStart(2, '0')}</span></div>` : `<div class="lsh" role="presentation">${label}<span class="n num">${n}</span></div>`;
   const title = (label, n, suf = '') => A3 ? `<span class="lbl3">// ${esc(label)}</span>${n != null ? `<span class="big">${n}</span>` : ''}${suf ? `<span class="lbl3">${esc(suf.trim())}</span>` : ''}` : `${esc(label)}${n != null ? `<span class="sl">//</span>${n}${esc(suf)}` : ''}`;
   function renderList() {
     if (FULL) setHeadBtns(st.section);
@@ -1286,6 +1369,15 @@ function createWin(skin, narrow, open) {
     if (FULL && !q && !pinned.length && !rest.length) { lcScroll.innerHTML = `<div class="empty"><b>${kind.count} ${esc(kind.label)} conversations</b>None of them are in this prototype’s sample data. App, Telegram, Terminal and All have rows.</div>`; return; }
     if (!pinned.length && !rest.length) {
       lcScroll.innerHTML = `<div class="empty"><b>No conversation matches “${esc(st.filter)}”</b>Clear the filter to see all ${kind.count}.</div>`;
+      return;
+    }
+    if (MCARDS === 2) {
+      const live = c => c.state === 'run' || c.state === 'approval';
+      const all = pinned.concat(rest), ip = all.filter(live), pn = pinned.filter(c => !live(c)), rs = rest.filter(c => !live(c));
+      lcScroll.innerHTML = (ip.length ? `${head('In progress', ip.length)}${ip.map(rowHTML).join('')}` : '') +
+        (pn.length ? `${head('Pinned', pn.length)}${pn.map(rowHTML).join('')}` : '') +
+        (rs.length ? `${head('Conversations', rs.length)}${rs.map(rowHTML).join('')}` : '');
+      $('.ib-plus').classList.toggle('demoted', !!(conv(st.sel) && conv(st.sel).state === 'run'));
       return;
     }
     lcScroll.innerHTML =
@@ -1918,14 +2010,20 @@ function missionView(win, v) {
 const stage = document.getElementById('stage');
 function route() {
   const h = location.hash.slice(1);
+  MCARDS = 0;
   const SEC_RE = /^(a2|a3)-(github-check|github|agents|jobs|commands|telegram)$/;
-  const v = (['a', 'b', 'a2', 'a3', 'all', 'compare', 'a-narrow', 'b-narrow', 'a2-narrow', 'a3-narrow', 'a2-states', 'a3-states'].includes(h) || SEC_RE.test(h) || /^a3-m[12](-states)?$/.test(h)) ? h : 'all';
+  const v = (['a', 'b', 'a2', 'a3', 'all', 'compare', 'a-narrow', 'b-narrow', 'a2-narrow', 'a3-narrow', 'a2-states', 'a3-states'].includes(h) || SEC_RE.test(h) || /^a3-m[12](-states)?$/.test(h) || /^a3-c(1|2|-states)$/.test(h)) ? h : 'all';
   WINS.length = 0;
   stage.innerHTML = '';
   let w = 1560, hgt = 1122;
   if (v === 'all' || v === 'compare') {
     hgt = 561;
     (v === 'all' ? ['a', 'a2'] : ['a2', 'a3']).forEach(s => { const f = document.createElement('div'); f.className = 'frame'; f.appendChild(createWin(s, false)); stage.appendChild(f); });
+  } else if (/^a3-c(1|2|-states)$/.test(h)) {
+    MCARDS = h === 'a3-c2' ? 2 : 1;
+    const w0 = h === 'a3-c-states' ? createStates('a3') : createWin('a3', false);
+    w0.classList.add('mcw'); stage.appendChild(w0);
+    if (h === 'a3-c-states') { w = 520; w0.querySelectorAll('.cap').forEach(n => { if (n.textContent.startsWith('Tagged')) n.textContent = 'Tagged: tags show in the detail header and the filter'; }); }
   } else if (/^a3-m[12](-states)?$/.test(h)) {
     const w0 = createWin('a3', false); stage.appendChild(w0); missionView(w0, h.slice(3));
     if (h.endsWith('-states')) { const t1 = w0.querySelector('.dt-ttl .t1 .od-truncate'), t2 = w0.querySelector('.dt-ttl .t2'); if (t1) t1.textContent = 'Trismegistus'; if (t2) t2.textContent = 'Trismegistus · run_8c41d0 · waiting for approval since 18:11'; }
