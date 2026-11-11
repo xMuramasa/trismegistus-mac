@@ -69,6 +69,8 @@ public struct ReadoutRow<Cells: View, Trailing: View>: View {
                         .overlay(alignment: .leading) {
                             if i > 0 { Rectangle().fill(Ink.line.rule).frame(width: Stroke.hairline) }
                         }
+                        // The row's free width goes to a filling cell before the spacer, or the spacer takes half.
+                        .layoutPriority(cells[i].containerValues.readoutFills ? 1 : 0)
                 }
             }
             Spacer(minLength: 0)
@@ -79,6 +81,17 @@ public struct ReadoutRow<Cells: View, Trailing: View>: View {
         .background(Ink.surface.frosted)
         .overlay(alignment: .bottom) { Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline) }
     }
+}
+
+extension ContainerValues {
+    /// A `ReadoutRow` cell that takes the row's free width first (the Tags cell, `readoutFills()`).
+    @Entry var readoutFills = false
+}
+
+public extension View {
+    /// Marks a `ReadoutRow` cell that takes the row's free width before the row's spacer does (#73: the Tags cell with
+    /// `ReadoutTags(_:)` showing as many tags as fit).
+    func readoutFills() -> some View { containerValue(\.readoutFills, true) }
 }
 
 public extension ReadoutRow where Trailing == EmptyView {

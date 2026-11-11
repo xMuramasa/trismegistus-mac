@@ -194,10 +194,17 @@ public struct ReadoutTag: View {
     }
 }
 
-/// An issue's labels as `ReadoutTag`s: the first `shown`, then `+N`. No labels read `none`.
+/// An issue's labels as `ReadoutTag`s, then `+N` for the ones left out. No labels read `none`. Without `shown`, as many
+/// as fit the width offered (`FittingTagsLayout`); with it, the first `shown`.
 public struct ReadoutTags: View {
     let tags: [String]
-    let shown: Int
+    let shown: Int?
+
+    /// As many as fit the width the row offers (#73).
+    public init(_ tags: [String]) {
+        self.tags = tags
+        self.shown = nil
+    }
 
     public init(_ tags: [String], shown: Int) {
         self.tags = tags
@@ -205,13 +212,76 @@ public struct ReadoutTags: View {
     }
 
     public var body: some View {
-        HStack(spacing: Space.xs) {
-            if tags.isEmpty { ReadoutTag("none") }
-            ForEach(tags.prefix(shown), id: \.self) { ReadoutTag($0) }
-            if shown < tags.count { Text(verbatim: "+\(tags.count - shown)").typeRole(.micro, weight: .semibold).foregroundStyle(Ink.text.secondary).lineLimit(1).fixedSize() }
+        Group {
+            if tags.isEmpty {
+                ReadoutTag("none")
+            } else if let shown {
+                HStack(spacing: Space.xs) {
+                    ForEach(Array(tags.prefix(shown).enumerated()), id: \.offset) { ReadoutTag($0.element) }
+                    if shown < tags.count { more(tags.count - shown) }
+                }
+            } else {
+                FittingTagsLayout(spacing: Space.xs, count: tags.count) {
+                    ForEach(Array(tags.enumerated()), id: \.offset) { ReadoutTag($0.element) }
+                    ForEach(1...tags.count, id: \.self) { more($0) }
+                }
+            }
         }
         .help(tags.joined(separator: ", "))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(tags.isEmpty ? "none" : tags.joined(separator: ", "))
+    }
+
+    private func more(_ count: Int) -> some View {
+        Text(verbatim: "+\(count)").typeRole(.micro, weight: .semibold).foregroundStyle(Ink.text.secondary).lineLimit(1).fixedSize()
+    }
+}
+
+/// `count` tags, then the labels `+1` … `+count`: shows as many tags as fit the width offered, in order, and the one
+/// `+N` naming the rest; the others go far off to the side. One layout, measured once (#73): the readout used to try
+/// whole rows in a `ViewThatFits`, and with the rows' native menus inside SwiftUI and AppKit never agreed on a size.
+struct FittingTagsLayout: Layout {
+    let spacing: CGFloat
+    let count: Int
+
+    /// How many tags fit in `limit` (nil: no limit), and the width they take with their `+N`.
+    static func fit(tags: [CGFloat], more: [CGFloat], spacing: CGFloat, limit: CGFloat?) -> (shown: Int, width: CGFloat) {
+        func width(_ n: Int) -> CGFloat {
+            var w = tags.prefix(n).reduce(0, +) + CGFloat(max(n - 1, 0)) * spacing
+            if n < tags.count { w += (n > 0 ? spacing : 0) + more[tags.count - n - 1] }
+            return w
+        }
+        guard let limit, limit.isFinite else { return (tags.count, width(tags.count)) }
+        var n = tags.count
+        while n > 0 && width(n) > limit { n -= 1 }
+        return (n, width(n))
+    }
+
+    private func measure(_ subviews: Subviews) -> (tags: [CGSize], more: [CGSize]) {
+        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        return (Array(sizes.prefix(count)), Array(sizes.dropFirst(count)))
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let (tags, more) = measure(subviews)
+        let fit = Self.fit(tags: tags.map(\.width), more: more.map(\.width), spacing: spacing, limit: proposal.width)
+        return CGSize(width: fit.width, height: (tags + more).map(\.height).max() ?? 0)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let (tags, more) = measure(subviews)
+        let fit = Self.fit(tags: tags.map(\.width), more: more.map(\.width), spacing: spacing, limit: bounds.width)
+        let away = CGPoint(x: bounds.minX - 100_000, y: bounds.minY)
+        var x = bounds.minX
+        for (i, subview) in subviews.enumerated() {
+            let size = i < count ? tags[i] : more[i - count]
+            let shows = i < count ? i < fit.shown : i - count + 1 == count - fit.shown
+            guard shows else {
+                subview.place(at: away, proposal: ProposedViewSize(size))
+                continue
+            }
+            subview.place(at: CGPoint(x: x, y: bounds.midY - size.height / 2), proposal: ProposedViewSize(size))
+            x += size.width + spacing
+        }
     }
 }

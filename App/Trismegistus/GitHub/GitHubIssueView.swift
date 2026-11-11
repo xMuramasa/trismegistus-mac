@@ -114,16 +114,11 @@ struct GitHubIssueView: View {
         .background(Ink.surface.frosted)
     }
 
-    /// The row with as many tags as fit: asked inside the row's own layout, its spacer would take half their room.
+    /// Status and Priority by option name, close/reopen: managers. Viewers see the fields as text. One row: the Tags cell
+    /// shows as many tags as fit (#73: a `ViewThatFits` over whole rows with these native menus never settled and froze
+    /// the window).
     private func readout(_ issue: GitHubIssue) -> some View {
         let tags = issue.labels.withoutPriority(issue.priority).withoutAgent
-        return ViewThatFits(in: .horizontal) {
-            ForEach((0...tags.count).reversed(), id: \.self) { readout(issue, tags: tags, shown: $0) }
-        }
-    }
-
-    /// Status and Priority by option name, close/reopen: managers. Viewers see the fields as text.
-    private func readout(_ issue: GitHubIssue, tags: [String], shown: Int) -> some View {
         let board = github.isManager ? github.board : nil
         return ReadoutRow {
             ReadoutCell("Status") {
@@ -140,7 +135,7 @@ struct GitHubIssueView: View {
                     reading(issue.priority)
                 }
             }
-            ReadoutCell("Tags") { ReadoutTags(tags, shown: shown) }
+            ReadoutCell("Tags") { ReadoutTags(tags) }.readoutFills()
             ReadoutCell("Agent") { ReadoutTag(issue.labels.agentValue ?? "none") }
         } trailing: {
             if github.isManager {
