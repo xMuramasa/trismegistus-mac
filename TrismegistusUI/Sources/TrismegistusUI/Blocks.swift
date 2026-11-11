@@ -1,10 +1,13 @@
 import AppKit
 import SwiftUI
 
-/// Fenced code from the Markdown answer: language label, icon-only copy button, scrolls sideways.
+/// Fenced code from the Markdown answer: language label, icon-only copy button, scrolls sideways. In the window's chat
+/// (#71, `.skin-a3 .hermes pre`) with a rule hairline and `control` corners, a shell prompt's `$` terminal-green and a
+/// shell comment `secondary`.
 public struct CodeBlockView: View {
     let language: String?
     let code: String
+    @Environment(\.hairlineControls) private var hairline
 
     public init(language: String? = nil, code: String) {
         self.language = language
@@ -14,7 +17,7 @@ public struct CodeBlockView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: Space.s) {
             HStack {
-                Text(language ?? "").typeRole(.label).foregroundStyle(Ink.text.secondary)
+                Text(language ?? "").typeRole(hairline ? .trackedLabel : .label).foregroundStyle(Ink.text.secondary)
                 Spacer()
                 EndfieldButton("Copy", symbol: Symbol.copy, kind: .quiet, iconOnly: true) {
                     NSPasteboard.general.clearContents()
@@ -22,12 +25,34 @@ public struct CodeBlockView: View {
                 }
             }
             ScrollView(.horizontal) {
-                Text(code).typeRole(.mono).foregroundStyle(Ink.text.primary).fixedSize().textSelection(.enabled)
+                Text(hairline ? Self.highlighted(code, language: language) : AttributedString(code))
+                    .typeRole(.mono).foregroundStyle(Ink.text.primary).fixedSize().textSelection(.enabled)
             }
         }
         .padding(Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .rounded(Radius.l, fill: Ink.surface.sunken)
+        .rounded(hairline ? Radius.control : Radius.l, fill: Ink.surface.sunken, edge: hairline ? Ink.line.rule : .clear)
+    }
+
+    /// The languages whose `#` starts a comment and `$ ` a prompt; no language counts (a bare fence is usually a shell).
+    static let shells: Set<String> = ["", "sh", "bash", "zsh", "fish", "shell", "console", "terminal"]
+
+    /// `code` with a shell prompt's `$` in terminal-green and each comment line in `secondary` (`pre .p`, `pre .c`).
+    static func highlighted(_ code: String, language: String?) -> AttributedString {
+        guard shells.contains(language?.lowercased() ?? "") else { return AttributedString(code) }
+        var styled = AttributedString()
+        for (i, line) in code.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+            if i > 0 { styled += AttributedString("\n") }
+            var part = AttributedString(String(line))
+            let start = line.drop { $0 == " " || $0 == "\t" }
+            if start.hasPrefix("#") {
+                part.swiftUI.foregroundColor = Ink.text.secondary
+            } else if start == "$" || start.hasPrefix("$ "), let prompt = part.range(of: "$") {
+                part[prompt].swiftUI.foregroundColor = Ink.status.ok
+            }
+            styled += part
+        }
+        return styled
     }
 }
 
@@ -35,12 +60,15 @@ public enum ApprovalAction: Sendable {
     case once, session, deny
 }
 
-/// Pinned at the top of the chat while a request is open. `always` is never offered (the protocol forbids it).
+/// Pinned at the top of the chat while a request is open. `always` is never offered (the protocol forbids it). In the
+/// window's chat (#71, `.skin-a3 .approve`) a white block with a rule hairline and `control` corners, no yellow bar and
+/// no shadow; Once stays the yellow action, Session white with a `secondary` edge, Deny a red outline.
 public struct ApprovalBannerView: View {
     let tool: String
     let command: String
     let explanation: String
     let onChoice: @MainActor (ApprovalAction) -> Void
+    @Environment(\.hairlineControls) private var hairline
 
     public init(tool: String, command: String, explanation: String, onChoice: @escaping @MainActor (ApprovalAction) -> Void) {
         self.tool = tool
@@ -51,35 +79,40 @@ public struct ApprovalBannerView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Rectangle().fill(Ink.selection).frame(height: Stroke.mark)
+            if !hairline { Rectangle().fill(Ink.selection).frame(height: Stroke.mark) }
             VStack(alignment: .leading, spacing: Space.m) {
                 HStack(spacing: Space.s) {
                     Rectangle().fill(Ink.marker).frame(width: Size.marker, height: Size.marker)
-                    Text("Approval // Required").typeRole(.label)
+                    Text("Approval // Required").typeRole(hairline ? .trackedLabel : .label)
                     Spacer()
-                    Text(tool).typeRole(.monoSmall).foregroundStyle(Ink.text.muted)
+                    // The tool's name isn't code: Inter in a3 (mono is for the command).
+                    Text(tool).typeRole(hairline ? .caption : .monoSmall).foregroundStyle(hairline ? Ink.text.secondary : Ink.text.muted)
                 }
                 Text(command).typeRole(.mono).textSelection(.enabled)
-                    .padding(Space.s).frame(maxWidth: .infinity, alignment: .leading).background(Ink.surface.sunken)
+                    .padding(Space.s).frame(maxWidth: .infinity, alignment: .leading)
+                    .rounded(hairline ? Radius.control : Radius.none, fill: Ink.surface.sunken, edge: hairline ? Ink.line.rule : .clear)
                 Text(explanation).typeRole(.callout).foregroundStyle(Ink.text.secondary)
                 HStack(spacing: Space.s) {
                     // No keyboard shortcuts on approval buttons: macOS fires key equivalents before the focused text field, so
                     // Return (or ⌘⌫) typed in the steer field would answer the approval. Approvals are click-only.
                     EndfieldButton("Once", symbol: Symbol.check, kind: .primary) { onChoice(.once) }
+                    // a3's `.btn-ink` and the red outline: edges over the hairline button's rule edge.
                     EndfieldButton("Session", symbol: Symbol.clock) { onChoice(.session) }
+                        .edge(hairline ? Ink.text.secondary : .clear, radius: Radius.control)
                     Spacer()
                     EndfieldButton("Deny", symbol: Symbol.close, kind: .danger) {
                         onChoice(.deny)
                     }
+                    .edge(hairline ? Ink.text.error : .clear, radius: Radius.control)
                 }
                 Text("click to answer · “always” is never offered").typeRole(.caption).foregroundStyle(Ink.text.muted)
             }
             .padding(Space.m)
         }
         .foregroundStyle(Ink.text.primary)
-        // An `l` box (#68): the yellow bar follows its top corners.
-        .rounded(Radius.l, fill: Ink.surface.raised)
-        .shadow(Shadow.panel)
+        // An `l` box (#68): the yellow bar follows its top corners. a3: no offset shadows (depth from layers).
+        .rounded(hairline ? Radius.control : Radius.l, fill: Ink.surface.raised, edge: hairline ? Ink.line.rule : .clear)
+        .shadow(hairline ? Shadow.none : Shadow.panel)
     }
 }
 
@@ -111,7 +144,7 @@ public struct TerminalEntryView: View {
     @State private var expanded = false
     @State private var folded: Bool
     @State private var hovered = false
-    /// The Commands log's rows (#69); the chat's chip keeps #68's look.
+    /// The a3 rows (#69): the Commands log and, under the chat's open commands chip, the window's chat (#71).
     @Environment(\.hairlineControls) private var hairline
     /// The body's natural height, once laid out: past `maxBodyHeight` it scrolls.
     @State private var bodyHeight: CGFloat?
@@ -172,8 +205,10 @@ public struct TerminalEntryView: View {
     private static let shape = UnevenRoundedRectangle(topTrailingRadius: Radius.l, style: .continuous)
 
     public var body: some View {
-        if oneLine && hairline {
-            // #69 (`.crow`): a light row with a rule hairline and a 3 pt left edge, green or red by its exit.
+        if hairline {
+            // #69 (`.crow`): a light row with a rule hairline and a 3 pt left edge, green or red by its exit. In a3 every
+            // call is this row (the Commands log with One line on or off, the chat's open commands chip, #71): the
+            // prototype has no orange item cards in that skin.
             VStack(spacing: 0) {
                 foldButton { row }
                 if !folded { cappedContent }

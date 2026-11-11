@@ -216,16 +216,11 @@ final class WindowA3Tests: XCTestCase {
         }
     }
 
-    /// The chat as the window draws it (#68's look, out of #69's scope).
+    /// The chat as the window draws it (#71, a3), without the code block: the no-mono check runs over it.
     static var chat: some View {
-        VStack(alignment: .leading, spacing: Space.xl) {
-            Text(verbatim: "You // 13:42").typeRole(.label).foregroundStyle(Ink.text.secondary)
-            MarkdownView([MarkdownPart<Int>.prose(MarkdownText.styled("The cua-driver daemon is still running on your Mac. `cua-driver stop` ends it."))]) { _ in EmptyView() }
-            WorkLine(detail: "00:38 · 2 tools") { CommandChip(commands: 4, duration: "6.1 s", isOpen: .constant(false)) }
-        }
-        .frame(maxWidth: Size.chatColumn)
-        .padding(Space.l)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        Transcript(code: false)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .environment(\.hairlineControls, true)
     }
 
     /// The whole window with `section` current, as `MainWindow` puts it together.
@@ -244,7 +239,7 @@ final class WindowA3Tests: XCTestCase {
                     VStack(spacing: 0) {
                         WindowA3Tests.detailHeader
                         WindowA3Tests.chat
-                        WindowA3Tests.composer
+                        WindowA3Tests.composer.environment(\.hairlineControls, true)
                     }
                 } else {
                     WindowA3Tests.detail(section, check: check).environment(\.hairlineControls, true)

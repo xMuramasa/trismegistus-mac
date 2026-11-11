@@ -235,9 +235,19 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   a run's steps under a `// 9 STEPS` label line (no orange header, no accent column), job readouts and times in Inter,
   Commands' one-line calls as light rows 4 pt apart with a 3 pt terminal-green or terminal-red left edge (the command
   itself stays mono), status chips as light tags with a coloured bar, and buttons as thin-edged `control` rectangles in
-  tracked caps (`hairlineControls`: on in the list column, the detail headers and the sections' details). The chat's
-  transcript and composer (messages, code blocks, the commands chip, the WORKING line, the approval block) keep #68's
-  look until their own redesign. The window has no custom menus, tooltips or toasts: those are AppKit's.
+  tracked caps (`hairlineControls`: on in the list column, the detail headers, the sections' details and the chat).
+  **The chat in a3** (#71, design 13 `#a3`, render 13e-a3-chat): the transcript and the composer sit straight on the
+  backdrop (no paper column). Labels `YOU // 13:42`, `HERMES // 13:49` tracked 10/600/0.14 em, `secondary`; your
+  message 14 pt on white at 85 % with a rule hairline, `control` corners, 8 x 12 in; Hermes' reply 14 pt with no box,
+  list bullets 4 pt `secondary` squares, inline code Inter on sunken (square: a text background can't be rounded). Code
+  blocks sunken with a rule hairline and `control` corners, JetBrains Mono (code is the one mono exception), a shell
+  prompt's `$` terminal-green and a shell comment line `secondary`. The commands chip white at 70 % with a rule hairline,
+  `control` corners, 10/600/0.12 em; its unfolded item cards keep their look. WORKING tracked, then on the same line a
+  2 pt `rule` track with a yellow segment (30 %) going to and fro, parked at the start under Reduce Motion. The approval
+  block white with a rule hairline and `control` corners, no yellow bar and no shadow; Once the yellow action, Session
+  white with a `secondary` edge, Deny a red outline. The composer floats 8 pt in, white at 82 % with a rule hairline and
+  `m` corners; its run line tracked after a 6 pt square; the field's edge `contour` with `control` corners; Stop with a
+  rule edge. The popover's chat keeps #68's look. The window has no custom menus, tooltips or toasts: those are AppKit's.
   Departures from the token rules, by design: cards have fills; translucent tinted fills rather than materials (nothing
   scrolls under the panel, the list or the header, and a material's blur would wipe out the contour lines the list is
   meant to show faintly); the glows (`selection-glow`, `check-glow`, `plus-glow`); the 50 pt pitch. A `.shadow` goes on

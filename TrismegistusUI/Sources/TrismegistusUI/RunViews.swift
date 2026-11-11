@@ -99,12 +99,14 @@ public struct IssueRunRow: View {
 }
 
 /// The composer's top line: the run's state and clock (Inter, tabular figures, #68), then the keys as key caps on the
-/// right. The keys go first when a pane narrows the column.
+/// right. The keys go first when a pane narrows the column. In the window's chat (#71, `.skin-a3 .runline`) the state
+/// tracked 10/600/0.14 em after a 6 pt square.
 public struct RunLine: View {
     let state: String
     let isActive: Bool
     let clock: String?
     let hints: [(key: String, action: String)]
+    @Environment(\.hairlineControls) private var hairline
 
     public init(_ state: String, isActive: Bool = false, clock: String? = nil, hints: [(key: String, action: String)] = []) {
         self.state = state
@@ -116,9 +118,11 @@ public struct RunLine: View {
     public var body: some View {
         HStack(spacing: Space.s) {
             if isActive {
-                Rectangle().fill(Ink.status.online).frame(width: Size.marker, height: Size.marker).accessibilityHidden(true)
+                let side = hairline ? Size.runSquare : Size.marker
+                // a3: terminal green, 4.5:1 on the white composer (the bright online green is 1.3:1 there).
+                Rectangle().fill(hairline ? Ink.status.ok : Ink.status.online).frame(width: side, height: side).accessibilityHidden(true)
             }
-            Text(state).typeRole(.label).foregroundStyle(Ink.text.primary).lineLimit(1).fixedSize()
+            Text(state).typeRole(hairline ? .trackedLabel : .label).foregroundStyle(Ink.text.primary).lineLimit(1).fixedSize()
             if let clock { Text(verbatim: clock).typeRole(.callout).monospacedDigit().foregroundStyle(Ink.text.secondary).fixedSize() }
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: Space.m) {
@@ -141,12 +145,14 @@ public struct RunLine: View {
     }
 }
 
-/// `>_ 2 COMMANDS · 6.7 s` with a chevron: unfolds the run's item cards in place.
+/// `>_ 2 COMMANDS · 6.7 s` with a chevron: unfolds the run's item cards in place. In the window's chat (#71,
+/// `.skin-a3 .cmdchip`) white at 70 % with a rule hairline, `control` corners, 10/600/0.12 em.
 public struct CommandChip: View {
     let commands: Int
     let duration: String
     let failed: Int
     @Binding var isOpen: Bool
+    @Environment(\.hairlineControls) private var hairline
 
     public init(commands: Int, duration: String, failed: Int = 0, isOpen: Binding<Bool>) {
         self.commands = commands
@@ -156,29 +162,33 @@ public struct CommandChip: View {
     }
 
     public var body: some View {
+        let role: TypeRole = hairline ? .controlLabel : .label
+        let radius = hairline ? Radius.control : Radius.m
         Button { isOpen.toggle() } label: {
             HStack(spacing: Space.s) {
-                Text(verbatim: ">_").typeRole(.label)
-                Text(verbatim: "\(commands) \(commands == 1 ? "command" : "commands") · \(duration)").typeRole(.label).monospacedDigit()
-                if failed > 0 { Text(verbatim: "· \(failed) failed").typeRole(.label).foregroundStyle(Ink.text.error) }
+                Text(verbatim: ">_").typeRole(role)
+                Text(verbatim: "\(commands) \(commands == 1 ? "command" : "commands") · \(duration)").typeRole(role).monospacedDigit()
+                if failed > 0 { Text(verbatim: "· \(failed) failed").typeRole(role).foregroundStyle(Ink.text.error) }
                 Image(systemName: isOpen ? Symbol.chevronUp : Symbol.chevronDown).font(.system(size: Icon.xxs, weight: .bold))
                     .accessibilityHidden(true)
             }
             .foregroundStyle(Ink.text.primary)
             .padding(.horizontal, Space.s)
             .frame(height: Size.cardHeader)
-            .rounded(Radius.m, fill: Ink.surface.sunken)
-            .contentShape(RoundedRectangle(cornerRadius: Radius.m, style: .continuous))
+            .rounded(radius, fill: hairline ? Ink.surface.control : Ink.surface.sunken, edge: hairline ? Ink.line.rule : .clear)
+            .contentShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityValue(isOpen ? "Open" : "Folded")
     }
 }
 
-/// The running work: the command chip, WORKING and its readings on one line, a progress track under them.
+/// The running work: the command chip, WORKING and its readings on one line, a progress track under them. In the window's
+/// chat (#71, `.skin-a3 .working`) WORKING tracked 10/600/0.14 em and the track on the same line, to its end.
 public struct WorkLine<Chip: View>: View {
     let detail: String
     let chip: Chip
+    @Environment(\.hairlineControls) private var hairline
 
     public init(detail: String, @ViewBuilder chip: () -> Chip) {
         self.detail = detail
@@ -186,21 +196,31 @@ public struct WorkLine<Chip: View>: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: Space.s) {
-            HStack(spacing: Space.m) {
-                chip
-                Text("Working").typeRole(.label).foregroundStyle(Ink.text.primary)
-                Text(verbatim: detail).typeRole(.callout).monospacedDigit().foregroundStyle(Ink.text.secondary)
+        if hairline {
+            HStack(spacing: Space.s) { readings; WorkTrack() }
+        } else {
+            VStack(alignment: .leading, spacing: Space.s) {
+                readings
+                WorkTrack()
             }
-            WorkTrack()
+        }
+    }
+
+    private var readings: some View {
+        HStack(spacing: Space.m) {
+            chip
+            Text("Working").typeRole(hairline ? .trackedLabel : .label).foregroundStyle(Ink.text.primary)
+            Text(verbatim: detail).typeRole(.callout).monospacedDigit().foregroundStyle(Ink.text.secondary)
         }
     }
 }
 
 /// A 2 pt rule with an ink segment going to and fro, parked under Reduce Motion. Ink, not yellow: the screen's one yellow
-/// mark stays on Steer.
+/// mark stays on Steer. In a3 (#71, design 13 `.working::after`) the segment is yellow and parks at the start, the
+/// prototype's still frame (yellow for the first 30 %, `rule` for the rest).
 struct WorkTrack: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.hairlineControls) private var hairline
 
     /// The segment: 30 % of the track, 2.4 s each way, parked at 35 %.
     private static let period = 2.4, width = 0.3, restingPhase = 0.35
@@ -214,11 +234,11 @@ struct WorkTrack: View {
 
     var body: some View {
         TimelineView(.animation(paused: reduceMotion)) { context in
-            let phase = reduceMotion ? Self.restingPhase : Self.phase(context.date.timeIntervalSinceReferenceDate)
+            let phase = reduceMotion ? (hairline ? 0 : Self.restingPhase) : Self.phase(context.date.timeIntervalSinceReferenceDate)
             Rectangle().fill(Ink.line.rule)
                 .overlay(alignment: .leading) {
                     GeometryReader { geo in
-                        Rectangle().fill(Ink.line.strong)
+                        Rectangle().fill(hairline ? Ink.selection : Ink.line.strong)
                             .frame(width: geo.size.width * Self.width)
                             .offset(x: geo.size.width * (1 - Self.width) * phase)
                     }

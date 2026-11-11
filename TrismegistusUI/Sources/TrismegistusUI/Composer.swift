@@ -25,6 +25,8 @@ public struct Composer: View {
     @State private var focused = false
     @State private var dragStart: CGFloat?
     @Environment(\.isEnabled) private var isEnabled
+    /// The window's chat (#71, `.skin-a3 .inrow input`): a contour edge, `control` corners.
+    @Environment(\.hairlineControls) private var hairline
 
     public init(
         _ placeholder: String, text: Binding<String>, maxLines: CGFloat, chosenHeight: Binding<Double>, maxHeight: CGFloat,
@@ -41,18 +43,19 @@ public struct Composer: View {
     public var body: some View {
         let height = Self.height(lines: lines, maxLines: maxLines, chosen: chosenHeight, limit: maxHeight)
         let isFocused = focused || forceFocused
+        let radius = hairline ? Radius.control : Radius.m
         VStack(alignment: .trailing, spacing: Space.xs) {
             ComposerEditor(
                 placeholder: placeholder, text: $text, lines: $lines, focused: $focused, isEnabled: isEnabled, focusRequests: focusRequests
             )
             .frame(height: height)
             .background {
-                RoundedRectangle(cornerRadius: Radius.m, style: .continuous).fill(isEnabled ? Ink.surface.raised : Ink.surface.sunken)
+                RoundedRectangle(cornerRadius: radius, style: .continuous).fill(isEnabled ? Ink.surface.raised : Ink.surface.sunken)
             }
-            .edge(isEnabled ? Ink.line.strong : Ink.line.rule, radius: Radius.m)
+            .edge(isEnabled ? (hairline ? Ink.line.contour : Ink.line.strong) : Ink.line.rule, radius: radius)
             .overlay {
                 if isFocused {
-                    RoundedRectangle(cornerRadius: Radius.m + Stroke.hairline + Stroke.accent, style: .continuous)
+                    RoundedRectangle(cornerRadius: radius + Stroke.hairline + Stroke.accent, style: .continuous)
                         .strokeBorder(Ink.text.link, lineWidth: Stroke.accent).padding(-(Stroke.hairline + Stroke.accent))
                 }
             }
@@ -115,8 +118,8 @@ public struct Composer: View {
 }
 
 /// The one block under a chat (`.composer`): the run line over the input line, on the chat column. In the popover
-/// raised with a rule on top; `floating` (the window, #68) a raised block with `xl` corners and a 1 pt rule edge, 8 pt in
-/// from the detail's sides and bottom.
+/// raised with a rule on top; `floating` (the window, #71 `.skin-a3 .composer`) white at 82 % with `m` corners and a
+/// 1 pt rule edge, 8 pt in from the detail's sides and bottom (a tint, not a material: nothing scrolls under it).
 public struct ComposerBlock<RunLine: View, Input: View>: View {
     let floating: Bool
     let runLine: RunLine
@@ -139,8 +142,8 @@ public struct ComposerBlock<RunLine: View, Input: View>: View {
         if floating {
             // A ground, not a clip: the field's focus ring and the grabber stay whole.
             block
-                .background { RoundedRectangle(cornerRadius: Radius.xl, style: .continuous).fill(Ink.surface.raised) }
-                .edge(Ink.line.rule, radius: Radius.xl)
+                .background { RoundedRectangle(cornerRadius: Radius.m, style: .continuous).fill(Ink.surface.composer) }
+                .edge(Ink.line.rule, radius: Radius.m)
                 .padding([.horizontal, .bottom], Space.s)
         } else {
             block

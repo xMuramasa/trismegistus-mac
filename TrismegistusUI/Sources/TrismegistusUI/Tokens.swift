@@ -83,6 +83,10 @@ public enum Ink {
         public let sectionCard = Palette.raised.opacity(Opacity.sectionCard)
         /// a thin-edged icon button in the list column
         public let control = Palette.raised.opacity(Opacity.control)
+        /// #71: your message in the window's chat, white at 85 %
+        public let message = Palette.raised.opacity(Opacity.message)
+        /// the window's floating composer, white at 82 %
+        public let composer = Palette.raised.opacity(Opacity.composer)
         /// the floating section panel at its top (#69): translucent dark-panel grey
         public let panel = Palette.darkPanel.opacity(Opacity.panelTop)
         /// the section panel at its bottom
@@ -199,6 +203,10 @@ public enum Opacity {
     public static let sectionCard: Double = 0.88
     /// a thin-edged icon button's white
     public static let control: Double = 0.7
+    /// #71: your message's white
+    public static let message: Double = 0.85
+    /// the window's composer's white
+    public static let composer: Double = 0.82
     /// a list card's contour hairline
     public static let cardEdge: Double = 0.6
     /// white on the section panel: its hairline, the current row
@@ -394,6 +402,8 @@ public enum Size {
     public static let dot: CGFloat = 7
     /// the approval banner's square, the composer's run-state square
     public static let marker: CGFloat = 8
+    /// #71: the run-state square in the window's composer
+    public static let runSquare: CGFloat = 6
     /// a Markdown list's square bullet
     public static let bullet: CGFloat = 4
     /// a Markdown task list's box
@@ -592,7 +602,7 @@ public enum FontFamily: String, CaseIterable, Sendable {
 
 /// `font.role`: the type roles (`View.typeRole(_:)`).
 public enum TypeRole: CaseIterable, Sendable {
-    case heading, title, headline, body, callout, caption, label, button, quietTitle, detailTitle, trackedLabel, columnLabel, count, tag, controlLabel, micro, missionTitle, statePill, mono, monoSmall
+    case heading, title, headline, body, callout, caption, label, button, quietTitle, detailTitle, trackedLabel, columnLabel, count, tag, controlLabel, micro, missionTitle, message, statePill, mono, monoSmall
 
     public var spec: TypeSpec {
         switch self {
@@ -613,6 +623,7 @@ public enum TypeRole: CaseIterable, Sendable {
         case .controlLabel: TypeSpec(family: .ui, size: 10, weight: 600, tracking: 1.2, uppercase: true)
         case .micro: TypeSpec(family: .ui, size: 10, weight: 500, tracking: 0, uppercase: false)
         case .missionTitle: TypeSpec(family: .ui, size: 14, weight: 500, tracking: 0, uppercase: false)
+        case .message: TypeSpec(family: .ui, size: 14, weight: 400, tracking: 0, uppercase: false)
         case .statePill: TypeSpec(family: .ui, size: 11, weight: 600, tracking: 0, uppercase: false)
         case .mono: TypeSpec(family: .mono, size: 12, weight: 400, tracking: 0, uppercase: false)
         case .monoSmall: TypeSpec(family: .mono, size: 11, weight: 400, tracking: 0, uppercase: false)

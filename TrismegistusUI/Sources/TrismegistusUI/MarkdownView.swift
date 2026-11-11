@@ -34,8 +34,9 @@ public enum MarkdownText {
     private static var url: Regex<Substring> { /https?:\/\/[^\s<>()\[\]`]+/ }
 
     /// Inline Markdown as `Text` shows it: bold in the semibold face, inline code as a sunken mono chip, bare URLs as
-    /// blue mono links (`.tint(Ink.text.link)` on the `Text`). Line breaks stay as written.
-    public static func styled(_ markdown: String) -> AttributedString {
+    /// blue mono links (`.tint(Ink.text.link)` on the `Text`). Line breaks stay as written. `role` is the text's role
+    /// (the window's chat answers in `message`, #71): bold and code take its size.
+    public static func styled(_ markdown: String, role: TypeRole = .body) -> AttributedString {
         let source = (try? AttributedString(markdown: markdown, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
             ?? AttributedString(markdown)
         var styled = AttributedString()
@@ -43,13 +44,13 @@ public enum MarkdownText {
             var attributes = run.attributes
             let intent = run.inlinePresentationIntent ?? []
             let text = String(source[run.range].characters)
-            if intent.contains(.stronglyEmphasized) { attributes.swiftUI.font = TypeRole.body.spec.font(weight: .semibold) }
+            if intent.contains(.stronglyEmphasized) { attributes.swiftUI.font = role.spec.font(weight: .semibold) }
             attributes.inlinePresentationIntent = intent.subtracting([.stronglyEmphasized, .code])
             if intent.contains(.code) {
                 if text.wholeMatch(of: url) != nil, let link = URL(string: text) {
                     styled += linked(text, link, attributes)
                 } else {
-                    styled += chip(text, attributes)
+                    styled += chip(text, attributes, role: role)
                 }
             } else if let link = run.link {
                 styled += text.hasPrefix("http") ? linked(text, link, attributes) : AttributedString(text, attributes: attributes)
@@ -65,13 +66,14 @@ public enum MarkdownText {
     /// side and its code, which left a lone grey box at a line's end (three-per-em spaces break).
     static let chipSide = "\u{00A0}"
 
-    private static func chip(_ code: String, _ attributes: AttributeContainer) -> AttributedString {
+    private static func chip(_ code: String, _ attributes: AttributeContainer, role: TypeRole) -> AttributedString {
         var attributes = attributes
         attributes.swiftUI.backgroundColor = Ink.surface.sunken
         var side = attributes
-        side.swiftUI.font = TypeRole.body.spec.font()
-        // Inter on sunken (#68): mono is for code blocks and the terminal drawer.
-        attributes.swiftUI.font = TypeRole.body.spec.font()
+        side.swiftUI.font = role.spec.font()
+        // Inter on sunken (#68): mono is for code blocks and the terminal drawer. shortcut: square, not #71's radius 3
+        // (a background attribute can't be rounded); a `TextRenderer` could draw the corners if they ever matter.
+        attributes.swiftUI.font = role.spec.font()
         return AttributedString(chipSide, attributes: side) + AttributedString(code, attributes: attributes)
             + AttributedString(chipSide, attributes: side)
     }
@@ -102,12 +104,18 @@ public enum MarkdownText {
 /// indent, read-only task boxes. `extra` draws the caller's own blocks. Styled ahead of time, so a caller can cache parts.
 public struct MarkdownView<Extra, ExtraView: View>: View {
     let parts: [MarkdownPart<Extra>]
+    /// The role of the prose and the items: `body`, or `message` in the window's chat (#71).
+    let role: TypeRole
     /// Between a paragraph's lines: 2 pt makes the body role's 18 pt line; a job's prompt reads at 20 pt (4).
     let lineGap: CGFloat
     let extra: (Extra) -> ExtraView
 
-    public init(_ parts: [MarkdownPart<Extra>], lineGap: CGFloat = Space.xxs, @ViewBuilder extra: @escaping (Extra) -> ExtraView) {
+    public init(
+        _ parts: [MarkdownPart<Extra>], role: TypeRole = .body, lineGap: CGFloat = Space.xxs,
+        @ViewBuilder extra: @escaping (Extra) -> ExtraView
+    ) {
         self.parts = parts
+        self.role = role
         self.lineGap = lineGap
         self.extra = extra
     }
@@ -130,11 +138,11 @@ public struct MarkdownView<Extra, ExtraView: View>: View {
     @ViewBuilder private func block(_ part: MarkdownPart<Extra>) -> some View {
         switch part {
         case .prose(let text):
-            MarkdownLine(text: text, gap: lineGap)
+            MarkdownLine(text: text, role: role, gap: lineGap)
         case .heading(let text):
             MarkdownLine(text: text, role: .headline, gap: lineGap).accessibilityAddTraits(.isHeader)
         case .list(let items):
-            MarkdownList(items: items, gap: lineGap)
+            MarkdownList(items: items, role: role, gap: lineGap)
         case .code(let language, let code):
             CodeBlockView(language: language, code: code)
         case .extra(let value):
@@ -162,7 +170,10 @@ private struct MarkdownLine: View {
 private struct MarkdownList: View {
     let items: [MarkdownItem]
     var nested = false
+    var role = TypeRole.body
     var gap = Space.xxs
+    /// #71 (`.skin-a3 .hermes ul li::before`): bullets are `secondary` squares at every depth.
+    @Environment(\.hairlineControls) private var hairline
 
     var body: some View {
         // Task rows sit further apart: their boxes need the air.
@@ -172,10 +183,10 @@ private struct MarkdownList: View {
                 VStack(alignment: .leading, spacing: Space.xxs) {
                     HStack(alignment: .firstTextBaseline, spacing: 0) {
                         marker(item.marker).frame(minWidth: item.indent, alignment: .leading)
-                        MarkdownLine(text: item.text, color: item.isDone ? Ink.text.secondary : Ink.text.primary, gap: gap)
+                        MarkdownLine(text: item.text, role: role, color: item.isDone ? Ink.text.secondary : Ink.text.primary, gap: gap)
                     }
                     if !item.children.isEmpty {
-                        MarkdownList(items: item.children, nested: true, gap: gap).padding(.leading, item.indent)
+                        MarkdownList(items: item.children, nested: true, role: role, gap: gap).padding(.leading, item.indent)
                     }
                 }
             }
@@ -184,18 +195,19 @@ private struct MarkdownList: View {
 
     /// A shape centred on the first line of the item's text: an invisible line carries the baseline and the height.
     private func onFirstLine(_ shape: some View) -> some View {
-        Text(verbatim: " ").typeRole(.body).hidden().overlay(alignment: .leading) { shape }
+        Text(verbatim: " ").typeRole(role).hidden().overlay(alignment: .leading) { shape }
     }
 
     @ViewBuilder private func marker(_ marker: MarkdownItem.Marker) -> some View {
         switch marker {
         case .bullet:
             onFirstLine(
-                Rectangle().fill(nested ? Ink.surface.raised : Ink.text.primary).frame(width: Size.bullet, height: Size.bullet).edge(Ink.text.primary)
+                Rectangle().fill(hairline ? Ink.text.secondary : nested ? Ink.surface.raised : Ink.text.primary)
+                    .frame(width: Size.bullet, height: Size.bullet).edge(hairline ? .clear : Ink.text.primary)
             )
             .accessibilityHidden(true)
         case .number(let n):
-            Text(verbatim: "\(n)").typeRole(.body).monospacedDigit().foregroundStyle(Ink.text.secondary).padding(.trailing, Space.xs)
+            Text(verbatim: "\(n)").typeRole(role).monospacedDigit().foregroundStyle(Ink.text.secondary).padding(.trailing, Space.xs)
         case .task(let done):
             onFirstLine(TaskBox(done: done))
         }

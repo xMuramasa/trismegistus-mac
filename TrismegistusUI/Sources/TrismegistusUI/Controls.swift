@@ -6,8 +6,8 @@ public enum EndfieldButtonKind: Sendable {
 
 public extension EnvironmentValues {
     /// Controls drawn the #69 (design 13 #a3) way: thin rule edges, `control` corners, tracked small caps, no ink. On in
-    /// the list column, the detail headers and the sections' details; off in the chat's transcript and composer, which
-    /// keep #68's look until their own redesign, and in the popover.
+    /// the list column, the detail headers, the sections' details and the window's chat (its transcript and composer,
+    /// #71); off in the popover.
     @Entry var hairlineControls = false
 }
 

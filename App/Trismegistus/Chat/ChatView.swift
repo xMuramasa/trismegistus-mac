@@ -40,8 +40,6 @@ struct ChatView: View {
 
     var body: some View {
         let items = self.items
-        // An empty, loaded chat shows the window's background across its width; otherwise the column reads on paper.
-        let empty = items.isEmpty && state?.historyLoaded == true && state?.historyError == nil
         VStack(spacing: 0) {
             if let approval { banner(approval) }
             // The composer block lies over the scroll view's bottom, never under it (#52, `DockedScroll`).
@@ -62,8 +60,9 @@ struct ChatView: View {
             } dock: {
                 ComposerBlock(floating: !compact) { runLine } input: { input }
             }
-            .background { if !compact && !empty { Ink.surface.window.frame(maxWidth: Size.chatColumn + 2 * Space.l) } }
         }
+        // The window's chat in the a3 skin (#71): the transcript and the composer straight on the backdrop.
+        .environment(\.hairlineControls, !compact)
         .background { if compact { Ink.surface.window } else { EndfieldBackdrop() } }
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { columnHeight = $0 }
         .imageDrop(
@@ -135,7 +134,7 @@ struct ChatView: View {
             act { try await model.approve(approval, choice: choice) }
         }
         .padding([.horizontal, .top], Space.l)
-        .background(Ink.surface.window)
+        .background(compact ? Ink.surface.window : .clear)
         .zIndex(1)
     }
 
@@ -454,23 +453,18 @@ private struct UserMessage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.xs) {
-            Text(label).typeRole(.label).foregroundStyle(Ink.text.secondary)
+            MessageLabel(label)
             if !images.isEmpty { MessageImages(sessionID: sessionID, images: images) }
-            if !text.isEmpty || images.isEmpty {
-                Text(text).typeRole(.body).foregroundStyle(Ink.text.primary).textSelection(.enabled)
-                    .padding(Space.m)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .rounded(Radius.l, fill: Ink.surface.raised, edge: Ink.line.rule)
-            }
+            if !text.isEmpty || images.isEmpty { UserMessageText(text) }
         }
     }
 }
 
 extension MarkdownPart where Extra == MarkdownBlock {
     /// `markdown` for `MarkdownView`: tables and images stay blocks for the caller to draw. `clean` runs over the text
-    /// first (GitHub text drops its HTML).
-    static func parse(_ markdown: String, clean: (String) -> String = { $0 }) -> [MarkdownPart<MarkdownBlock>] {
-        func styled(_ text: String) -> AttributedString { MarkdownText.styled(clean(text)) }
+    /// first (GitHub text drops its HTML); `role` is the view's (bold and inline code take its size).
+    static func parse(_ markdown: String, role: TypeRole = .body, clean: (String) -> String = { $0 }) -> [MarkdownPart<MarkdownBlock>] {
+        func styled(_ text: String) -> AttributedString { MarkdownText.styled(clean(text), role: role) }
         func converted(_ item: MarkdownListItem) -> MarkdownItem {
             let marker: MarkdownItem.Marker = switch item.marker {
             case .bullet: .bullet
@@ -499,6 +493,8 @@ private struct AnswerMessage: View {
     let sessionID: String
     /// Plain (the window): the text inset Space.m, level with a user message's text. Else a yellow bar beside it.
     @Environment(\.plainAnswers) private var plain
+    /// The window's a3 chat (#71): 14 pt.
+    @Environment(\.hairlineControls) private var hairline
 
     private final class Parsed {
         let parts: [MarkdownPart<MarkdownBlock>]
@@ -511,19 +507,22 @@ private struct AnswerMessage: View {
         return cache
     }()
 
-    private static func parts(_ text: String) -> [MarkdownPart<MarkdownBlock>] {
-        if let hit = parsed.object(forKey: text as NSString) { return hit.parts }
-        let parts = MarkdownPart.parse(text)
-        parsed.setObject(Parsed(parts), forKey: text as NSString)
+    /// Per role too: the popover and the window can show the same answer.
+    private static func parts(_ text: String, role: TypeRole) -> [MarkdownPart<MarkdownBlock>] {
+        let key = "\(role)\n\(text)" as NSString
+        if let hit = parsed.object(forKey: key) { return hit.parts }
+        let parts = MarkdownPart.parse(text, role: role)
+        parsed.setObject(Parsed(parts), forKey: key)
         return parts
     }
 
     var body: some View {
+        let role: TypeRole = hairline ? .message : .body
         VStack(alignment: .leading, spacing: Space.xs) {
-            Text(label).typeRole(.label).foregroundStyle(Ink.text.secondary)
+            MessageLabel(label)
             HStack(alignment: .top, spacing: Space.m) {
                 if !plain { Rectangle().fill(Ink.selection).frame(width: Stroke.mark) }
-                MarkdownView(Self.parts(text)) { block in
+                MarkdownView(Self.parts(text, role: role), role: role) { block in
                     switch block {
                     case .table(let header, let rows, let alignments):
                         MarkdownTableView(header: header, rows: rows, alignments: alignments)
