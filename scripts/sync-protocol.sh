@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Copy the protocol schema and examples from the trismegistus repo (the owner of the protocol).
+# Copy the protocol schema and examples from the hermes-relay repo (the owner of the protocol).
 set -euo pipefail
-src="${1:-$HOME/Projects/trismegistus/protocol}"
+src="${1:-$HOME/Projects/hermes-relay/protocol}"
 dst="$(cd "$(dirname "$0")/.." && pwd)/protocol"
 [ -f "$src/schema.json" ] || { echo "no schema at $src" >&2; exit 1; }
 cp "$src/schema.json" "$src/terminal.schema.json" "$dst/"

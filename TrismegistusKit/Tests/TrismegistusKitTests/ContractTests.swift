@@ -53,7 +53,7 @@ func runScript(_ name: String, _ args: [String]) throws -> String {
 }
 
 let ownerProtocolDir: String? = {
-    let dir = ProcessInfo.processInfo.environment["TRISMEGISTUS_PROTOCOL_DIR"] ?? "/home/muramasa/Projects/trismegistus/protocol"
+    let dir = ProcessInfo.processInfo.environment["TRISMEGISTUS_PROTOCOL_DIR"] ?? "/home/muramasa/Projects/hermes-relay/protocol"
     return FileManager.default.fileExists(atPath: dir + "/schema.json") ? dir : nil
 }()
 
