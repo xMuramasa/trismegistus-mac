@@ -29,13 +29,36 @@ import Testing
         s.applyHistory(Self.thinking)
         let items = ChatTimeline.items(s, compact: false)
         #expect(items.map(\.id) == ["h-1", "h-5", "h-6", "k-6", "h-7", "h-8"]) // a steer stays in its turn; no chip without thinking
-        guard case .thinking(_, let steps) = items[3] else { Issue.record("no thinking after the answer"); return }
+        guard case .thinking(_, let steps, let commands) = items[3] else { Issue.record("no thinking after the answer"); return }
+        // The turn's calls for the commands chip: three terminal calls and a read_file, in order; c1 has its result.
+        #expect(commands.map(\.tool) == ["terminal", "terminal", "read_file", "terminal"])
+        #expect(commands.first?.command == "cua-driver inspect --depth 2\nsecond line" && commands.first?.awaitsResult == false)
+        #expect(commands.allSatisfy { $0.sessionID == "s1" })
         #expect(steps == [
             ThinkingStep(thought: "Read the tree first.\nThen press.", tool: "terminal", detail: "cua-driver inspect --depth 2"),
             ThinkingStep(thought: "Press each one.", tool: "terminal, read_file", detail: "3 calls"),
             ThinkingStep(thought: "Everything works."),
         ])
         #expect(!ChatTimeline.items(s, compact: true).contains { if case .thinking = $0 { true } else { false } }) // the window only
+    }
+
+    @Test func aTurnWithCommandsButNoThinkingGetsTheCommandsChip() {
+        var s = SessionState(id: "s1")
+        s.applyHistory(history(#"""
+        [{"id":1,"role":"user","content":"Restart it"},
+         {"id":2,"role":"assistant","content":"","tool_calls":[{"id":"c1","function":{"name":"terminal","arguments":"{\"command\":\"systemctl restart x\"}"}}]},
+         {"id":3,"role":"tool","content":"{\"output\":\"\",\"exit_code\":0}","tool_call_id":"c1","timestamp":12},
+         {"id":4,"role":"assistant","content":"Done."},
+         {"id":5,"role":"user","content":"What's in it?"},
+         {"id":6,"role":"assistant","content":"","tool_calls":[{"id":"c2","function":{"name":"read_file","arguments":"{}"}}]},
+         {"id":7,"role":"tool","content":"text","tool_call_id":"c2"},
+         {"id":8,"role":"assistant","content":"A config."}]
+        """#))
+        let items = ChatTimeline.items(s, compact: false)
+        #expect(items.map(\.id) == ["h-1", "h-4", "k-2", "h-5", "h-8"]) // no command in the second turn: no chip row
+        guard case .thinking(_, let steps, let commands) = items[2] else { Issue.record("no chip row"); return }
+        #expect(steps.isEmpty && commands.map(\.command) == ["systemctl restart x"] && commands.first?.exitCode == 0)
+        #expect(TerminalTranscript.summary(of: commands).commandCount == 1)
     }
 
     @Test func aRunningTurnShowsItsThinkingOnlyOnceItEnds() {

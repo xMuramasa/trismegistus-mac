@@ -453,10 +453,22 @@ struct ChatTranscript: View {
             }
         case .note(_, let text, false):
             Text(text).typeRole(.caption).foregroundStyle(Ink.text.secondary)
-        case .thinking(let id, let steps):
-            // The chip row under the answer (#74); its fold holds while the conversation stays open.
-            ThinkingBlock(
-                steps: steps.map { ThinkingPanel.Step(thought: $0.thought, tool: $0.tool, detail: $0.detail) }, isOpen: isExpanded(id))
+        case .thinking(let id, let steps, let commands):
+            // A finished turn's chip row under its answer: THINKING (#74), then the commands chip with the turn's calls
+            // from the history (design 16a); each fold holds while the conversation stays open.
+            let summary = TerminalTranscript.summary(of: commands)
+            VStack(alignment: .leading, spacing: Space.s) {
+                if steps.isEmpty {
+                    RunChip(summary: summary, isOpen: isExpanded(id + "-c"), showCommands: onShowCommands)
+                } else {
+                    ThinkingBlock(
+                        steps: steps.map { ThinkingPanel.Step(thought: $0.thought, tool: $0.tool, detail: $0.detail) }, isOpen: isExpanded(id)
+                    ) {
+                        if summary.commandCount > 0 { RunChip(summary: summary, isOpen: isExpanded(id + "-c"), showCommands: onShowCommands) }
+                    }
+                }
+                if expanded.contains(id + "-c") { RunCards(entries: commands) }
+            }
         }
     }
 

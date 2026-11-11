@@ -35,7 +35,11 @@ import Testing
         #expect(ChatTimeline.items(s, compact: true) == [
             user, .tool(id: "h-2-0", ToolRow(tool: "terminal", summary: "ls", duration: "", output: "a.txt", exitCode: 0)), answer,
         ])
-        #expect(ChatTimeline.items(s, compact: false) == [user, answer]) // no marker for history turns
+        // The window: the turn's calls in its chip row after the answer (the commands chip), no tool rows.
+        let window = ChatTimeline.items(s, compact: false)
+        #expect(Array(window.prefix(2)) == [user, answer] && window.map(\.id) == ["h-1", "h-4", "k-2"])
+        guard case .thinking(_, let steps, let commands) = window[2] else { Issue.record("no chip row"); return }
+        #expect(steps.isEmpty && commands.map(\.command) == ["ls"] && commands.first?.output == "a.txt")
     }
 
     @Test func liveRunAfterAnOutboxPrompt() {
@@ -94,7 +98,7 @@ import Testing
         }
         s.applyHistory(Self.toolHistory)
         #expect(ChatTimeline.items(s, compact: true) == ChatTimeline.items(state([], history: Self.toolHistory), compact: true))
-        #expect(ChatTimeline.items(s, compact: false).map(\.id) == ["h-1", "h-4"])
+        #expect(ChatTimeline.items(s, compact: false).map(\.id) == ["h-1", "h-4", "k-2"]) // the live marker gave way to the row
     }
 
     /// #54: a steer sits after the event it was sent after; a stored one is marked, without Hermes' wrapper.

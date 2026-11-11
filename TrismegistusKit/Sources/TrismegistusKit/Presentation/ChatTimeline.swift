@@ -45,13 +45,15 @@ public enum ChatItem: Sendable, Equatable, Identifiable {
     /// The window's one marker per run; the terminal pane has the details.
     case marker(id: String, RunSummary)
     case note(id: String, text: String, isError: Bool)
-    /// The window's chip of a finished turn's thinking, after its answer (#74): the steps in order.
-    case thinking(id: String, [ThinkingStep])
+    /// The window's chip row of a finished turn, after its answer: its thinking steps in order (#74) and its calls from the
+    /// history, which give the commands chip when one of them is a command (Martin, 2026-11-11: "i liked to see your
+    /// commands"). Either may be empty, never both.
+    case thinking(id: String, [ThinkingStep], commands: [TerminalEntry] = [])
 
     public var id: String {
         switch self {
         case .user(let id, _, _, _, _), .answer(let id, _, _), .tool(let id, _), .subagent(let id, _, _, _),
-            .marker(let id, _), .note(let id, _, _), .thinking(let id, _):
+            .marker(let id, _), .note(let id, _, _), .thinking(let id, _, _):
             id
         case .prompt(let p, _): "o-\(p.id)"
         }
@@ -70,7 +72,7 @@ public enum ChatTimeline {
         if let to = rewind?.rewindTo, let i = kept.firstIndex(where: { $0.role == .user && Int64($0.id) == to }) {
             kept = kept[..<i]
         }
-        var items = history(Array(kept), compact: compact, running: s.run != nil)
+        var items = history(Array(kept), compact: compact, running: s.run != nil, sessionID: s.id)
         var runs: [String: [Event]] = [:]
         var order: [String] = []
         for e in s.events where rewind.map({ $0.status == .sent(runID: e.runID) }) ?? true {
@@ -98,24 +100,36 @@ public enum ChatTimeline {
     }
 
     /// `running`: the last turn is still going; its thinking shows once it ends and the history reloads.
-    private static func history(_ messages: [HistoryMessage], compact: Bool, running: Bool = false) -> [ChatItem] {
+    private static func history(
+        _ messages: [HistoryMessage], compact: Bool, running: Bool = false, sessionID: String = ""
+    ) -> [ChatItem] {
         var results: [String: String] = [:]
         for m in messages where m.role == .tool {
             if let id = m.toolCallID { results[id] = m.content }
         }
         var items: [ChatItem] = []
-        // The window's thinking chip goes after each turn's last item (its answer); a steer stays in the turn.
+        // The window's chip row goes after each turn's last item (its answer); a steer stays in the turn.
         var steps: [ThinkingStep] = []
-        var stepsID = ""
+        var calls: [HistoryMessage] = []
+        var rowID = ""
         func endTurn() {
-            if !compact, !steps.isEmpty { items.append(.thinking(id: stepsID, steps)) }
+            if !compact {
+                let entries = TerminalTranscript.entries(fromHistory: calls, sessionID: sessionID)
+                let commands = TerminalTranscript.summary(of: entries).commandCount > 0 ? entries : []
+                if !steps.isEmpty || !commands.isEmpty { items.append(.thinking(id: rowID, steps, commands: commands)) }
+            }
             steps = []
+            calls = []
         }
         for m in messages {
             let time = m.timestamp.map { Date(timeIntervalSince1970: $0) }
             if m.role == .assistant, let step = thinkingStep(m) {
                 steps.append(step)
-                stepsID = "k-\(m.id)"
+                rowID = "k-\(m.id)"
+            }
+            if m.role == .tool || (m.role == .assistant && !m.toolCalls.isEmpty) {
+                calls.append(m)
+                if m.role == .assistant, steps.isEmpty { rowID = "k-\(m.id)" }
             }
             switch m.role {
             case .user:
@@ -126,8 +140,7 @@ public enum ChatTimeline {
                 if !m.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     items.append(.answer(id: "h-\(m.id)", text: m.content, time: time))
                 }
-                // shortcut: the window shows no marker for history turns, since the terminal pane is built from live
-                // events only; add one if the pane ever reads the history.
+                // The window shows a history turn's calls in its chip row (`endTurn`); the popover lists them.
                 guard compact else { continue }
                 for (i, call) in m.toolCalls.enumerated() {
                     items.append(.tool(id: "h-\(m.id)-\(i)", historyTool(call, result: call.id.flatMap { results[$0] })))
