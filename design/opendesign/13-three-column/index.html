@@ -790,7 +790,8 @@ kbd,.kbd{font-family:inherit;font-size:var(--t-label);font-weight:600;line-heigh
 .mcw .mg::after{content:"";position:absolute;left:32px;right:0;bottom:-5px;height:1px;background:var(--contour)}
 .mcw .mg.ip{justify-content:flex-end;height:20px;margin-bottom:10px}
 .mcw .mg.ip .ml{font-size:12px;color:var(--secondary)}
-.mcw .mg.ip::after{left:0;right:6px;bottom:auto;top:50%}
+.mcw .mg.ip::after{display:none}
+.mcw .mg.ip .ln{flex:1;height:1px;background:var(--contour)}
 .mcw .mg.ip .ml{position:relative;z-index:1;background:transparent;padding-left:8px}
 .mcw .mg.ip .br{position:relative;z-index:1;flex:none;width:4px;height:14px;border:1.5px solid var(--yellow);border-left:0;box-shadow:1px 0 0 var(--ink)}
 .skin-a3.mcw .row.mc-row{display:flex;align-items:stretch;gap:0;width:calc(100% - 20px);height:56px;margin:0 10px 12px;padding:0;background:rgba(255,255,255,.9);border:1px solid var(--rule);border-radius:4px;box-shadow:none;overflow:visible}
@@ -1006,7 +1007,7 @@ function missionRow(c, selId, extra = '') {
   </button>`;
 }
 function missionHead(label, n, glyph) {
-  if (label === 'In progress') return `<div class="mg ip" role="presentation"><span class="ml">In progress</span><span class="br" aria-hidden="true"></span></div>`;
+  if (label === 'In progress') return `<div class="mg ip" role="presentation"><i class="ln" aria-hidden="true"></i><span class="ml">In progress</span><span class="br" aria-hidden="true"></span></div>`;
   return `<div class="mg" role="presentation"><span class="ms" aria-hidden="true">${ic(glyph || (label === 'Pinned' ? 'pin' : 'chat'))}</span><span class="ml">${esc(label)}</span><span class="mn num">${n}</span></div>`;
 }
 
