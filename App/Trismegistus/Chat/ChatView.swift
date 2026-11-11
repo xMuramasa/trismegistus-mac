@@ -29,6 +29,8 @@ struct ChatView: View {
     @State private var columnHeight: CGFloat = 0
     /// Images waiting for the next message, per conversation.
     @State private var tray = ImageTray()
+    /// The message open in the editor (#75), with the text and images being edited.
+    @State private var editing: ChatTimeline.Rewindable?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// The newest part of the conversation's thread: older parts show folded above, the composer sends here.
@@ -47,7 +49,9 @@ struct ChatView: View {
                 LazyVStack(alignment: .leading, spacing: compact ? Space.m : Space.xl) {
                     OlderParts(tipID: id, compact: compact)
                     historyStatus
-                    ChatTranscript(items: items, sessionID: id, events: state?.events ?? [], onShowCommands: showCommands, retry: retry(_:))
+                    ChatTranscript(
+                        items: items, sessionID: id, events: state?.events ?? [], onShowCommands: showCommands, retry: retry(_:),
+                        editing: $editing, resend: canRewind ? resend(_:) : nil)
                     if let run { working(run) } else if let info, SessionCapabilities(info).canHandOff, Self.stalled(items) { stallRow(info) }
                 }
                 // The window: Space.m under the header's title rule.
@@ -77,6 +81,21 @@ struct ChatView: View {
         .onChange(of: run?.id, initial: true) {
             runSeen = Date()
             workOpen = false
+        }
+        .onChange(of: id) { editing = nil }
+        // A retry or edit the relay refused: the turns are back, and so is the editor with the text sent.
+        .onChange(of: state?.outbox.filter { $0.rewindTo != nil && $0.isFailed } ?? []) { _, failed in
+            for p in failed where hidden.insert(p.id).inserted {
+                editing = ChatTimeline.Rewindable(failed: p)
+                if case .failed(_, let message) = p.status { actionError = message }
+            }
+        }
+        // The message is gone (the relay rewound before the run failed to start): the text goes to the composer, so
+        // the next send is a plain prompt.
+        .onChange(of: items.map(\.id)) { _, ids in
+            guard let editing, !ids.contains(editing.itemID), state?.historyStale == false else { return }
+            draft = draft.isEmpty ? editing.text : draft + "\n\n" + editing.text // never drop what's typed
+            self.editing = nil
         }
         .handoffSheet($handingOff)
     }
@@ -229,8 +248,11 @@ struct ChatView: View {
                     }
                     .disabled(blocked)
                 } else {
-                    // Text or images.
-                    EndfieldButton("Send", symbol: Symbol.send, kind: .primary, iconOnly: true, shortcut: KeyboardShortcut(.return, modifiers: .command)) {
+                    // Text or images. While a message is being edited, its editor's Send is the yellow one and takes ⌘↩.
+                    EndfieldButton(
+                        "Send", symbol: Symbol.send, kind: editing == nil ? .primary : .secondary, iconOnly: true,
+                        shortcut: editing == nil ? KeyboardShortcut(.return, modifiers: .command) : nil
+                    ) {
                         submit()
                     }
                     .disabled(blocked || (empty && tray.uploads(id).isEmpty))
@@ -248,6 +270,21 @@ struct ChatView: View {
     }
 
     private var isReadOnly: Bool { SessionInfo.isReadOnly(id: id, info: info) }
+
+    /// Retry and edit (#75): not during a run (steer or stop it), in a read-only conversation, or while a prompt of yours
+    /// is on its way.
+    private var canRewind: Bool {
+        !isReadOnly && run == nil && state?.outbox.contains { !$0.isSteer && !$0.isFailed } == false
+    }
+
+    /// `message` again in place of itself and everything after it.
+    private func resend(_ message: ChatTimeline.Rewindable) {
+        let text = Composer.message(message.text)
+        guard !text.isEmpty || !message.attachments.isEmpty else { return }
+        editing = nil
+        actionError = nil
+        Task { await model.store?.sendPrompt(text, images: message.uploads, to: id, rewindTo: message.hermesID) }
+    }
 
     /// Images go only from a manager device (the relay refuses a viewer's upload) into a writable conversation.
     private var canAttach: Bool { !isReadOnly && model.device?.canManage == true }
@@ -320,56 +357,113 @@ struct ChatTranscript: View {
     var events: [Event] = []
     var onShowCommands: (@MainActor () -> Void)? = nil
     var retry: @MainActor (OutgoingPrompt) -> Void = { _ in }
+    /// The message open in the editor (#75); the rows after it are dimmed.
+    var editing: Binding<ChatTimeline.Rewindable?> = .constant(nil)
+    /// Sends a message again in place of itself and what follows (retry, edit); nil where neither is offered.
+    var resend: (@MainActor (ChatTimeline.Rewindable) -> Void)? = nil
     @State private var expanded: Set<String> = []
+    /// The row under the pointer: its actions show.
+    @State private var hovered: String?
 
     var body: some View {
-        ForEach(items) { item in
-            switch item {
-            case .user(_, let text, let time, let images, let steer):
-                UserMessage(
-                    text: text, label: (steer ? "You // steer" : "You") + stamp(time), sessionID: sessionID,
-                    images: images.map(MessageImage.chat))
-            case .prompt(let p, let time):
+        let cut = editing.wrappedValue.flatMap { e in items.firstIndex { $0.id == e.itemID } }
+        // Retry and edit wait while the editor is open.
+        let offer = editing.wrappedValue == nil ? resend : nil
+        let last = offer == nil ? nil : ChatTimeline.retry(items)
+        ForEach(Array(items.enumerated()), id: \.element.id) { i, item in
+            row(item, offer: offer, last: last)
+                .rewound(cut.map { i > $0 } ?? false)
+                .onHover { inside in
+                    if inside { hovered = item.id } else if hovered == item.id { hovered = nil }
+                }
+        }
+    }
+
+    /// `offer` sends a message again (nil: not offered); `last` is what Retry sends and the answer it replaces.
+    @ViewBuilder
+    private func row(
+        _ item: ChatItem, offer: (@MainActor (ChatTimeline.Rewindable) -> Void)?,
+        last: (message: ChatTimeline.Rewindable, answerID: String?)?
+    ) -> some View {
+        switch item {
+        case .user(let itemID, let text, let time, let images, let steer):
+            let label = (steer ? "You // steer" : "You") + stamp(time)
+            if let open = editing.wrappedValue, open.itemID == itemID {
                 VStack(alignment: .leading, spacing: Space.xs) {
-                    UserMessage(
-                        text: p.text,
-                        label: (p.isSteer ? "You // steer" : "You") + (time != nil ? stamp(time) : p.status == .pending ? " // sending" : ""),
-                        sessionID: sessionID, images: p.images.map(MessageImage.upload))
-                    if case .failed(let code, let message) = p.status {
-                        HStack(spacing: Space.s) {
-                            Text(message).typeRole(.caption).foregroundStyle(Ink.text.error).lineLimit(2)
-                            Spacer()
-                            if code == .busy, p.images.isEmpty {
-                                EndfieldButton("Steer", symbol: Symbol.steer) { retry(p) }
-                            } else {
-                                EndfieldButton("Retry", symbol: Symbol.retry, kind: .quiet, iconOnly: true) { retry(p) }
-                            }
+                    MessageLabel(label)
+                    EditingMessage(
+                        message: Binding(get: { editing.wrappedValue ?? open }, set: { editing.wrappedValue = $0 }),
+                        removed: ChatTimeline.removed(after: itemID, in: items),
+                        onCancel: { editing.wrappedValue = nil }, onSend: { resend?(editing.wrappedValue ?? open) })
+                }
+            } else {
+                let target = offer == nil ? nil : ChatTimeline.rewindable(item)
+                UserMessage(text: text, label: label, sessionID: sessionID, images: images.map(MessageImage.chat), hovered: hovered == itemID) {
+                    if let target {
+                        MessageActionButton("Edit and send again", symbol: Symbol.edit) { editing.wrappedValue = target }
+                        // The run left no answer: Retry sits here.
+                        if let offer, let last, last.message.itemID == itemID, last.answerID == nil {
+                            MessageActionButton("Retry", symbol: Symbol.retry) { offer(target) }
                         }
                     }
                 }
-            case .answer(_, let text, let time):
-                AnswerMessage(text: text, label: "Hermes" + stamp(time), sessionID: sessionID)
-            case .tool(let id, let row):
-                ToolRowView(
-                    tool: row.tool, summary: row.summary, duration: row.duration, output: row.output, exitCode: row.exitCode,
-                    isExpanded: isExpanded(id))
-            case .subagent(_, let name, let toolCount, let duration):
-                SubagentRowView(name: name, toolCount: toolCount, duration: duration)
-            case .marker(let id, let summary):
-                VStack(alignment: .leading, spacing: Space.s) {
-                    RunChip(summary: summary, isOpen: isExpanded(id), showCommands: onShowCommands)
-                    if expanded.contains(id) {
-                        RunCards(entries: TerminalTranscript.entries(from: events).filter { "m-\($0.runID)" == id })
+            }
+        case .prompt(let p, let time):
+            VStack(alignment: .leading, spacing: Space.xs) {
+                UserMessage(
+                    text: p.text,
+                    label: (p.isSteer ? "You // steer" : "You") + (time != nil ? stamp(time) : p.status == .pending ? " // sending" : ""),
+                    sessionID: sessionID, images: p.images.map(Self.image))
+                if case .failed(let code, let message) = p.status {
+                    HStack(spacing: Space.s) {
+                        Text(message).typeRole(.caption).foregroundStyle(Ink.text.error).lineLimit(2)
+                        Spacer()
+                        if code == .busy, p.images.isEmpty {
+                            EndfieldButton("Steer", symbol: Symbol.steer) { retry(p) }
+                        } else {
+                            EndfieldButton("Retry", symbol: Symbol.retry, kind: .quiet, iconOnly: true) { retry(p) }
+                        }
                     }
                 }
-            case .note(_, let text, let isError):
-                Text(text).typeRole(.caption).foregroundStyle(isError ? Ink.text.error : Ink.text.secondary)
-            case .thinking(let id, let steps):
-                // The chip row under the answer (#74); its fold holds while the conversation stays open.
-                ThinkingBlock(
-                    steps: steps.map { ThinkingPanel.Step(thought: $0.thought, tool: $0.tool, detail: $0.detail) }, isOpen: isExpanded(id))
             }
+        case .answer(let itemID, let text, let time):
+            // Copy and Retry only on the last answer, which Retry replaces.
+            let again: (@MainActor () -> Void)? = if let offer, let last, last.answerID == itemID { { offer(last.message) } } else { nil }
+            AnswerMessage(text: text, label: "Hermes" + stamp(time), sessionID: sessionID, hovered: hovered == itemID, onRetry: again)
+        case .tool(let id, let row):
+            ToolRowView(
+                tool: row.tool, summary: row.summary, duration: row.duration, output: row.output, exitCode: row.exitCode,
+                isExpanded: isExpanded(id))
+        case .subagent(_, let name, let toolCount, let duration):
+            SubagentRowView(name: name, toolCount: toolCount, duration: duration)
+        case .marker(let id, let summary):
+            VStack(alignment: .leading, spacing: Space.s) {
+                RunChip(summary: summary, isOpen: isExpanded(id), showCommands: onShowCommands)
+                if expanded.contains(id) {
+                    RunCards(entries: TerminalTranscript.entries(from: events).filter { "m-\($0.runID)" == id })
+                }
+            }
+        case .note(_, let text, true):
+            // A failed run (the timeline's only error note): the row's `FAILED` says "Run failed".
+            let reason = text.hasPrefix("Run failed: ") ? String(text.dropFirst("Run failed: ".count)) : text == "Run failed" ? "" : text
+            if let offer, let last {
+                FailureRow(reason) { offer(last.message) }
+            } else {
+                FailureRow(reason)
+            }
+        case .note(_, let text, false):
+            Text(text).typeRole(.caption).foregroundStyle(Ink.text.secondary)
+        case .thinking(let id, let steps):
+            // The chip row under the answer (#74); its fold holds while the conversation stays open.
+            ThinkingBlock(
+                steps: steps.map { ThinkingPanel.Step(thought: $0.thought, tool: $0.tool, detail: $0.detail) }, isOpen: isExpanded(id))
         }
+    }
+
+    /// An outbox image: its bytes, or a history image sent again by id (retry, edit), which has none.
+    private static func image(_ upload: ImageUpload) -> MessageImage {
+        guard upload.data.isEmpty, let id = upload.attachmentID else { return .upload(upload) }
+        return .chat(.attachment(AttachmentRef(id: id, mime: upload.mime, width: upload.width, height: upload.height)))
     }
 
     private func isExpanded(_ id: String) -> Binding<Bool> {
@@ -452,17 +546,53 @@ struct EntryRow: View {
     }
 }
 
-private struct UserMessage: View {
+/// `actions` (#75) show at the end of the label line while the pointer is over the message (`hovered`).
+private struct UserMessage<Actions: View>: View {
     let text: String
     let label: String
     let sessionID: String
     let images: [MessageImage]
+    var hovered = false
+    @ViewBuilder var actions: Actions
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.xs) {
-            MessageLabel(label)
+            MessageLabelLine(label, showsActions: hovered) { actions }
             if !images.isEmpty { MessageImages(sessionID: sessionID, images: images) }
             if !text.isEmpty || images.isEmpty { UserMessageText(text) }
+        }
+    }
+}
+
+extension UserMessage where Actions == EmptyView {
+    init(text: String, label: String, sessionID: String, images: [MessageImage]) {
+        self.init(text: text, label: label, sessionID: sessionID, images: images) { EmptyView() }
+    }
+}
+
+/// Your message as an editor in its place (#75), its images as chips with thumbnails from the cache. History images have
+/// no file name: they are "Image" (numbered when there are several).
+private struct EditingMessage: View {
+    @Binding var message: ChatTimeline.Rewindable
+    let removed: (messages: Int, answer: Bool)
+    let onCancel: @MainActor () -> Void
+    let onSend: @MainActor () -> Void
+    @Environment(AppModel.self) private var model
+    @State private var thumbnails: [String: NSImage] = [:]
+
+    var body: some View {
+        let refs = message.attachments
+        MessageEditor(
+            text: $message.text,
+            chips: refs.enumerated().map { i, ref in
+                MessageEditor.Chip(id: ref.id, name: refs.count == 1 ? "Image" : "Image \(i + 1)", thumbnail: thumbnails[ref.id])
+            },
+            laterMessages: removed.messages, removesAnswer: removed.answer,
+            onRemove: { id in message.attachments.removeAll { $0.id == id } }, onCancel: onCancel, onSend: onSend)
+        .task(id: refs) {
+            for ref in refs where thumbnails[ref.id] == nil {
+                if let url = await model.store?.images?.attachment(ref) { thumbnails[ref.id] = NSImage(contentsOf: url) }
+            }
         }
     }
 }
@@ -498,6 +628,9 @@ private struct AnswerMessage: View {
     let text: String
     let label: String
     let sessionID: String
+    /// The pointer is over it: with `onRetry` (#75, the last answer) Copy and Retry show on its label line.
+    var hovered = false
+    var onRetry: (@MainActor () -> Void)? = nil
     /// Plain (the window): the text inset Space.m, level with a user message's text. Else a yellow bar beside it.
     @Environment(\.plainAnswers) private var plain
     /// The window's a3 chat (#71): 14 pt.
@@ -526,7 +659,15 @@ private struct AnswerMessage: View {
     var body: some View {
         let role: TypeRole = hairline ? .message : .body
         VStack(alignment: .leading, spacing: Space.xs) {
-            MessageLabel(label)
+            MessageLabelLine(label, showsActions: hovered) {
+                if let onRetry {
+                    MessageActionButton("Copy answer", symbol: Symbol.copy) {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(text, forType: .string) // the answer's Markdown as it came
+                    }
+                    MessageActionButton("Retry", symbol: Symbol.retry, action: onRetry)
+                }
+            }
             HStack(alignment: .top, spacing: Space.m) {
                 if !plain { Rectangle().fill(Ink.selection).frame(width: Stroke.mark) }
                 MarkdownView(Self.parts(text, role: role), role: role) { block in

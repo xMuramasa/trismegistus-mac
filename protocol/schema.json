@@ -119,7 +119,7 @@
       "pattern": "^[0-9a-f]{64}$"
     },
     "prompt": {
-      "description": "Phone → relay. Start a turn. client_msg_id (a UUID) makes resends safe. attachments: 1-4 uploaded images; text may be empty only with at least one.",
+      "description": "Phone → relay. Start a turn. client_msg_id (a UUID) makes resends safe. attachments: 1-4 uploaded images; text may be empty only with at least one. rewind_to: the Hermes message id of one of the session's user messages; the conversation is first rewound to just before it (retry and edit).",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "client_msg_id", "session_id", "text"],
@@ -134,7 +134,8 @@
           "maxItems": 4,
           "uniqueItems": true,
           "items": { "$ref": "#/$defs/attachment_id" }
-        }
+        },
+        "rewind_to": { "type": "integer", "minimum": 1 }
       },
       "anyOf": [
         { "properties": { "text": { "minLength": 1 } } },

@@ -122,6 +122,22 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   `composer.height`) until a double-click on the grabber. Sending trims only leading and trailing whitespace. The
   protocol caps text at 32,768 characters (Unicode scalars): from 30,000 a counter `30,512 / 32,768` shows under it,
   red over the cap, where Send is disabled.
+- **Retry and edit** (#75, design 16 `#17a` and `#17-states`; relay trismegistus#33): a `prompt` with `rewind_to` (the
+  Hermes id of one of the session's user messages) makes the relay rewind Hermes to just before that message, then run.
+  On hover, each of your history messages (not steers) has a pencil at the end of its `YOU // 13:52` line ("Edit and
+  send again"), and the last answer copy (its Markdown) and retry; a run that left no answer has retry on your message,
+  and a failed run's `FAILED` row (white, 3 pt red edge) has it at its right. Retry sends your last message (text and
+  images) again with no confirmation. Edit turns the message into an editor in place (ink edge, 3 pt yellow inset; the
+  composer's text view at 14 pt, focused with the caret at the end; its images as chips, × drops one, sent again by
+  attachment id), with `Sends from here: Hermes' answer below is removed` (or `N later messages and their answers are
+  removed`) `. Files it changed stay as they are.`, Cancel (Esc) and the yellow Send (⌘↩; the composer's Send turns
+  plain and gives up ⌘↩); everything after the message dims to 38 %. Not offered during a run, in read-only
+  conversations, while a prompt of yours is on its way, or on messages still sending or failed to send (the outbox's own
+  Retry). Until the run's history arrives the chat hides the rewound message and all after it (history and live events
+  of other runs) and shows the new prompt from the outbox; on an error they come back, the history is reloaded, and the
+  editor reopens with the text sent and the relay's message under the composer. If the message is gone after that reload
+  (the relay rewound, then failed to start the run) the text goes to the composer, so the next send is a plain prompt.
+  Files a run changed are not restored; other devices see the rewind at their next history load.
 - **Main window: three columns** (#68, design 13 `#a2` in `design/opendesign/13-three-column/`, skinned `#a3` in #69; our own layout,
   `WindowColumns`, not `NavigationSplitView`): a floating **section panel**, the **list column** and the **detail**, and
   in Chat the terminal drawer under the detail (`⌘⌥T`, #64). The title bar is transparent over a full-size content view

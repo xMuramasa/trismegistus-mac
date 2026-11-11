@@ -31,6 +31,13 @@ public struct OutgoingPrompt: Sendable, Equatable, Identifiable {
     public var images: [ImageUpload] = []
     public var isSteer = false
     public var afterSeq = 0
+    /// Retry or edit (#75): the Hermes id of the user message it replaces. Until the run's history arrives the chat
+    /// hides that message and everything after it; a failed one hides nothing.
+    public var rewindTo: Int64?
+
+    public var isFailed: Bool {
+        if case .failed = status { true } else { false }
+    }
 }
 
 /// One open session: REST history plus the live events the history doesn't have yet. A pure value; SessionStore
@@ -96,6 +103,8 @@ public struct SessionState: Sendable, Equatable {
         case .error(let code, let message, let ref?):
             if let i = outbox.firstIndex(where: { $0.id == ref && $0.status == .pending }) {
                 outbox[i].status = .failed(code: code, message: message)
+                // A rewind may have happened before the run failed to start: the history says which.
+                if outbox[i].rewindTo != nil { historyStale = true }
             }
         default:
             break

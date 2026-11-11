@@ -23,6 +23,18 @@ let imageRef = AttachmentRef(id: imageID, mime: "image/png", width: 1280, height
         #expect(try Wire.decode(ClientMessage.self, from: Wire.encode(message)) == message)
     }
 
+    @Test func promptEncodesRewindToOnlyWhenSet() throws {
+        let message = ClientMessage.prompt(clientMsgID: "c1", sessionID: "s1", text: "again", attachments: [imageID], rewindTo: 4123)
+        let json = try Wire.decode(JSONValue.self, from: Wire.encode(message))
+        #expect(json == .object([
+            "type": .string("prompt"), "client_msg_id": .string("c1"), "session_id": .string("s1"), "text": .string("again"),
+            "attachments": .array([.string(imageID)]), "rewind_to": .number(4123),
+        ]))
+        #expect(try Wire.decode(ClientMessage.self, from: Wire.encode(message)) == message)
+        let plain = try Wire.encode(ClientMessage.prompt(clientMsgID: "c1", sessionID: "s1", text: "hi"))
+        #expect(!String(decoding: plain, as: UTF8.self).contains("rewind_to"))
+    }
+
     @Test func promptAttachmentsAreOneToFourUniqueIDs() {
         for bad in ["[]", #"["a","b","c","d","e"]"#, #"["a","a"]"#] {
             let json = #"{"type":"prompt","client_msg_id":"c1","session_id":"s1","text":"","attachments":\#(bad)}"#

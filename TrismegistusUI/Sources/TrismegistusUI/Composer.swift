@@ -88,12 +88,14 @@ public struct Composer: View {
     // MARK: rules
 
     /// The body role's face, which the text view draws in.
-    static let font: NSFont = {
-        Fonts.register()
-        let spec = TypeRole.body.spec
-        return spec.family.faces[spec.weight].flatMap { NSFont(name: $0, size: spec.size) } ?? .systemFont(ofSize: spec.size)
-    }()
+    static let font = face(.body)
     static let lineHeight = NSLayoutManager().defaultLineHeight(for: font)
+
+    static func face(_ role: TypeRole) -> NSFont {
+        Fonts.register()
+        let spec = role.spec
+        return spec.family.faces[spec.weight].flatMap { NSFont(name: $0, size: spec.size) } ?? .systemFont(ofSize: spec.size)
+    }
 
     /// One line is `Size.control`; each line more adds a line up to `maxLines`. A dragged height (`chosen`, kept within
     /// `limit`) is the minimum.
@@ -162,11 +164,18 @@ struct ComposerEditor: NSViewRepresentable {
     @Binding var focused: Bool
     let isEnabled: Bool
     let focusRequests: Int
+    /// The message editor's (#75): the message role, the focus with the caret at the end once on screen, Esc.
+    var font = Composer.font
+    var focusOnAppear = false
+    var onCancel: (@MainActor () -> Void)? = nil
+
+    var lineHeight: CGFloat { font == Composer.font ? Composer.lineHeight : NSLayoutManager().defaultLineHeight(for: font) }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     func makeNSView(context: Context) -> ScrollView {
         let view = TextView(usingTextLayoutManager: false)
+        view.focusOnAppear = focusOnAppear
         view.delegate = context.coordinator
         view.isRichText = false
         view.importsGraphics = false
@@ -180,10 +189,10 @@ struct ComposerEditor: NSViewRepresentable {
         view.isAutomaticDataDetectionEnabled = false
         view.isAutomaticTextCompletionEnabled = false
         view.drawsBackground = false
-        view.font = Composer.font
+        view.font = font
         view.textContainer?.lineFragmentPadding = 0
         // One line sits in the middle of `Size.control`.
-        view.textContainerInset = NSSize(width: Space.m, height: (Size.control - Composer.lineHeight) / 2)
+        view.textContainerInset = NSSize(width: Space.m, height: (Size.control - lineHeight) / 2)
         view.isVerticallyResizable = true
         view.isHorizontallyResizable = false
         view.autoresizingMask = [.width]
@@ -221,7 +230,7 @@ struct ComposerEditor: NSViewRepresentable {
         if view.textColor != color {
             view.textColor = color
             view.insertionPointColor = color
-            view.typingAttributes = [.font: Composer.font, .foregroundColor: color]
+            view.typingAttributes = [.font: font, .foregroundColor: color]
         }
         // Never while the input method composes: that would end the composition.
         if view.string != text, !view.hasMarkedText() {
@@ -259,11 +268,15 @@ struct ComposerEditor: NSViewRepresentable {
         func measure(_ view: NSTextView) {
             guard let layout = view.layoutManager, let container = view.textContainer else { return }
             layout.ensureLayout(for: container)
-            let lines = max(1, Int((layout.usedRect(for: container).height / Composer.lineHeight).rounded()))
+            let lines = max(1, Int((layout.usedRect(for: container).height / editor.lineHeight).rounded()))
             if editor.lines != lines { editor.lines = lines }
         }
 
         func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+            if selector == #selector(NSResponder.cancelOperation(_:)), let onCancel = editor.onCancel {
+                onCancel()
+                return true
+            }
             guard selector == #selector(NSResponder.insertLineBreak(_:))
                 || selector == #selector(NSResponder.insertNewlineIgnoringFieldEditor(_:))
             else { return false }
@@ -285,6 +298,7 @@ struct ComposerEditor: NSViewRepresentable {
     /// Draws the placeholder while empty (marked text counts as text) and reports focus and width changes.
     final class TextView: NSTextView {
         var placeholder = ""
+        var focusOnAppear = false
         var onFocus: (Bool) -> Void = { _ in }
         var onWidth: (TextView) -> Void = { _ in }
 
@@ -311,6 +325,11 @@ struct ComposerEditor: NSViewRepresentable {
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             updateDragTypeRegistration()
+            if focusOnAppear, let window {
+                focusOnAppear = false
+                window.makeFirstResponder(self)
+                setSelectedRange(NSRange(location: (string as NSString).length, length: 0))
+            }
         }
 
         override func setFrameSize(_ newSize: NSSize) {

@@ -63,10 +63,17 @@ public enum ChatItem: Sendable, Equatable, Identifiable {
 /// otherwise (window) each run gets one marker.
 public enum ChatTimeline {
     public static func items(_ s: SessionState, compact: Bool) -> [ChatItem] {
-        var items = history(s.history, compact: compact, running: s.run != nil)
+        // A retry or edit on its way (#75): what it replaces leaves Hermes once the relay rewinds; the run's history
+        // brings the rest back.
+        let rewind = s.outbox.first { $0.rewindTo != nil && !$0.isFailed }
+        var kept = s.history[...]
+        if let to = rewind?.rewindTo, let i = kept.firstIndex(where: { $0.role == .user && Int64($0.id) == to }) {
+            kept = kept[..<i]
+        }
+        var items = history(Array(kept), compact: compact, running: s.run != nil)
         var runs: [String: [Event]] = [:]
         var order: [String] = []
-        for e in s.events {
+        for e in s.events where rewind.map({ $0.status == .sent(runID: e.runID) }) ?? true {
             if runs[e.runID] == nil { order.append(e.runID) }
             runs[e.runID, default: []].append(e)
         }
@@ -305,5 +312,77 @@ public enum ChatTimeline {
 
     private static func firstLine(_ s: String) -> String {
         String(s.split(whereSeparator: \.isNewline).first ?? "")
+    }
+}
+
+/// Retry and edit (#75): the messages the relay can rewind to.
+extension ChatTimeline {
+    /// A message of yours from the history, as retry and edit send it again.
+    public struct Rewindable: Sendable, Equatable {
+        /// The chat row's id.
+        public var itemID: String
+        /// Hermes' id of the message (`rewind_to`).
+        public var hermesID: Int64
+        /// As the chat shows it (without Hermes' image notes).
+        public var text: String
+        /// Its images as the relay keeps them, sent again by id.
+        public var attachments: [AttachmentRef]
+
+        public init(itemID: String, hermesID: Int64, text: String, attachments: [AttachmentRef]) {
+            self.itemID = itemID
+            self.hermesID = hermesID
+            self.text = text
+            self.attachments = attachments
+        }
+
+        /// A failed retry or edit, back in the editor: the message it was sent from.
+        public init?(failed prompt: OutgoingPrompt) {
+            guard let to = prompt.rewindTo else { return nil }
+            let refs = prompt.images.compactMap { i in i.attachmentID.map { AttachmentRef(id: $0, mime: i.mime, width: i.width, height: i.height) } }
+            self.init(itemID: "h-\(to)", hermesID: to, text: prompt.text, attachments: refs)
+        }
+
+        /// The images as `sendPrompt` takes them: by id, no bytes.
+        public var uploads: [ImageUpload] {
+            attachments.map { ImageUpload(data: Data(), mime: $0.mime, width: $0.width, height: $0.height, attachmentID: $0.id) }
+        }
+    }
+
+    /// A history message of yours that isn't a steer; nil for anything else (live, still sending, failed).
+    public static func rewindable(_ item: ChatItem) -> Rewindable? {
+        guard case .user(let id, let text, _, let images, false) = item, id.hasPrefix("h-"), let n = Int64(id.dropFirst(2))
+        else { return nil }
+        let refs = images.compactMap { image -> AttachmentRef? in
+            if case .attachment(let ref) = image { return ref }
+            return nil
+        }
+        return Rewindable(itemID: id, hermesID: n, text: text, attachments: refs)
+    }
+
+    /// What Retry sends again: your last message (steers aside) when the history has it, and the last answer after it,
+    /// which Retry replaces (nil when the run left none: Retry then sits on the message).
+    public static func retry(_ items: [ChatItem]) -> (message: Rewindable, answerID: String?)? {
+        guard let last = items.lastIndex(where: { isYours($0, steers: false) }), let message = rewindable(items[last]) else { return nil }
+        return (message, items[(last + 1)...].last(where: isAnswer)?.id)
+    }
+
+    /// What sending from `itemID` removes (the editor's footer): how many messages of yours follow it, and whether an
+    /// answer does.
+    public static func removed(after itemID: String, in items: [ChatItem]) -> (messages: Int, answer: Bool) {
+        guard let i = items.firstIndex(where: { $0.id == itemID }) else { return (0, false) }
+        let rest = items[(i + 1)...]
+        return (rest.filter { isYours($0, steers: true) }.count, rest.contains(where: isAnswer))
+    }
+
+    private static func isYours(_ item: ChatItem, steers: Bool) -> Bool {
+        switch item {
+        case .user(_, _, _, _, let steer): steers || !steer
+        case .prompt(let p, _): steers || !p.isSteer
+        default: false
+        }
+    }
+
+    private static func isAnswer(_ item: ChatItem) -> Bool {
+        if case .answer = item { true } else { false }
     }
 }

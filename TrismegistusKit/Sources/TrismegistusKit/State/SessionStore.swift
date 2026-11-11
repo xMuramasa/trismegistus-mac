@@ -195,11 +195,13 @@ public final class SessionStore {
 
     /// Sends a prompt to an open session; it waits in the session's outbox until the history has it. Images not
     /// uploaded yet are uploaded first. One run per session: during a run the relay answers `busy` (offer to send it
-    /// as a steer). Returns the client_msg_id.
+    /// as a steer). Returns the client_msg_id. `rewindTo` (retry and edit, #75): the Hermes id of the user message this
+    /// replaces; the relay rewinds the conversation to just before it, and the chat hides it and what follows until the
+    /// run's history arrives. Images with an attachment id and no bytes are a history message's, sent by id.
     @discardableResult
-    public func sendPrompt(_ text: String, images: [ImageUpload] = [], to sessionID: String) async -> String {
+    public func sendPrompt(_ text: String, images: [ImageUpload] = [], to sessionID: String, rewindTo: Int64? = nil) async -> String {
         let id = UUID().uuidString.lowercased()
-        sessions[sessionID]?.outbox.append(OutgoingPrompt(id: id, text: text, status: .pending, images: images))
+        sessions[sessionID]?.outbox.append(OutgoingPrompt(id: id, text: text, status: .pending, images: images, rewindTo: rewindTo))
         func failed(_ code: ErrorCode?, _ message: String) {
             if let i = sessions[sessionID]?.outbox.firstIndex(where: { $0.id == id }) {
                 sessions[sessionID]?.outbox[i].status = .failed(code: code, message: message)
@@ -219,7 +221,7 @@ public final class SessionStore {
                     sessions[sessionID]?.outbox[i].images[n].attachmentID = ref.id
                 }
             }
-            try await client.send(.prompt(clientMsgID: id, sessionID: sessionID, text: text, attachments: ids))
+            try await client.send(.prompt(clientMsgID: id, sessionID: sessionID, text: text, attachments: ids, rewindTo: rewindTo))
         } catch let error as RelayAPIError {
             failed(error.code, error.message)
         } catch {
@@ -248,10 +250,10 @@ public final class SessionStore {
         sessions[sessionID]?.outbox.remove(at: i)
         let images = prompt.images.map { image in
             var image = image
-            image.attachmentID = nil
+            if !image.data.isEmpty { image.attachmentID = nil } // a history image has only its id
             return image
         }
-        return await sendPrompt(prompt.text, images: images, to: sessionID)
+        return await sendPrompt(prompt.text, images: images, to: sessionID, rewindTo: prompt.rewindTo)
     }
 
     /// Also adds and drops subscriptions to match the list.

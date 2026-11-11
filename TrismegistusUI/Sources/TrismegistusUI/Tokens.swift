@@ -228,6 +228,8 @@ public enum Opacity {
     public static let missionStripe: Double = 0.035
     public static let missionEmblem: Double = 0.28
     public static let missionDivider: Double = 0.25
+    /// #75: what an edit removes, dimmed under the open editor
+    public static let rewound: Double = 0.38
 }
 
 /// `space`: the strict spacing scale; literals round up to the next step.
@@ -265,6 +267,8 @@ public enum Icon {
     public static let therefore: CGFloat = 12
     /// #72: the source glyph in a mission card's triangle
     public static let mission: CGFloat = 13
+    /// #75: the glyph of a message's hover action
+    public static let messageAction: CGFloat = 13
 }
 
 /// `size`: fixed sizes of rows, cards, panes and windows.
@@ -538,6 +542,13 @@ public enum Size {
         public let afterProgress: CGFloat = 10
     }
     public static let missionHead = MissionHead()
+    /// #75 (design 16 #17a): a hover action on a message's label line (edit, copy, retry), square; an image chip in the message editor and its thumbnail
+    public struct MessageAction: Sendable {
+        public let button: CGFloat = 24
+        public let chip: CGFloat = 26
+        public let thumb: CGFloat = 18
+    }
+    public static let messageAction = MessageAction()
 }
 
 /// `radius`: the corner radius scale (#68): s, m, l, xl.

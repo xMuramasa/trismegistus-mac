@@ -38,8 +38,9 @@ public enum ClientMessage: Codable, Sendable, Equatable {
     case subscribe(sessionID: String, afterSeq: Int? = nil)
     case unsubscribe(sessionID: String)
     /// clientMsgID (a UUID) makes resends safe. attachments: 1-4 unique ids from `POST /api/attachments`; text may be
-    /// empty when there is one.
-    case prompt(clientMsgID: String, sessionID: String, text: String, attachments: [String] = [])
+    /// empty when there is one. rewindTo: the Hermes id of one of the session's user messages; the relay first rewinds
+    /// the conversation to just before it (retry and edit).
+    case prompt(clientMsgID: String, sessionID: String, text: String, attachments: [String] = [], rewindTo: Int64? = nil)
     case stop(runID: String)
     case steer(runID: String, text: String)
     case approve(runID: String, requestID: String, choice: ApprovalChoice)
@@ -75,12 +76,14 @@ public enum ClientMessage: Codable, Sendable, Equatable {
             try c.only(["type", "session_id"])
             self = .unsubscribe(sessionID: try str("session_id"))
         case "prompt":
-            try c.only(["type", "client_msg_id", "session_id", "text", "attachments"])
+            try c.only(["type", "client_msg_id", "session_id", "text", "attachments", "rewind_to"])
             let ids = try c.decodeIfPresent([String].self, forKey: "attachments")
             try c.check(ids.map { (1...4).contains($0.count) && Set($0).count == $0.count } ?? true, "attachments",
                         "attachments must hold 1-4 unique ids")
+            let rewind = try c.decodeIfPresent(Int64.self, forKey: "rewind_to")
+            try c.check((rewind ?? 1) >= 1, "rewind_to", "rewind_to must be >= 1")
             self = .prompt(clientMsgID: try str("client_msg_id"), sessionID: try str("session_id"), text: try str("text"),
-                           attachments: ids ?? [])
+                           attachments: ids ?? [], rewindTo: rewind)
         case "stop":
             try c.only(["type", "run_id"])
             self = .stop(runID: try str("run_id"))
@@ -110,11 +113,12 @@ public enum ClientMessage: Codable, Sendable, Equatable {
             try c.encodeIfPresent(afterSeq, forKey: "after_seq")
         case .unsubscribe(let sessionID):
             try c.encode(sessionID, forKey: "session_id")
-        case .prompt(let clientMsgID, let sessionID, let text, let attachments):
+        case .prompt(let clientMsgID, let sessionID, let text, let attachments, let rewindTo):
             try c.encode(clientMsgID, forKey: "client_msg_id")
             try c.encode(sessionID, forKey: "session_id")
             try c.encode(text, forKey: "text")
             if !attachments.isEmpty { try c.encode(attachments, forKey: "attachments") }
+            try c.encodeIfPresent(rewindTo, forKey: "rewind_to")
         case .stop(let runID):
             try c.encode(runID, forKey: "run_id")
         case .steer(let runID, let text):
