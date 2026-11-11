@@ -365,11 +365,12 @@ public enum Size {
         public let height: CGFloat = 640
     }
     public static let windowMin = WindowMin()
-    /// the detail header's rule (#69): a dark-panel tick, a gap, the yellow segment, then rule grey to the edge
+    /// the detail header's rule, edge to edge: magenta, yellow, then green to the edge (green's width is its minimum); back from #68 on Martin's ask, 2026-11-11
     public struct TitleRule: Sendable {
-        public let tick: CGFloat = 8
-        public let yellow: CGFloat = 56
-        public let height: CGFloat = 2
+        public let magenta: CGFloat = 48
+        public let yellow: CGFloat = 120
+        public let green: CGFloat = 24
+        public let height: CGFloat = 4
     }
     public static let titleRule = TitleRule()
     /// text field and button height

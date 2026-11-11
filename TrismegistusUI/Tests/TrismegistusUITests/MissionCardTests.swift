@@ -132,6 +132,26 @@ extension WindowA3Tests {
         XCTAssertFalse(shot.isColor(inset + 10, rule, Ink.line.contour, tolerance: 0.02), "from the label's start")
     }
 
+    /// A list column's `List` draws no selection of its own (2026-11-11): macOS highlighted the clicked row in blue or
+    /// grey before the cards caught up. Rows here draw no selection at all, so any colour on the selected row's ground
+    /// is the table's.
+    func testListDrawsNoSelectionOfItsOwn() throws {
+        struct Column: View {
+            var body: some View {
+                List(selection: .constant(Optional("b"))) {
+                    ForEach(["a", "b", "c"], id: \.self) { id in
+                        Text(verbatim: id).frame(maxWidth: .infinity, minHeight: 40, alignment: .leading).tag(id).sidebarRow()
+                    }
+                }
+                .sidebarList()
+            }
+        }
+        let shot = try shot("ListNoHighlight", width: 300, height: 160, ground: Ink.surface.sidebarSolid) { Column() }
+        for y in [CGFloat(20), 60, 100] {
+            XCTAssertTrue(shot.isColor(200, y, Ink.surface.sidebarSolid, tolerance: 0.02), "no highlight at y \(y)")
+        }
+    }
+
     /// `#a3-c2` in a real List: In progress on top (approval, then the run), each pill whole above its card in the
     /// card's own row, 12 pt between cards.
     func testChatListWithInProgress() throws {

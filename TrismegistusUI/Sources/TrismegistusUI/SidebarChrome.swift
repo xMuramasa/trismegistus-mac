@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 public extension EnvironmentValues {
@@ -20,7 +21,8 @@ public struct PanelReveal: Equatable {
 
 public extension View {
     /// A list column `List`: keyboard selection as before, no ground of its own.
-    func sidebarList() -> some View { listStyle(.plain).scrollContentBackground(.hidden) }
+    /// macOS's own selection highlight is off (`ListHighlightOff`): the cards draw the selection themselves.
+    func sidebarList() -> some View { listStyle(.plain).scrollContentBackground(.hidden).background { ListHighlightOff() } }
 
     /// A row of a list column, edge to edge, on the column's own ground. Every row sets `listRowBackground`: it replaces
     /// the row view's ground, where macOS draws its selection highlight (a thin blue line showed past the rows
@@ -383,4 +385,48 @@ public struct TagChips: View {
     }
     .environment(\.onSidebar, true)
     .frame(width: 520).background(Ink.surface.sidebar)
+}
+
+/// Turns off the table's own selection highlight under a list column's `List` (2026-11-11). macOS draws it on the
+/// clicked row at once, in AppKit, and the cards only take the selection on SwiftUI's next update: a click showed a
+/// blue (key window) or grey frame round the whole cell, pill room and gap included, until the detail had loaded.
+/// `SelectionMargins` only covered the cell already selected. With `selectionHighlightStyle = .none` the table keeps
+/// its selection and keyboard navigation and draws nothing. The table is the one whose scroll view lies under this
+/// background (the window holds other tables).
+struct ListHighlightOff: NSViewRepresentable {
+    func makeNSView(context: Context) -> Probe { Probe() }
+    func updateNSView(_ view: Probe, context: Context) { view.schedule() }
+
+    final class Probe: NSView {
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            schedule()
+        }
+        override func layout() {
+            super.layout()
+            schedule()
+        }
+
+        func schedule() {
+            Task { @MainActor [weak self] in self?.apply() }
+        }
+
+        func apply() {
+            guard let root = window?.contentView, !bounds.isEmpty else { return }
+            let mine = convert(bounds, to: nil)
+            var best: (table: NSTableView, area: CGFloat)?
+            for table in Self.tables(in: root) {
+                let host = table.enclosingScrollView ?? table
+                let area = host.convert(host.bounds, to: nil).intersection(mine)
+                guard !area.isNull, area.width * area.height > (best?.area ?? 0) else { continue }
+                best = (table, area.width * area.height)
+            }
+            if let table = best?.table, table.selectionHighlightStyle != .none { table.selectionHighlightStyle = .none }
+        }
+
+        static func tables(in view: NSView) -> [NSTableView] {
+            (view as? NSTableView).map { [$0] } ?? view.subviews.flatMap { tables(in: $0) }
+        }
+    }
 }

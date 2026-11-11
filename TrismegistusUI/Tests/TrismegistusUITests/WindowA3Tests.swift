@@ -386,11 +386,12 @@ final class WindowA3Tests: XCTestCase {
             let rule = panelEdge + list - 0.5
             XCTAssertTrue(shot.isColor(rule, 1000, Ink.line.rule, tolerance: 0.05), "\(width): the list's rule at x = \(rule)")
             XCTAssertTrue(shot.isColor(panelEdge + list / 2, 1100, Ink.surface.sidebarSolid, tolerance: 0.02), "\(width): the list's ground \(shot.rgb(panelEdge + list / 2, 1100))")
-            // The frosted detail header, the 2 pt rule: tick, gap, yellow, grey.
+            // The frosted detail header, the 4 pt rule: magenta, yellow, green to the edge.
             XCTAssertTrue(shot.isColor(rule + 300, 3, Ink.surface.raised, tolerance: 0.03), "\(width): the frosted header")
-            XCTAssertTrue(shot.isColor(rule + 4, Size.sidebarHead + 1, Ink.surface.darkPanel, tolerance: 0.05), "\(width): the rule's tick")
-            XCTAssertTrue(shot.isColor(rule + 30, Size.sidebarHead + 1, Ink.selection, tolerance: 0.05), "\(width): the rule's yellow")
-            XCTAssertTrue(shot.isColor(rule + 300, Size.sidebarHead + 1, Ink.line.rule, tolerance: 0.05), "\(width): the rule's grey")
+            XCTAssertTrue(shot.isColor(rule + 20, Size.sidebarHead + 2, Ink.titleRule[0], tolerance: 0.05), "\(width): the rule's magenta")
+            XCTAssertTrue(shot.isColor(rule + 100, Size.sidebarHead + 2, Ink.titleRule[1], tolerance: 0.05), "\(width): the rule's yellow")
+            XCTAssertTrue(shot.isColor(rule + 300, Size.sidebarHead + 2, Ink.titleRule[2], tolerance: 0.05), "\(width): the rule's green")
+            XCTAssertTrue(shot.isColor(width - 3, Size.sidebarHead + 2, Ink.titleRule[2], tolerance: 0.05), "\(width): green to the edge")
             // The composer floats as in #68.
             XCTAssertFalse(shot.isColor(rule + 200, 1122 - 3, Ink.surface.raised), "\(width): the composer stops 8 pt above the bottom")
             XCTAssertTrue(shot.isColor(rule + 200, 1122 - 20, Ink.surface.raised), "\(width): the composer block")
@@ -611,11 +612,13 @@ final class WindowA3Tests: XCTestCase {
         XCTAssertTrue(shot.isColor(450, 3, Ink.surface.raised, tolerance: 0.03), "frosted white")
         XCTAssertTrue(shot.isColor(Space.xxl + 3, 26, Ink.avatar.app), "the 28 pt avatar")
         XCTAssertFalse(shot.isColor(Space.xxl + 3, 26 - 14 + 0.25, Ink.avatar.app), "28 pt, not 32")
-        XCTAssertTrue(shot.isColor(4, Size.sidebarHead + 1, Ink.surface.darkPanel, tolerance: 0.05), "the tick")
-        XCTAssertTrue(shot.isColor(Size.titleRule.tick + 2, Size.sidebarHead + 1, Ink.line.rule, tolerance: 0.05), "the gap")
-        XCTAssertTrue(shot.isColor(Size.titleRule.tick + Space.xs + 20, Size.sidebarHead + 1, Ink.selection, tolerance: 0.05), "the yellow segment")
-        XCTAssertTrue(shot.isColor(800, Size.sidebarHead + 1, Ink.line.rule, tolerance: 0.05), "grey to the edge")
-        XCTAssertFalse(shot.isColor(800, Size.sidebarHead + 3, Ink.line.rule, tolerance: 0.02), "2 pt")
+        // The rule's bars, edge to edge: magenta, yellow, green to the right edge, 4 pt tall.
+        let y = Size.sidebarHead + 2
+        XCTAssertTrue(shot.isColor(Size.titleRule.magenta / 2, y, Ink.titleRule[0], tolerance: 0.05), "magenta")
+        XCTAssertTrue(shot.isColor(Size.titleRule.magenta + Size.titleRule.yellow / 2, y, Ink.titleRule[1], tolerance: 0.05), "yellow")
+        XCTAssertTrue(shot.isColor(Size.titleRule.magenta + Size.titleRule.yellow + 10, y, Ink.titleRule[2], tolerance: 0.05), "green")
+        XCTAssertTrue(shot.isColor(895, y, Ink.titleRule[2], tolerance: 0.05), "green to the edge")
+        XCTAssertTrue(shot.isColor(800, Size.sidebarHead + Size.titleRule.height - 0.5, Ink.titleRule[2], tolerance: 0.05), "4 pt")
     }
 
     // MARK: Sections

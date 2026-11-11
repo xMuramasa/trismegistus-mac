@@ -49,20 +49,13 @@ public struct DetailHeader<Mark: View, Title: View, Subtitle: View, Trailing: Vi
     }
 }
 
-/// The detail header's title rule (#69): a 2 pt rule-grey line with an 8 pt dark-panel tick and the 56 pt yellow
-/// segment after a gap.
+/// The detail header's title rule, edge to edge: Endfield's 4 pt magenta, yellow and green bars, green to the edge
+/// (#68's rule; Martin asked for it back over #69's grey line with a tick, 2026-11-11).
 public struct DetailRule: View {
     public init() {}
 
     public var body: some View {
-        HStack(spacing: Space.xs) {
-            Rectangle().fill(Ink.surface.darkPanel).frame(width: Size.titleRule.tick)
-            Rectangle().fill(Ink.selection).frame(width: Size.titleRule.yellow)
-            Spacer(minLength: 0)
-        }
-        .frame(height: Size.titleRule.height)
-        .background(Ink.line.rule)
-        .accessibilityHidden(true)
+        SegmentRule((Size.titleRule.magenta, Size.titleRule.yellow, Size.titleRule.green), height: Size.titleRule.height, stretches: true)
     }
 }
 
