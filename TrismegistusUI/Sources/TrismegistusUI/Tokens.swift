@@ -435,9 +435,17 @@ public enum Size {
     public static let headerMark: CGFloat = 18
     /// the T mark of an empty state
     public static let emptyMark: CGFloat = 42
+    /// the Settings window; its ink section slabs, and the Notifications table (#66, design 12 #settings): a row, the head band, the BANNER and SOUND columns, the play button, the dark foot bar
     public struct Settings: Sendable {
         public let width: CGFloat = 380
         public let height: CGFloat = 520
+        public let slab: CGFloat = 24
+        public let row: CGFloat = 28
+        public let head: CGFloat = 20
+        public let banner: CGFloat = 56
+        public let sound: CGFloat = 104
+        public let play: CGFloat = 20
+        public let foot: CGFloat = 4
     }
     public static let settings = Settings()
     public struct Pairing: Sendable {

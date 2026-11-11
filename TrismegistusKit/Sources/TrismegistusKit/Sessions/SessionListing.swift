@@ -8,10 +8,11 @@ public enum SessionListing {
     }
 
     /// The window's chat groups (#72, design 15b): In progress on top, the items waiting for an approval and then the
-    /// running ones, pinned or not; then the pinned and the rest. Each keeps the items' order (most recent first).
+    /// running ones, pinned or not; then the pinned and the rest (an unseen done or failed mark stays in its group). Each
+    /// keeps the items' order (most recent first).
     public static func groups<T>(_ items: [T], attention: (T) -> ConversationKind.Attention?, isPinned: (T) -> Bool)
         -> (inProgress: [T], pinned: [T], rest: [T]) {
-        let quiet = pinnedApart(items.filter { attention($0) == nil }, isPinned: isPinned)
+        let quiet = pinnedApart(items.filter { attention($0)?.isLive != true }, isPinned: isPinned)
         return (items.filter { attention($0) == .approval } + items.filter { attention($0) == .running }, quiet.pinned, quiet.rest)
     }
 

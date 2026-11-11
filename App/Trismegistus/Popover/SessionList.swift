@@ -25,7 +25,7 @@ struct SessionList: View {
             let overview = model.store?.overview[session.id]
             return (source: session.source,
                     attention: ConversationKind.Attention(isWaitingForApproval: overview?.isWaitingForApproval ?? false,
-                                                          isRunning: overview?.run != nil))
+                                                          isRunning: overview?.run != nil, unseen: model.store?.unseenMark(session.id)))
         })
     }
     /// The window's tab (one choice for both).
@@ -129,7 +129,8 @@ struct SessionList: View {
             activity: PopoverFormat.ago(overview?.lastActivity ?? session.lastActive.map(Date.init(timeIntervalSince1970:)), now: now),
             isSelected: isSelected, isReadOnly: session.isReadOnly, isPinned: session.isPinned,
             runElapsed: overview?.run.map { PopoverFormat.elapsed(since: $0.startedAt, now: now) },
-            needsApproval: overview?.isWaitingForApproval ?? false, tags: model.store?.tags[session.id] ?? []
+            needsApproval: overview?.isWaitingForApproval ?? false,
+            finished: model.store?.unseenMark(session.id).map(ChatKindTabs.sticker), tags: model.store?.tags[session.id] ?? []
         )
         .id(session.id)
         .contentShape(Rectangle())

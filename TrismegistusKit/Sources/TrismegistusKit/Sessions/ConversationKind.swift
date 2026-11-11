@@ -79,15 +79,27 @@ public enum ConversationKind: Hashable, Sendable, RawRepresentable {
 
     public func includes(_ source: String?) -> Bool { self == .all || self == Self(source: source) }
 
-    /// How much a kind's conversations need you: an approval waits, or a run is going. Approval wins.
+    /// What a conversation, a kind or the whole list has to say (#66): an approval waits, a run is going, a run failed or
+    /// finished unseen. The strongest wins: approval > running > failed > done.
     public enum Attention: Int, Sendable, Comparable {
-        case running = 1, approval
+        case done = 1, failed, running, approval
 
         public static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
 
-        public init?(isWaitingForApproval: Bool, isRunning: Bool) {
-            if isWaitingForApproval { self = .approval } else if isRunning { self = .running } else { return nil }
+        public init?(isWaitingForApproval: Bool, isRunning: Bool, unseen: Unseen.Mark? = nil) {
+            if isWaitingForApproval {
+                self = .approval
+            } else if isRunning {
+                self = .running
+            } else if let unseen {
+                self = unseen == .failed ? .failed : .done
+            } else {
+                return nil
+            }
         }
+
+        /// A waiting approval or a live run: the In progress group.
+        public var isLive: Bool { self >= .running }
     }
 
     /// The counts and attention marks of a list: one entry per kind in the list (`item`, per listed conversation).

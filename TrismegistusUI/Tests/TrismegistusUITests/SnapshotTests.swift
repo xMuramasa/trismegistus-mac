@@ -134,7 +134,8 @@ final class SnapshotTests: XCTestCase {
     /// The popover's kind tabs (#48; the window has the panel's Chats group since #68): Telegram selected with its
     /// approval dot and a green one on Terminal; One-shots and All chosen under MORE; APP selected with the MORE mark.
     func testKindTabs() throws {
-        let tabs = [KindChip(id: "app", title: "App", symbol: Symbol.kindApp, count: 4),
+        // App: a run finished unseen (a check); MORE on the App strip: one failed (a cross), #66.
+        let tabs = [KindChip(id: "app", title: "App", symbol: Symbol.kindApp, count: 4, mark: .done),
                     KindChip(id: "telegram", title: "Telegram", symbol: Symbol.kindTelegram, count: 4, mark: .approval),
                     KindChip(id: "terminal", title: "Terminal", symbol: Symbol.kindTerminal, count: 8, mark: .running)]
         let more = [KindChip(id: "oneshot", title: "One-shots", symbol: Symbol.kindOneShot, count: 6),
@@ -148,7 +149,7 @@ final class SnapshotTests: XCTestCase {
                     VStack(alignment: .leading, spacing: Space.s) {
                         Text("\(names[id]!) // \(counts[id]!)").typeRole(.label)
                             .foregroundStyle(Ink.text.secondary)
-                        KindTabs(tabs: tabs, more: more, moreMark: id == "app" ? .running : nil, selection: id) { _ in }
+                        KindTabs(tabs: tabs, more: more, moreMark: id == "app" ? .failed : nil, selection: id) { _ in }
                     }
                 }
             }
@@ -435,7 +436,7 @@ final class SnapshotTests: XCTestCase {
     }
 
     func testGlyphs() throws {
-        try snap("MenuBarGlyph", width: 440) {
+        try snap("MenuBarGlyph", width: 540) {
             HStack(spacing: 20) {
                 ForEach(GlyphState.allCases, id: \.self) { state in
                     Image(nsImage: MenuBarGlyph.image(state)).renderingMode(.template).scaleEffect(2)

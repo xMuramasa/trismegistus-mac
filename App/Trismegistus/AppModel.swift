@@ -46,6 +46,22 @@ final class AppModel {
     private let defaults: UserDefaults
     @ObservationIgnored private var watch: Task<Void, Never>?
     @ObservationIgnored private var agentsWatch: Task<Void, Never>?
+    /// Saves `store.unseen` on each change (#66).
+    @ObservationIgnored private var unseenWatch: Task<Void, Never>?
+    /// Moves `trackedUntil` every 30 s once the launch has caught up; nil before.
+    @ObservationIgnored private var tracking: Task<Void, Never>?
+    /// The conversation each place shows, and its window: who is looking (#66).
+    @ObservationIgnored private var viewers: [Viewer: Shown] = [:]
+
+    /// Where a conversation can be open.
+    enum Viewer {
+        case window, popover
+    }
+
+    private struct Shown {
+        let session: String
+        weak var window: NSWindow?
+    }
 
     init(tokens: any TokenStore = KeychainTokenStore(), defaults: UserDefaults = .standard) {
         self.tokens = tokens
@@ -60,8 +76,100 @@ final class AppModel {
         notifications.start(model: self)
         // `devices set-role` applies from the device's next request.
         NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in await self?.device?.refresh() }
+            Task { @MainActor in
+                self?.markSeen()
+                await self?.device?.refresh()
+            }
         }
+        // A window uncovered or shown (the popover opening) may put an open conversation in view.
+        for name in [NSWindow.didChangeOcclusionStateNotification, NSWindow.didBecomeKeyNotification] {
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.markSeen() }
+            }
+        }
+        NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.trackNow() }
+        }
+    }
+
+    // MARK: Run alerts (#66)
+
+    /// `place` shows `session` (nil: no conversation) in `window`; a mark on what is now in view goes.
+    func show(_ session: String?, in place: Viewer, window: NSWindow?) {
+        viewers[place] = session.map { Shown(session: $0, window: window) }
+        markSeen()
+    }
+
+    /// Someone looks at the thread `session` is in: it is open in the window or the popover, the app is active (or the
+    /// popover key) and that window is on screen, not covered.
+    func isWatching(_ session: String) -> Bool {
+        guard let store else { return false }
+        let tip = store.threadTip(of: session)
+        return watched.contains { store.threadTip(of: $0) == tip }
+    }
+
+    /// The conversations in view now.
+    private var watched: [String] {
+        viewers.values.compactMap { viewer in
+            // The popover is a panel: it can be key while the app isn't active.
+            guard let window = viewer.window, NSApp.isActive || window.isKeyWindow, window.isVisible,
+                  window.occlusionState.contains(.visible) else { return nil }
+            return viewer.session
+        }
+    }
+
+    /// Every part of the threads in view.
+    private var watchedParts: Set<String> {
+        guard let store else { return [] }
+        return Set(watched.flatMap { id in
+            let tip = store.threadTip(of: id)
+            return [tip] + store.olderParts(of: tip)
+        })
+    }
+
+    /// Opening a conversation is the only way its mark goes.
+    func markSeen() {
+        guard let store, !store.unseen.marks.isEmpty else { return }
+        let parts = watchedParts
+        if store.unseen.mark(parts) != nil { store.unseen.viewed(parts) }
+    }
+
+    /// The first list load of the launch catches up on what changed while the app was quit (a done mark, no sound),
+    /// then `trackedUntil` follows the clock; a list load after a gap in that (the Mac asleep, the relay unreachable)
+    /// catches up on the gap the same way. Every list load drops the marks of conversations that left it.
+    private func listLoaded(_ store: SessionStore) {
+        store.unseen.prune(keeping: Set(store.sessionList.map(\.id)))
+        if tracking != nil {
+            guard case .connected = store.connection, store.unseen.lostTrack(at: Date()) else { return }
+            catchUp(store)
+            return
+        }
+        catchUp(store)
+        tracking = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(30))
+                self?.trackNow()
+            }
+        }
+    }
+
+    /// Marks what ended while the app couldn't follow, then follows from now. A conversation still running is left to
+    /// its run's end, which marks it when it comes.
+    private func catchUp(_ store: SessionStore) {
+        let running = Set(store.overview.filter { $0.value.run != nil || $0.value.isWaitingForApproval }.keys)
+        store.unseen.catchUp(store.sessionList, watched: watchedParts, running: running)
+        store.unseen.tracked(at: Date())
+    }
+
+    /// Only after the catch-up and while connected, and never across a gap: that is the next list load's to catch up
+    /// (`listLoaded`), or the next launch's.
+    private func trackNow() {
+        guard tracking != nil, let store, case .connected = store.connection, !store.unseen.lostTrack(at: Date()) else { return }
+        store.unseen.tracked(at: Date())
+    }
+
+    private static func loadUnseen(_ defaults: UserDefaults) -> Unseen {
+        defaults.data(forKey: Keys.unseen).flatMap { try? JSONDecoder().decode(Unseen.self, from: $0) } ?? Unseen()
     }
 
     /// Trades a pairing code for a device token, keeps it in the Keychain and connects. Throws RelayAPIError (a bad,
@@ -126,6 +234,7 @@ final class AppModel {
             rest: RelayREST(baseURL: relayURL, token: token)
         )
         store.images = ImageFiles(directory: Self.imagesURL(for: relayURL), rest: store.rest)
+        store.unseen = Self.loadUnseen(defaults)
         self.store = store
         let device = DeviceProfile(rest: store.rest)
         self.device = device
@@ -145,6 +254,7 @@ final class AppModel {
                 do {
                     try await store.refreshSessions()
                     self?.sessionsError = nil
+                    self?.listLoaded(store)
                 } catch {
                     self?.sessionsError = (error as? RelayAPIError)?.message ?? "Can't reach the relay."
                 }
@@ -156,6 +266,12 @@ final class AppModel {
                 try? await Task.sleep(for: .seconds(15))
             }
         }
+        let defaults = defaults
+        unseenWatch = Task {
+            for await unseen in Observations({ store.unseen }) {
+                defaults.set(try? JSONEncoder().encode(unseen), forKey: Keys.unseen)
+            }
+        }
     }
 
     private func disconnect() async {
@@ -163,6 +279,10 @@ final class AppModel {
         watch = nil
         agentsWatch?.cancel()
         agentsWatch = nil
+        unseenWatch?.cancel()
+        unseenWatch = nil
+        tracking?.cancel()
+        tracking = nil
         await store?.stop()
         store = nil
         device = nil
@@ -179,5 +299,7 @@ final class AppModel {
     private enum Keys {
         static let relayURL = "relayURL"
         static let deviceName = "deviceName"
+        /// The run alerts' marks and `trackedUntil` (JSON), local to this Mac.
+        static let unseen = "notifications.unseen"
     }
 }

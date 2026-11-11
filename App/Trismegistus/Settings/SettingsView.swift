@@ -13,9 +13,14 @@ struct SettingsView: View {
     @State private var unpairError: String?
     /// Shown after unpairing: the relay still lists the device until this runs on the server.
     @State private var revokeCommand: String?
-    @AppStorage(NotificationSettings.approvals) private var approvals = true
-    @AppStorage(NotificationSettings.runFinished) private var runFinished = true
-    @AppStorage(NotificationSettings.approvalSound) private var approvalSound = true
+    // Optional: an absent key reads as its default in NotificationSettings (failed follows finished, the old approval
+    // sound switch's off is None).
+    @AppStorage(NotificationSettings.Event.approval.bannerKey) private var approvalBanner: Bool?
+    @AppStorage(NotificationSettings.Event.finished.bannerKey) private var finishedBanner: Bool?
+    @AppStorage(NotificationSettings.Event.failed.bannerKey) private var failedBanner: Bool?
+    @AppStorage(NotificationSettings.Event.approval.soundKey) private var approvalSound: String?
+    @AppStorage(NotificationSettings.Event.finished.soundKey) private var finishedSound: String?
+    @AppStorage(NotificationSettings.Event.failed.soundKey) private var failedSound: String?
 
     private var deviceName: String { model.deviceName ?? "macbook" }
     private var serverCommand: String { "trismegistus-relay devices revoke \(deviceName)" }
@@ -27,7 +32,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: Space.xxs) {
                 TitleRule("Settings")
-                Text(verbatim: "trismegistus-mac \(version)").typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
+                Text(verbatim: "trismegistus-mac \(version)").typeRole(.caption).foregroundStyle(Ink.text.secondary)
             }
             .padding(.horizontal, Space.l).padding(.vertical, Space.l)
             ScrollView {
@@ -63,8 +68,8 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: Space.m) {
             section("Connection")
             StatusReadout(linkState.0, detail: linkState.1)
-            field("Relay", model.relayURL.absoluteString, mono: true)
-            field("Device name", model.deviceName ?? "—", mono: false)
+            field("Relay", model.relayURL.absoluteString)
+            field("Device name", model.deviceName ?? "—")
             HStack(spacing: Space.m) {
                 EndfieldButton("Unpair", symbol: Symbol.unpair, kind: .danger) { confirmingUnpair = true }
                     .disabled(model.store == nil)
@@ -128,33 +133,41 @@ struct SettingsView: View {
 
     // MARK: Notifications
 
+    /// #66, design 12 #settings: Banner, Sound and ▶ per event.
     private var notifications: some View {
         VStack(alignment: .leading, spacing: Space.m) {
             section("Notifications")
-            Toggle("Approval requests", isOn: $approvals)
-            Toggle("Run finished while closed", isOn: $runFinished)
-            Toggle("Sound for approvals", isOn: $approvalSound)
+            NotificationTable(rows: [
+                row(.approval, banner: $approvalBanner, sound: $approvalSound),
+                row(.finished, banner: $finishedBanner, sound: $finishedSound),
+                row(.failed, banner: $failedBanner, sound: $failedSound),
+            ], onPlay: NotificationSettings.preview)
         }
-        .endfieldSwitch().typeRole(.body)
+    }
+
+    private func row(_ event: NotificationSettings.Event, banner: Binding<Bool?>, sound: Binding<String?>) -> NotificationTable.Row {
+        NotificationTable.Row(
+            id: event.rawValue, title: event.title,
+            banner: Binding(get: { NotificationSettings.banner(event, stored: banner.wrappedValue) }, set: { banner.wrappedValue = $0 }),
+            sound: Binding(get: { NotificationSettings.sound(event, stored: sound.wrappedValue) }, set: { name in
+                sound.wrappedValue = name
+                _ = NotificationSettings.notificationSound(name)  // copied into Library/Sounds now, not at the first run
+            }))
     }
 
     // MARK: Pieces
 
     private func section(_ title: String) -> some View {
-        HStack(spacing: Space.s) {
-            Text(title).typeRole(.label).foregroundStyle(Ink.text.secondary)
-            Rectangle().fill(Ink.line.rule).frame(height: 1)
-        }
-        .padding(.top, Space.xs)
-        .accessibilityAddTraits(.isHeader)
+        SettingsSlab(title).padding(.top, Space.xs)
     }
 
-    private func field(_ label: String, _ value: String, mono: Bool) -> some View {
+    /// Inter, like everything in Settings since #66 (the draft has no mono).
+    private func field(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: Space.xs) {
             Text(label).typeRole(.callout).foregroundStyle(Ink.text.secondary)
             Text(value)
-                .typeRole(mono ? .mono : .body)
-                .foregroundStyle(mono ? Ink.text.muted : Ink.text.primary)
+                .typeRole(.body)
+                .foregroundStyle(Ink.text.primary)
                 .lineLimit(1).truncationMode(.middle)
                 .padding(.horizontal, Space.m)
                 .frame(maxWidth: .infinity, minHeight: Size.control, alignment: .leading)

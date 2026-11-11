@@ -77,6 +77,7 @@ struct MainWindow: View {
         .background(TrafficLights(origin: lights))
         .providesCommandLog(model)
         .selectsChatFromNotifications(model.notifications, selection: opening)
+        .shows(section == .chat ? chatSelection.wrappedValue : nil, in: .window)
         .focusedSceneValue(\.sidebar, SidebarActions(isShown: panelShown, toggle: togglePanel, find: { filterFocused = true },
                                                      section: section, select: { section = $0 }, toggleTerminal: toggleTerminal))
         .frame(minWidth: Size.windowMin.width, minHeight: Size.windowMin.height)
@@ -100,7 +101,7 @@ struct MainWindow: View {
     }
 
     private var panel: some View {
-        let summary = ConversationSidebar.summary(ConversationSidebar.listing(model))
+        let summary = ConversationSidebar.summary(ConversationSidebar.listing(model), store: model.store)
         let kind = summary.resolving(chatKind)
         return SectionPanel(
             section: $section, badges: badges(summary), kinds: (ConversationKind.tabs + summary.more).map { ChatKindTabs.chip($0, summary: summary) },

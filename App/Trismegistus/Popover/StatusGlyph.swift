@@ -15,6 +15,8 @@ struct StatusGlyph: View {
         case .idle: .idle
         case .running: .running
         case .approvalWaiting: .approval
+        case .failed: .failed
+        case .done: .done
         }
     }
 

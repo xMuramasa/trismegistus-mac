@@ -13,6 +13,9 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
     @ObservationIgnored private weak var model: AppModel?
     @ObservationIgnored private var tasks: [Task<Void, Never>] = []
     @ObservationIgnored private let center = UNUserNotificationCenter.current()
+    @ObservationIgnored private var gate = SoundGate()
+    /// userInfo: the notification is only its sound (#66).
+    private nonisolated static let soundOnly = "soundOnly"
 
     private static let approvalCategory = UNNotificationCategory(
         identifier: "approval",
@@ -67,7 +70,6 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
     }
 
     private func post(_ approval: PendingApproval) {
-        guard NotificationSettings.isOn(NotificationSettings.approvals) else { return }
         let content = UNMutableNotificationContent()
         content.title = name(approval.sessionID)
         content.subtitle = "Approval requested"
@@ -75,24 +77,41 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
         content.categoryIdentifier = Self.approvalCategory.identifier
         content.threadIdentifier = approval.sessionID
         content.userInfo = ["session": approval.sessionID, "request": approval.id]
-        if NotificationSettings.isOn(NotificationSettings.approvalSound) { content.sound = .default }
-        center.add(UNNotificationRequest(identifier: "approval.\(approval.id)", content: content, trigger: nil))
+        post(content, id: "approval.\(approval.id)", event: .approval, banner: NotificationSettings.banner(.approval))
     }
 
+    /// A run ended (#66): unless someone watched it, it marks the conversation and makes its sound; the banner only
+    /// while nothing of the app is on screen. A stopped run makes nothing.
     private func runEnded(session: String, runID: String, outcome: SessionOverview.Outcome?) {
-        guard NotificationSettings.isOn(NotificationSettings.runFinished), !isOnScreen else { return }
-        let body: String
-        switch outcome?.runID == runID ? outcome?.status : nil {
-        case .cancelled: return // stopped by someone
-        case .failed: body = "Run failed"
-        default: body = "Run finished"
-        }
+        guard let model, let store = model.store else { return }
+        let status = outcome?.runID == runID ? outcome?.status ?? .completed : .completed
+        guard let mark = store.unseen.runEnded(session: session, status: status, watched: model.isWatching(session)) else { return }
+        let event: NotificationSettings.Event = mark == .failed ? .failed : .finished
         let content = UNMutableNotificationContent()
         content.title = name(session)
-        content.body = body
+        content.body = event.title
         content.threadIdentifier = session
         content.userInfo = ["session": session]
-        center.add(UNNotificationRequest(identifier: "run.\(runID)", content: content, trigger: nil))
+        post(content, id: "run.\(runID)", event: event, banner: NotificationSettings.banner(event) && !isOnScreen)
+    }
+
+    /// One notification per allowed sound: the banner with its sound, or the sound alone (presented with `.sound` only
+    /// and taken out of Notification Center right after). Run sounds are 2 s apart at least; approvals always sound.
+    private func post(_ content: UNMutableNotificationContent, id: String, event: NotificationSettings.Event, banner: Bool) {
+        let sound = NotificationSettings.notificationSound(NotificationSettings.sound(event))
+            .flatMap { gate.allows(approval: event == .approval, at: Date()) ? $0 : nil }
+        guard banner || sound != nil else { return }
+        content.sound = sound
+        content.userInfo[Self.soundOnly] = !banner
+        let request = UNNotificationRequest(identifier: id, content: content, trigger: nil)
+        let center = center
+        Task {
+            try? await center.add(request)
+            guard !banner else { return }
+            // shortcut: an inactive app isn't asked `willPresent`, so macOS may flash the banner until this removes it.
+            try? await Task.sleep(for: .seconds(2))
+            center.removeDeliveredNotifications(withIdentifiers: [id])
+        }
     }
 
     /// The popover or an app window is up and not covered. The status item is a window too, but can't become key.
@@ -122,7 +141,7 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        [.banner, .list, .sound]
+        notification.request.content.userInfo[Self.soundOnly] as? Bool == true ? [.sound] : [.banner, .list, .sound]
     }
 
     nonisolated func userNotificationCenter(

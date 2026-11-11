@@ -164,6 +164,14 @@ struct OverviewTests {
         c.push(.event(event("s2", 2, .runCancelled(reason: "stopped"))))
         await until { store.overview["s2"]?.lastSeq == 2 }
         #expect(store.activity == .idle)
+        // #66: an unseen end shows on the glyph only while nothing stronger does; a thread shows its parts' marks.
+        store.unseen.runEnded(session: "s4", status: .completed, watched: false)
+        #expect(store.activity == .done && store.unseenMark("s4") == .done && store.unseenMark("s2") == nil)
+        store.unseen.runEnded(session: "s2", status: .failed, watched: false)
+        #expect(store.activity == .failed)
+        c.push(.run(runID: "run_3", sessionID: "s1", status: .running))
+        await until { store.overview["s1"]?.run != nil }
+        #expect(store.activity == .running)
         await store.stop()
     }
 

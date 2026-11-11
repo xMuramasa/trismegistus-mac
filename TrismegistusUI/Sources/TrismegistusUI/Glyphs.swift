@@ -65,6 +65,10 @@ enum GlyphData {
     /// The menu bar glyph's outline stroke (disconnected) and approval dot.
     static let outlineWidth: CGFloat = 1.5
     static let approvalDot = CGRect(x: 16.5, y: 1, width: 5, height: 5)
+    /// A run failed or finished unseen (#66, design 12 #menubar): a cross or a check where the approval dot sits,
+    /// stroked at `outlineWidth`.
+    static let failedCross = "M17 1.25L21 5.25M21 1.25L17 5.25"
+    static let doneCheck = "M16.6 3.4L18.3 5.2L21.4 1.4"
     /// Background agents alive: a small dot at the bottom right, under where the run's bars end.
     static let agentsDot = CGRect(x: 18.5, y: 14.5, width: 3, height: 3)
 }
@@ -115,11 +119,12 @@ public struct SourceIcon: View {
 }
 
 public enum GlyphState: CaseIterable, Sendable {
-    case disconnected, idle, running, approval
+    case disconnected, idle, running, approval, failed, done
 }
 
 /// The menu bar glyph as a template `NSImage` (22×18 pt): outline when disconnected, solid mark when idle, bars for
-/// a run in progress, a dot for an approval waiting. State is shape, never color. `agents` adds a small dot at the
+/// a run in progress, a dot for an approval waiting, a cross or a check for a run that failed or finished unseen.
+/// State is shape, never color. `agents` adds a small dot at the
 /// bottom right while background agents run (not while the bars show: they sit there, and a run is already marked).
 public enum MenuBarGlyph {
     public static let size = NSSize(width: 22, height: 18)
@@ -147,6 +152,11 @@ public enum MenuBarGlyph {
             }
             if state == .approval {
                 ctx.fillEllipse(in: GlyphData.approvalDot)
+            }
+            if state == .failed || state == .done {
+                ctx.addPath(Path.svg(state == .failed ? GlyphData.failedCross : GlyphData.doneCheck).cgPath)
+                ctx.setLineWidth(GlyphData.outlineWidth)
+                ctx.strokePath()
             }
             if agents, state != .disconnected, state != .running {
                 ctx.fillEllipse(in: GlyphData.agentsDot)

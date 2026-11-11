@@ -38,18 +38,20 @@ struct ConversationSidebar: View {
         let overviews = threads
             .compactMap { store.overview[$0.id] }
             .sorted { ($0.lastActivity ?? .distantPast) > ($1.lastActivity ?? .distantPast) }
-        return SessionListing.groups(overviews, attention: attention) { $0.info?.isPinned == true }
+        return SessionListing.groups(overviews, attention: { attention($0, store: store) }) { $0.info?.isPinned == true }
     }
 
-    private static func attention(_ overview: SessionOverview) -> ConversationKind.Attention? {
-        ConversationKind.Attention(isWaitingForApproval: overview.isWaitingForApproval, isRunning: overview.run != nil)
+    /// A conversation's strongest state: approval, running, then an unseen failed or done (#66).
+    @MainActor private static func attention(_ overview: SessionOverview, store: SessionStore?) -> ConversationKind.Attention? {
+        ConversationKind.Attention(isWaitingForApproval: overview.isWaitingForApproval, isRunning: overview.run != nil,
+                                   unseen: store?.unseenMark(overview.id))
     }
 
     private static func all(_ groups: Groups) -> [SessionOverview] { groups.inProgress + groups.pinned + groups.rest }
 
     /// Counts and marks per kind.
-    static func summary(_ listing: Groups) -> ConversationKind.Summary {
-        ConversationKind.Summary(all(listing).map { (source: $0.source, attention: attention($0)) })
+    @MainActor static func summary(_ listing: Groups, store: SessionStore?) -> ConversationKind.Summary {
+        ConversationKind.Summary(all(listing).map { (source: $0.source, attention: attention($0, store: store)) })
     }
 
     /// The listing in the tab, after the filter field and the tag filter; `elsewhere` when the filter finds nothing in
@@ -80,7 +82,7 @@ struct ConversationSidebar: View {
 
     var body: some View {
         let listing = self.listing
-        let kind = Self.summary(listing).resolving(storedKind)
+        let kind = Self.summary(listing, store: model.store).resolving(storedKind)
         let shown = self.shown(listing, kind: kind)
         let groups = shown.groups
         let count = Self.all(groups).count
@@ -245,7 +247,17 @@ struct ChatKindTabs: View {
         }
     }
 
-    static func mark(_ attention: ConversationKind.Attention) -> StickerState { attention == .approval ? .approval : .running }
+    static func mark(_ attention: ConversationKind.Attention) -> StickerState {
+        switch attention {
+        case .approval: .approval
+        case .running: .running
+        case .failed: .failed
+        case .done: .done
+        }
+    }
+
+    /// A run that ended unseen as its FAILED or DONE tag (#66).
+    static func sticker(_ mark: Unseen.Mark) -> StickerState { mark == .failed ? .failed : .done }
 
     var body: some View {
         KindTabs(tabs: ConversationKind.tabs.map { Self.chip($0, summary: summary) }, more: summary.more.map { Self.chip($0, summary: summary) }, moreMark: summary.moreAttention.map(Self.mark),
@@ -272,7 +284,7 @@ private struct ConversationRow: View {
                 preview: overview.info?.title == nil ? nil : overview.info?.preview, isSelected: isSelected,
                 isReadOnly: overview.isReadOnly, isPinned: overview.info?.isPinned == true,
                 runElapsed: overview.run.map { Self.clock(context.date.timeIntervalSince($0.startedAt)) },
-                needsApproval: overview.isWaitingForApproval)
+                needsApproval: overview.isWaitingForApproval, finished: store?.unseenMark(overview.id).map(ChatKindTabs.sticker))
             if let info = overview.info {
                 row.conversationChrome(info, isSelected: isSelected, actions: actions, store: store)
             } else {

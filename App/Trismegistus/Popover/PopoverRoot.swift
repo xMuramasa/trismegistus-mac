@@ -16,6 +16,10 @@ struct PopoverRoot: View {
     @State private var error: String?
     @State private var lastRefresh = Date.distantPast
 
+    private var openChat: String? {
+        if case .chat(let id) = page { id } else { nil }
+    }
+
     private var isConnected: Bool {
         if case .connected = model.connection { return true }
         return false
@@ -31,6 +35,7 @@ struct PopoverRoot: View {
         }
         .frame(width: Size.popover.width, height: Size.popover.height)
         .background(Ink.surface.window)
+        .shows(openChat, in: .popover)
         .onChange(of: model.connection, initial: true) { _, state in reconnect.observe(state) }
         .task { await refresh() }
         // A MenuBarExtra window is created once; becoming key is the nearest thing to "the popover opened".

@@ -101,11 +101,17 @@ public struct KindTabs: View {
     /// A badge on the icon's top-trailing corner, ringed in the ground's colour so it reads apart from the icon.
     @ViewBuilder private func dot(_ mark: StickerState?) -> some View {
         if let mark {
-            Circle().fill(mark == .approval ? Ink.marker : Ink.status.online)
-                .frame(width: Size.dot, height: Size.dot)
-                .padding(Stroke.accent)
-                .background(Circle().fill(Ink.surface.window))
-                .allowsHitTesting(false)
+            Group {
+                // Failed and done by their shape (#66); approval and a run keep the dot.
+                if mark == .failed || mark == .done {
+                    StickerGlyph(state: mark).fill(mark.mark).frame(width: Size.sticker.glyph, height: Size.sticker.glyph)
+                } else {
+                    Circle().fill(mark == .approval ? Ink.marker : Ink.status.online).frame(width: Size.dot, height: Size.dot)
+                }
+            }
+            .padding(Stroke.accent)
+            .background(Circle().fill(Ink.surface.window))
+            .allowsHitTesting(false)
         }
     }
 }

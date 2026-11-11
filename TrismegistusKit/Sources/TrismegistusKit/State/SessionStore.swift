@@ -6,9 +6,16 @@ import Observation
 /// through sendPrompt.
 @MainActor @Observable
 public final class SessionStore {
-    /// The menu bar glyph.
+    /// The menu bar glyph. Failed and done (an unseen run end, #66) rank below running: disconnected, approval,
+    /// running, failed, done, idle.
     public enum Activity: Sendable, Equatable {
-        case disconnected, idle, running, approvalWaiting
+        case disconnected, idle, running, approvalWaiting, failed, done
+
+        /// This activity with the strongest unseen mark: it shows only while nothing stronger does.
+        public func with(unseen: Unseen.Mark?) -> Activity {
+            guard self == .idle, let unseen else { return self }
+            return unseen == .failed ? .failed : .done
+        }
     }
 
     public private(set) var connection: RelayClient.ConnectionState = .disconnected
@@ -38,7 +45,15 @@ public final class SessionStore {
     public var activity: Activity {
         guard case .connected = connection else { return .disconnected }
         if !pendingApprovals.isEmpty || overview.values.contains(where: \.isWaitingForApproval) { return .approvalWaiting }
-        return isWorking ? .running : .idle
+        return isWorking ? .running : Activity.idle.with(unseen: unseen.strongest)
+    }
+
+    /// Runs that ended unseen (#66). The app loads it at connect and keeps it across launches; Kit never persists it.
+    public var unseen = Unseen()
+
+    /// The mark of the thread whose newest part is `id`: the strongest among its parts.
+    public func unseenMark(_ id: String) -> Unseen.Mark? {
+        unseen.marks.isEmpty ? nil : unseen.mark([id] + olderParts(of: id))
     }
 
     public let client: RelayClient
