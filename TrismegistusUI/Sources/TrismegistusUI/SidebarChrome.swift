@@ -36,20 +36,17 @@ public extension View {
     }
 }
 
-/// macOS keeps an 8 pt inset on list rows and draws its selection highlight (blue in a key window) across the full
-/// row, so it showed in those margins beside the selected row. Opaque strips in the column's ground over the margins
-/// hide it whatever the window state; other rows leave the translucent ground alone.
+/// macOS keeps an 8 pt inset on list rows and draws its selection highlight (blue in a key window, grey otherwise)
+/// across the full row: beside the selected row in those margins, and above and under its card wherever the cell is
+/// taller than the card (a mission card's pill room and gap, #72: a grey band showed round the selected card). One
+/// opaque fill in the column's ground over the whole cell, margins included, hides it whatever the window state; other
+/// rows leave the translucent ground alone.
 struct SelectionMargins: View {
     let isSelected: Bool
 
     var body: some View {
         if isSelected {
-            HStack(spacing: 0) {
-                Ink.surface.sidebarSolid.frame(width: Space.s)
-                Spacer(minLength: 0)
-                Ink.surface.sidebarSolid.frame(width: Space.s)
-            }
-            .padding(.horizontal, -Space.s)
+            Ink.surface.sidebarSolid.padding(.horizontal, -Space.s)
         }
     }
 }
@@ -128,16 +125,21 @@ public struct ListHeader<Leading: View, Trailing: View>: View {
     }
 }
 
-/// Short diagonal lines (`/`) across the rect, `Size.hatch.pitch` apart: the hatch in the list header and on the selected
-/// card's top edge. Clip it to its frame.
+/// Short diagonal lines (`/`) across the rect, `pitch` apart along it: the hatch in the list header and on the selected
+/// card's top edge, a mission card's hatch and stripes. Clip it to its frame.
 struct Hatch: Shape {
+    var pitch = Size.hatch.pitch
+
+    /// Lines `period` apart across them, as CSS's 135° `repeating-linear-gradient` draws them.
+    static func across(_ period: CGFloat) -> Hatch { Hatch(pitch: period * 2.squareRoot()) }
+
     func path(in rect: CGRect) -> Path {
         Path { p in
             var x = rect.minX - rect.height
             while x < rect.maxX {
                 p.move(to: CGPoint(x: x, y: rect.maxY))
                 p.addLine(to: CGPoint(x: x + rect.height, y: rect.minY))
-                x += Size.hatch.pitch
+                x += pitch
             }
         }
     }
@@ -232,6 +234,88 @@ public struct SectionHead: View {
         .frame(height: Size.labelLine)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// A group head in the window's chat list (#72, design 15b; the other lists keep `SectionHead`): a 22 pt yellow square
+/// with an ink ring and the group's ink glyph, the label 14/500, the count, and a contour hairline 5 pt under the head
+/// from the label to the edge. `isFirst` has 8 pt above it, the others 14 pt after the cards over them.
+public struct MissionGroupHead: View {
+    let title: String
+    let count: Int
+    let symbol: String
+    let isFirst: Bool
+
+    public init(title: String, count: Int, symbol: String, isFirst: Bool = false) {
+        self.title = title
+        self.count = count
+        self.symbol = symbol
+        self.isFirst = isFirst
+    }
+
+    public var body: some View {
+        let square = RoundedRectangle(cornerRadius: Radius.mark, style: .continuous)
+        HStack(spacing: Size.missionHead.gap) {
+            Image(systemName: symbol).font(.system(size: Icon.l, weight: .semibold)).foregroundStyle(Ink.text.primary)
+                .frame(width: Size.missionHead.mark, height: Size.missionHead.mark)
+                .background(square.fill(Ink.selection))
+                .overlay(square.inset(by: -Stroke.hairline).strokeBorder(Ink.line.strong, lineWidth: Stroke.hairline))
+            Text(title).typeRole(.missionTitle).foregroundStyle(Ink.text.primary).lineLimit(1)
+            Text(verbatim: "\(count)").typeRole(.callout).monospacedDigit().foregroundStyle(Ink.text.secondary)
+            Spacer(minLength: 0)
+        }
+        .frame(height: Size.missionHead.height)
+        // A card's cell leaves `MissionCard.below` under it, and the next card's cell has the pill's room over it.
+        .padding(.top, isFirst ? Size.missionHead.first : Size.missionHead.between - MissionCard.below)
+        .padding(.bottom, Size.missionHead.after - Size.statePill.rise)
+        // shortcut: the hairline sits at the cell's foot, 2 pt under the head rather than the design's 5: a List clips
+        // each row, and 5 pt would fall in the next card's cell. Upgrade if the list stops clipping rows.
+        .overlay(alignment: .bottomLeading) {
+            Rectangle().fill(Ink.line.contour).frame(height: Stroke.hairline)
+                .padding(.leading, Size.missionHead.mark + Size.missionHead.gap)
+        }
+        .padding(.horizontal, Space.m - Space.s)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title), \(count)")
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// The In progress group's head (#72, design 15b): a contour hairline, a small right-aligned `In progress` and a 4 x 14
+/// yellow bracket with an ink edge, like the game's current mission. Always first.
+public struct InProgressHead: View {
+    public init() {}
+
+    public var body: some View {
+        HStack(spacing: Size.missionHead.gap) {
+            Rectangle().fill(Ink.line.contour).frame(height: Stroke.hairline)
+            Text("In progress").typeRole(.callout).foregroundStyle(Ink.text.secondary).lineLimit(1).fixedSize()
+                .padding(.leading, Space.s)
+            HeadBracket().stroke(Ink.selection, lineWidth: Stroke.selection)
+                .frame(width: Size.missionHead.bracketWidth, height: Size.missionHead.bracketHeight)
+                .overlay(alignment: .trailing) { Rectangle().fill(Ink.line.strong).frame(width: Stroke.hairline).offset(x: Stroke.hairline) }
+                .accessibilityHidden(true)
+        }
+        .frame(height: Size.missionHead.progress)
+        .padding(.top, Size.missionHead.first)
+        .padding(.bottom, Size.missionHead.afterProgress - Size.statePill.rise)
+        .padding(.horizontal, Space.m - Space.s)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("In progress")
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// `]`: the In progress bracket's top, right and bottom, inside the rect.
+struct HeadBracket: Shape {
+    func path(in rect: CGRect) -> Path {
+        let r = rect.insetBy(dx: Stroke.selection / 2, dy: Stroke.selection / 2)
+        return Path { p in
+            p.move(to: CGPoint(x: rect.minX, y: r.minY))
+            p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+            p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+            p.addLine(to: CGPoint(x: rect.minX, y: r.maxY))
+        }
     }
 }
 

@@ -3,9 +3,11 @@ import TrismegistusKit
 import TrismegistusUI
 
 /// The Chat section's list column (#68): `…` (Rename, Tags, Hand off for the open conversation), `APP // 10`, the yellow
-/// `+`; the filter (⌘K) and tag chips; PINNED and CONVERSATIONS slabs with their counts over one card per conversation of
-/// the kind picked in the section panel's Chats group (#48). On paper, no row separators.
+/// `+`; the filter (⌘K) and tag chips; In progress (a waiting approval or a live run), Pinned and Conversations groups
+/// (#72, design 15b) over one mission card per conversation of the kind picked in the section panel's Chats group (#48).
 struct ConversationSidebar: View {
+    typealias Groups = (inProgress: [SessionOverview], pinned: [SessionOverview], rest: [SessionOverview])
+
     @Binding var selection: String?
     /// The Filter field's focus (⌘K).
     var filterFocus: FocusState<Bool>.Binding
@@ -25,42 +27,44 @@ struct ConversationSidebar: View {
     /// Tags of the listed conversations with how many carry each; tag ids the app doesn't list are ignored.
     private var tagCounts: [(tag: String, count: Int)] { SessionListing.tagCounts(ids: threads.map(\.id), tags: tags) }
 
-    /// Pinned first, then most recent first. Every kind, unfiltered.
-    private var listing: (pinned: [SessionOverview], rest: [SessionOverview]) { Self.listing(model) }
+    /// In progress, pinned, then the rest, each most recent first. Every kind, unfiltered.
+    private var listing: Groups { Self.listing(model) }
 
-    /// The model's conversations, one per thread, pinned first, then most recent first (the panel's Chats group counts them).
-    @MainActor static func listing(_ model: AppModel) -> (pinned: [SessionOverview], rest: [SessionOverview]) {
-        guard let store = model.store else { return ([], []) }
+    /// The model's conversations, one per thread: those waiting for an approval and then those running, then the pinned,
+    /// then the rest, each most recent first (the panel's Chats group counts them).
+    @MainActor static func listing(_ model: AppModel) -> Groups {
+        guard let store = model.store else { return ([], [], []) }
         let threads = SessionListing.threads(model.sessions, id: \.id, links: store.links)
         let overviews = threads
             .compactMap { store.overview[$0.id] }
             .sorted { ($0.lastActivity ?? .distantPast) > ($1.lastActivity ?? .distantPast) }
-        return SessionListing.pinnedApart(overviews) { $0.info?.isPinned == true }
+        return SessionListing.groups(overviews, attention: attention) { $0.info?.isPinned == true }
     }
 
+    private static func attention(_ overview: SessionOverview) -> ConversationKind.Attention? {
+        ConversationKind.Attention(isWaitingForApproval: overview.isWaitingForApproval, isRunning: overview.run != nil)
+    }
+
+    private static func all(_ groups: Groups) -> [SessionOverview] { groups.inProgress + groups.pinned + groups.rest }
+
     /// Counts and marks per kind.
-    static func summary(_ listing: (pinned: [SessionOverview], rest: [SessionOverview])) -> ConversationKind.Summary {
-        ConversationKind.Summary((listing.pinned + listing.rest).map {
-            (source: $0.source,
-             attention: ConversationKind.Attention(isWaitingForApproval: $0.isWaitingForApproval, isRunning: $0.run != nil))
-        })
+    static func summary(_ listing: Groups) -> ConversationKind.Summary {
+        ConversationKind.Summary(all(listing).map { (source: $0.source, attention: attention($0)) })
     }
 
     /// The listing in the tab, after the filter field and the tag filter; `elsewhere` when the filter finds nothing in
     /// the tab but something in another. A pinned conversation is only in its own tab.
-    private func shown(_ listing: (pinned: [SessionOverview], rest: [SessionOverview]), kind: ConversationKind)
-        -> (pinned: [SessionOverview], rest: [SessionOverview], elsewhere: (kind: ConversationKind, count: Int)?) {
+    private func shown(_ listing: Groups, kind: ConversationKind) -> (groups: Groups, elsewhere: (kind: ConversationKind, count: Int)?) {
         let needle = filter.trimmingCharacters(in: .whitespaces)
         func matches(_ overview: SessionOverview) -> Bool {
             if let tagFilter, !SessionListing.hasTag(tagFilter, in: tags[overview.id] ?? []) { return false }
             return needle.isEmpty || (overview.info.map(Self.title) ?? "").localizedCaseInsensitiveContains(needle)
         }
-        let found = (pinned: listing.pinned.filter(matches), rest: listing.rest.filter(matches))
-        let pinned = found.pinned.filter { kind.includes($0.source) }
-        let rest = found.rest.filter { kind.includes($0.source) }
-        let elsewhere = pinned.isEmpty && rest.isEmpty
-            ? ConversationKind.elsewhere((found.pinned + found.rest).map(\.source), current: kind) : nil
-        return (pinned, rest, elsewhere)
+        func inTab(_ overview: SessionOverview) -> Bool { matches(overview) && kind.includes(overview.source) }
+        let groups = (inProgress: listing.inProgress.filter(inTab), pinned: listing.pinned.filter(inTab), rest: listing.rest.filter(inTab))
+        let elsewhere = Self.all(groups).isEmpty
+            ? ConversationKind.elsewhere(Self.all(listing).filter(matches).map(\.source), current: kind) : nil
+        return (groups, elsewhere)
     }
 
     private struct Entry: Equatable {
@@ -71,29 +75,34 @@ struct ConversationSidebar: View {
     /// Every conversation of every kind in the order shown, for moving the selection when one goes (a tab switch keeps
     /// the open conversation, so this doesn't change with the tab).
     private var ordered: [Entry] {
-        let listing = self.listing
-        return (listing.pinned + listing.rest).map { Entry(id: $0.id, source: $0.source) }
+        Self.all(listing).map { Entry(id: $0.id, source: $0.source) }
     }
 
     var body: some View {
         let listing = self.listing
         let kind = Self.summary(listing).resolving(storedKind)
         let shown = self.shown(listing, kind: kind)
-        let count = shown.pinned.count + shown.rest.count
+        let groups = shown.groups
+        let count = Self.all(groups).count
         VStack(spacing: 0) {
             header(kind: kind, count: count)
             if count == 0 { empty(kind: kind, elsewhere: shown.elsewhere) }
             List(selection: $selection) {
-                // Each card carries its place in the list (`01`, #69).
-                let order = Dictionary(uniqueKeysWithValues: (shown.pinned + shown.rest).enumerated().map { ($1.id, $0 + 1) })
-                if !shown.pinned.isEmpty {
-                    SectionLabel(title: "Pinned", count: shown.pinned.count).sidebarRow()
-                    ForEach(shown.pinned) { conversation($0, index: order[$0.id]) }
-                    if !shown.rest.isEmpty {
-                        SectionLabel(title: "Conversations", count: shown.rest.count).sidebarRow()
-                    }
+                if !groups.inProgress.isEmpty {
+                    InProgressHead().sidebarRow()
+                    ForEach(groups.inProgress) { conversation($0) }
                 }
-                ForEach(shown.rest) { conversation($0, index: order[$0.id]) }
+                if !groups.pinned.isEmpty {
+                    MissionGroupHead(title: "Pinned", count: groups.pinned.count, symbol: Symbol.pinOutline, isFirst: groups.inProgress.isEmpty)
+                        .sidebarRow()
+                    ForEach(groups.pinned) { conversation($0) }
+                }
+                if !groups.rest.isEmpty {
+                    MissionGroupHead(title: "Conversations", count: groups.rest.count, symbol: Symbol.kindOther,
+                                     isFirst: groups.inProgress.isEmpty && groups.pinned.isEmpty)
+                        .sidebarRow()
+                    ForEach(groups.rest) { conversation($0) }
+                }
             }
             .sidebarList()
         }
@@ -138,10 +147,9 @@ struct ConversationSidebar: View {
     }
 
     /// A conversation's row, with its tag editor under it while that is open.
-    private func conversation(_ overview: SessionOverview, index: Int?) -> some View {
+    private func conversation(_ overview: SessionOverview) -> some View {
         VStack(spacing: 0) {
-            ConversationRow(overview: overview, isSelected: selection == overview.id, index: index,
-                            tags: tags[overview.id] ?? [], actions: actions, store: model.store)
+            ConversationRow(overview: overview, isSelected: selection == overview.id, actions: actions, store: model.store)
             if actions.tagging == overview.id, let store = model.store {
                 TagEditor(
                     tags: tags[overview.id] ?? [], known: tagCounts.map(\.tag),
@@ -151,7 +159,7 @@ struct ConversationSidebar: View {
                     .padding(.top, Space.s)
             }
         }
-        .sidebarCardCell(isSelected: selection == overview.id)
+        .missionCell(isSelected: selection == overview.id)
         .tag(overview.id)
         .sidebarRow()
     }
@@ -250,22 +258,21 @@ struct ChatKindTabs: View {
 private struct ConversationRow: View {
     let overview: SessionOverview
     let isSelected: Bool
-    let index: Int?
-    let tags: [String]
     let actions: ConversationActions
     let store: SessionStore?
 
     var body: some View {
         // Ticks every second only while a run's clock shows; the "2 min" age is fine at half a minute.
         TimelineView(.periodic(from: .now, by: overview.run == nil ? 30 : 1)) { context in
-            let row = SessionRowView(
+            // The tags stay in the filter and the detail header (#72).
+            let row = MissionCard(
                 name: overview.info.map(ConversationSidebar.title) ?? "New conversation",
                 source: source, activity: Self.age(overview.lastActivity, now: context.date),
                 // The relay's preview as it is; with no title the preview is the title already.
                 preview: overview.info?.title == nil ? nil : overview.info?.preview, isSelected: isSelected,
                 isReadOnly: overview.isReadOnly, isPinned: overview.info?.isPinned == true,
                 runElapsed: overview.run.map { Self.clock(context.date.timeIntervalSince($0.startedAt)) },
-                needsApproval: overview.isWaitingForApproval, tags: tags, index: index)
+                needsApproval: overview.isWaitingForApproval)
             if let info = overview.info {
                 row.conversationChrome(info, isSelected: isSelected, actions: actions, store: store)
             } else {

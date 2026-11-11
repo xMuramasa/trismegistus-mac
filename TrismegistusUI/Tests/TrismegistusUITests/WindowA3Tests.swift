@@ -47,7 +47,7 @@ final class WindowA3Tests: XCTestCase {
     }
 
     /// In a real window: `List`, `Menu`, scroll views and text fields draw only there.
-    private func shot<V: View>(_ name: String, width: CGFloat, height: CGFloat, ground: Color = Ink.surface.window, @ViewBuilder _ content: () -> V) throws -> Shot {
+    func shot<V: View>(_ name: String, width: CGFloat, height: CGFloat, ground: Color = Ink.surface.window, @ViewBuilder _ content: () -> V) throws -> Shot {
         let root = content().frame(width: width, height: height, alignment: .topLeading).background(ground).environment(\.colorScheme, .light)
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: height), styleMask: [.borderless], backing: .buffered, defer: false)
         window.appearance = NSAppearance(named: .aqua)
@@ -64,7 +64,7 @@ final class WindowA3Tests: XCTestCase {
     }
 
     /// Through `ImageRenderer` at 2x, for what has no native control: `cacheDisplay` flips a shadow's y.
-    private func flat<V: View>(_ name: String, width: CGFloat, height: CGFloat, ground: Color = Ink.surface.window, @ViewBuilder _ content: () -> V) throws -> Shot {
+    func flat<V: View>(_ name: String, width: CGFloat, height: CGFloat, ground: Color = Ink.surface.window, @ViewBuilder _ content: () -> V) throws -> Shot {
         let renderer = ImageRenderer(content: content().frame(width: width, height: height, alignment: .topLeading).background(ground).environment(\.colorScheme, .light))
         renderer.scale = 2
         let rep = NSBitmapImageRep(cgImage: try XCTUnwrap(renderer.cgImage, "\(name) did not render"))
@@ -72,7 +72,7 @@ final class WindowA3Tests: XCTestCase {
         return Shot(rep: rep, size: CGSize(width: width, height: height))
     }
 
-    private func fitting(_ view: some View) -> CGSize { NSHostingView(rootView: view).fittingSize }
+    func fitting(_ view: some View) -> CGSize { NSHostingView(rootView: view).fittingSize }
 
     // MARK: The design's content
 
@@ -158,32 +158,37 @@ final class WindowA3Tests: XCTestCase {
         }
     }
 
-    /// Chat's list with the design's content, as `ConversationSidebar` puts it together.
+    /// Chat's list with the design's content (#72, `#a3-c2`), as `ConversationSidebar` puts it together: In progress
+    /// (approval first, then the run), Pinned, Conversations.
     struct ChatList: View {
         @State private var selection: String? = "swift"
 
-        private func row(_ id: String, _ index: Int, _ build: (Bool, Int) -> SessionRowView) -> some View {
-            build(selection == id, index).sidebarCardCell(isSelected: selection == id).tag(id).sidebarRow()
+        private func row(_ id: String, _ build: (Bool) -> MissionCard) -> some View {
+            build(selection == id).missionCell(isSelected: selection == id).tag(id).sidebarRow()
         }
 
         var body: some View {
             VStack(spacing: Space.s) {
                 ListHeader(title: "App // 10") { IconCell(symbol: Symbol.ellipsis) } trailing: { PlusButton("New conversation", isPrimary: false) {} }
                 EndfieldTextField("Filter", text: .constant(""), hint: "⌘K").padding(.horizontal, Space.l).padding(.bottom, Space.xs)
-                List(selection: $selection) {
-                    SectionHead(title: "Pinned", count: 3).padding(.top, Space.s).padding(.bottom, Space.xs).sidebarRow()
-                    row("swift", 1) { SessionRowView(name: "Swift app", source: .trismegistus, activity: "now", preview: "Checking the sidebar with cua-driver, 2 tools running", isSelected: $0, isPinned: true, runElapsed: "00:38", index: $1) }
-                    row("android", 2) { SessionRowView(name: "Android app", source: .trismegistus, activity: "2 h", preview: "Wants to run ./gradlew assembleRelease", isSelected: $0, isPinned: true, needsApproval: true, index: $1) }
-                    row("refiner", 3) { SessionRowView(name: "Workflow refiner", source: .trismegistus, activity: "2 d", preview: "Step 4 timed out after 120 s", isSelected: $0, isPinned: true, finished: .failed, index: $1) }
-                    SectionHead(title: "Conversations", count: 4).padding(.top, Space.s).padding(.bottom, Space.xs).sidebarRow()
-                    row("compare", 4) { SessionRowView(name: "Compare Open Design vs Penpot", source: .trismegistus, activity: "5 min", preview: "Penpot exports SVG per board; Open Design keeps HTML", isSelected: $0, index: $1) }
-                    row("xmur", 5) { SessionRowView(name: "xMuramasa/homelab#1: Add the Trismegistus relay", source: .trismegistus, activity: "1 h", preview: "Relay config drafted, PR waiting for your review", isSelected: $0, tags: ["homelab", "relay", "mac"], index: $1) }
-                    row("home", 6) { SessionRowView(name: "Homepage project", source: .trismegistus, activity: "1 h", preview: "Build passes; preview deployed for review", isSelected: $0, finished: .done, index: $1) }
-                    row("digest", 7) { SessionRowView(name: "Morning news digest", source: .cron, activity: "9 h", preview: "07:00 digest: 12 items, 3 flagged for you", isSelected: $0, isReadOnly: true, index: $1) }
-                }
-                .sidebarList()
+                List(selection: $selection) { WindowA3Tests.chatRows(row) }.sidebarList()
             }
         }
+    }
+
+    /// `#a3-c2`'s groups and cards, each card through `row` (its id and the card for a selection state).
+    @ViewBuilder static func chatRows<Row: View>(_ row: (String, (Bool) -> MissionCard) -> Row) -> some View {
+        InProgressHead().sidebarRow()
+        row("android") { MissionCard(name: "Android app", source: .trismegistus, activity: "2 h", preview: "Wants to run ./gradlew assembleRelease", isSelected: $0, isPinned: true, needsApproval: true) }
+        row("swift") { MissionCard(name: "Swift app", source: .trismegistus, activity: "now", preview: "Checking the sidebar with cua-driver, 2 tools running", isSelected: $0, isPinned: true, runElapsed: "00:38") }
+        MissionGroupHead(title: "Pinned", count: 2, symbol: Symbol.pinOutline).sidebarRow()
+        row("tris") { MissionCard(name: "Trismegistus", source: .trismegistus, activity: "1 h", preview: "Relay handshake passes on macbook, pixel and ipad", isSelected: $0, isPinned: true, finished: .done) }
+        row("refiner") { MissionCard(name: "Workflow refiner", source: .trismegistus, activity: "2 d", preview: "Step 4 timed out after 120 s", isSelected: $0, isPinned: true, finished: .failed) }
+        MissionGroupHead(title: "Conversations", count: 4, symbol: Symbol.kindOther).sidebarRow()
+        row("compare") { MissionCard(name: "Compare Open Design vs Penpot", source: .trismegistus, activity: "5 min", preview: "Penpot exports SVG per board; Open Design keeps HTML", isSelected: $0) }
+        row("xmur") { MissionCard(name: "xMuramasa/homelab#1: Add the Trismegistus relay", source: .trismegistus, activity: "1 h", preview: "Relay config drafted, PR waiting for your review", isSelected: $0) }
+        row("tg") { MissionCard(name: "Homelab mega-thread", source: .telegram, activity: "yesterday", preview: "Ongoing notes on the homelab setup", isSelected: $0, isReadOnly: true) }
+        row("digest") { MissionCard(name: "Morning news digest", source: .cron, activity: "9 h", preview: "07:00 digest: 12 items, 3 flagged for you", isSelected: $0, isReadOnly: true) }
     }
 
     static var detailHeader: some View {

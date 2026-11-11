@@ -65,6 +65,27 @@ import Testing
         #expect(listing.rest.map(\.0) == ["a", "c"])
     }
 
+    /// Live ones leave Pinned and the rest for In progress, approvals before runs, each group keeping the order (#72).
+    @Test func liveOnesGoToInProgressApprovalFirst() {
+        // (id, pinned, attention), most recent first.
+        let items: [(String, Bool, ConversationKind.Attention?)] = [
+            ("run1", false, .running), ("quiet", false, nil), ("pinRun", true, .running), ("ask1", false, .approval),
+            ("pin", true, nil), ("pinAsk", true, .approval), ("old", false, nil),
+        ]
+        let groups = SessionListing.groups(items, attention: \.2, isPinned: \.1)
+        #expect(groups.inProgress.map(\.0) == ["ask1", "pinAsk", "run1", "pinRun"])
+        #expect(groups.pinned.map(\.0) == ["pin"])
+        #expect(groups.rest.map(\.0) == ["quiet", "old"])
+    }
+
+    @Test func nothingLiveMeansNoInProgress() {
+        let items: [(String, Bool)] = [("a", false), ("b", true), ("c", false)]
+        let groups = SessionListing.groups(items, attention: { _ in nil }, isPinned: \.1)
+        #expect(groups.inProgress.isEmpty)
+        #expect(groups.pinned.map(\.0) == ["b"])
+        #expect(groups.rest.map(\.0) == ["a", "c"])
+    }
+
     /// The daily feed runs are ordinary cron conversations (#57): each keeps its row, in the Cron tab.
     @Test func feedRunsAreListedLikeAnyCronRun() {
         let items = [("a", "api_server"), ("cron_news_1", "cron"), ("b", "telegram"), ("cron_news_2", "cron")]

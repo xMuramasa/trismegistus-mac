@@ -161,6 +161,21 @@ public enum Ink {
         public let other = Palette.sunken
     }
     public static let avatar = Avatar()
+    public struct Mission: Sendable {
+        /// #72 (design 13 #a3-c2): a chat entry's mission card, white at 90 %
+        public let card = Palette.raised.opacity(Opacity.missionCard)
+        /// the selected card's yellow wash at its left edge
+        public let wash = Palette.yellow.opacity(Opacity.missionWash)
+        /// the wash 46 pt in (gone by 150 pt)
+        public let washMid = Palette.yellow.opacity(Opacity.missionWashMid)
+        /// the selected card's faint 135° stripes
+        public let stripe = Palette.ink.opacity(Opacity.missionStripe)
+        /// the selected card's triangle
+        public let emblemSelected = Palette.ink.opacity(Opacity.missionEmblem)
+        /// the selected card's divider after the emblem
+        public let dividerSelected = Palette.ink.opacity(Opacity.missionDivider)
+    }
+    public static let mission = Mission()
 }
 
 /// `opacity`: opacities.
@@ -192,6 +207,13 @@ public enum Opacity {
     public static let avatarOnDark: Double = 0.08
     public static let guideOnDark: Double = 0.14
     public static let chamferOnDark: Double = 0.22
+    /// #72: a mission card's white
+    public static let missionCard: Double = 0.9
+    public static let missionWash: Double = 0.95
+    public static let missionWashMid: Double = 0.55
+    public static let missionStripe: Double = 0.035
+    public static let missionEmblem: Double = 0.28
+    public static let missionDivider: Double = 0.25
 }
 
 /// `space`: the strict spacing scale; literals round up to the next step.
@@ -225,6 +247,8 @@ public enum Icon {
     public static let panel: CGFloat = 16
     /// a source avatar's glyph
     public static let avatar: CGFloat = 14
+    /// #72: the source glyph in a mission card's triangle
+    public static let mission: CGFloat = 13
 }
 
 /// `size`: fixed sizes of rows, cards, panes and windows.
@@ -431,6 +455,54 @@ public enum Size {
         public let grabber: CGFloat = 32
     }
     public static let composer = Composer()
+    /// #72 (design 13 #a3-c2): a chat entry's mission card: its height, the inset from the list's sides, the gap between cards; the emblem's and the age's 52 pt columns, the triangle and where it sits, how far the glyph sits above the column's centre, the divider; the age's column insets and the gap over its hatch; the hatch (its pitch across the lines); the gap before the pin and the lock; the selected card's wash (55 % this far in, gone by `wash`) and its stripes' pitch across the lines
+    public struct Mission: Sendable {
+        public let height: CGFloat = 56
+        public let inset: CGFloat = 10
+        public let gap: CGFloat = 12
+        public let column: CGFloat = 52
+        public let triangleWidth: CGFloat = 30
+        public let triangleHeight: CGFloat = 28
+        public let triangleLeft: CGFloat = 11
+        public let triangleTop: CGFloat = 13
+        public let glyphRise: CGFloat = 3
+        public let divider: CGFloat = 22
+        public let sideInset: CGFloat = 10
+        public let sideBottom: CGFloat = 9
+        public let sideGap: CGFloat = 5
+        public let hatchWidth: CGFloat = 14
+        public let hatchHeight: CGFloat = 10
+        public let hatchPitch: CGFloat = 4
+        public let textGap: CGFloat = 6
+        public let washMid: CGFloat = 46
+        public let wash: CGFloat = 150
+        public let stripePitch: CGFloat = 6
+    }
+    public static let mission = Mission()
+    /// the state pill on a mission card's top edge: its height, how far its top sits above the card, its inset from the card's right; its paddings and the gap after its glyph
+    public struct StatePill: Sendable {
+        public let height: CGFloat = 19
+        public let rise: CGFloat = 10
+        public let inset: CGFloat = 10
+        public let leading: CGFloat = 6
+        public let trailing: CGFloat = 9
+        public let gap: CGFloat = 5
+    }
+    public static let statePill = StatePill()
+    /// the chat list's group heads (#72): the head's height, the yellow square, the gap after it, the hairline under the head (at the cell's foot: a List clips each row); the In progress head's height and its bracket; the room above the first group, between groups, before the first card (10 under In progress)
+    public struct MissionHead: Sendable {
+        public let height: CGFloat = 30
+        public let mark: CGFloat = 22
+        public let gap: CGFloat = 10
+        public let progress: CGFloat = 20
+        public let bracketWidth: CGFloat = 4
+        public let bracketHeight: CGFloat = 14
+        public let first: CGFloat = 8
+        public let between: CGFloat = 14
+        public let after: CGFloat = 12
+        public let afterProgress: CGFloat = 10
+    }
+    public static let missionHead = MissionHead()
 }
 
 /// `radius`: the corner radius scale (#68): s, m, l, xl.
@@ -443,6 +515,10 @@ public enum Radius {
     public static let m: CGFloat = 8
     public static let l: CGFloat = 12
     public static let xl: CGFloat = 16
+    /// #72: the yellow square of a chat group head
+    public static let mark: CGFloat = 2
+    /// #72: the state pill on a mission card
+    public static let statePill: CGFloat = 10
 }
 
 /// `stroke`: line widths and bars.
@@ -453,8 +529,10 @@ public enum Stroke {
     public static let rule: CGFloat = 4
     /// selection and accent bars (rows, the banner's top, notices, the panel's current row, a command row's edge)
     public static let mark: CGFloat = 3
-    /// the selected card's yellow frame (#69)
+    /// the selected card's yellow frame (#69); since #72 also the selected mission card's ink frame, its hatch lines and the In progress bracket
     public static let selection: CGFloat = 1.5
+    /// #72: the triangle on a mission card
+    public static let emblem: CGFloat = 1.2
 }
 
 /// A drop shadow (`View.shadow(_:)`).
@@ -478,6 +556,12 @@ public enum Shadow {
     public static let checkGlow = ShadowToken(color: Palette.yellow.opacity(0.25), radius: 6, x: 0, y: 0)
     /// the yellow + under the pointer
     public static let plusGlow = ShadowToken(color: Palette.yellow.opacity(0.6), radius: 4, x: 0, y: 0)
+    /// #72: the state pill's soft shadow (CSS 0 1 3; SwiftUI's radius is about half the CSS blur)
+    public static let statePill = ShadowToken(color: Palette.ink.opacity(0.18), radius: 1.5, x: 0, y: 1)
+    /// the selected mission card's soft shadow (CSS 0 2 10)
+    public static let missionSelected = ShadowToken(color: Palette.ink.opacity(0.1), radius: 5, x: 0, y: 2)
+    /// a mission card under the pointer (CSS 0 1 6)
+    public static let missionHover = ShadowToken(color: Palette.ink.opacity(0.08), radius: 3, x: 0, y: 1)
 }
 
 /// `motion`: an `Animation` where the token has a curve, else a `Duration` to wait (a value settling).
@@ -508,7 +592,7 @@ public enum FontFamily: String, CaseIterable, Sendable {
 
 /// `font.role`: the type roles (`View.typeRole(_:)`).
 public enum TypeRole: CaseIterable, Sendable {
-    case heading, title, headline, body, callout, caption, label, button, quietTitle, detailTitle, trackedLabel, columnLabel, count, tag, controlLabel, micro, mono, monoSmall
+    case heading, title, headline, body, callout, caption, label, button, quietTitle, detailTitle, trackedLabel, columnLabel, count, tag, controlLabel, micro, missionTitle, statePill, mono, monoSmall
 
     public var spec: TypeSpec {
         switch self {
@@ -528,6 +612,8 @@ public enum TypeRole: CaseIterable, Sendable {
         case .tag: TypeSpec(family: .ui, size: 10, weight: 600, tracking: 1, uppercase: true)
         case .controlLabel: TypeSpec(family: .ui, size: 10, weight: 600, tracking: 1.2, uppercase: true)
         case .micro: TypeSpec(family: .ui, size: 10, weight: 500, tracking: 0, uppercase: false)
+        case .missionTitle: TypeSpec(family: .ui, size: 14, weight: 500, tracking: 0, uppercase: false)
+        case .statePill: TypeSpec(family: .ui, size: 11, weight: 600, tracking: 0, uppercase: false)
         case .mono: TypeSpec(family: .mono, size: 12, weight: 400, tracking: 0, uppercase: false)
         case .monoSmall: TypeSpec(family: .mono, size: 11, weight: 400, tracking: 0, uppercase: false)
         }

@@ -7,6 +7,14 @@ public enum SessionListing {
         (items.filter(isPinned), items.filter { !isPinned($0) })
     }
 
+    /// The window's chat groups (#72, design 15b): In progress on top, the items waiting for an approval and then the
+    /// running ones, pinned or not; then the pinned and the rest. Each keeps the items' order (most recent first).
+    public static func groups<T>(_ items: [T], attention: (T) -> ConversationKind.Attention?, isPinned: (T) -> Bool)
+        -> (inProgress: [T], pinned: [T], rest: [T]) {
+        let quiet = pinnedApart(items.filter { attention($0) == nil }, isPinned: isPinned)
+        return (items.filter { attention($0) == .approval } + items.filter { attention($0) == .running }, quiet.pinned, quiet.rest)
+    }
+
     /// The tags of the given sessions with how many of them carry each, most used first, then by name. Tags are
     /// merged case-insensitively under their first spelling; ids that aren't in `ids` (the relay keeps those of
     /// sessions deleted elsewhere) are ignored.

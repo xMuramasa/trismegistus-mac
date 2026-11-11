@@ -140,8 +140,8 @@ extension View {
 // MARK: Rows
 
 /// The popover's `…` button on the tag line (under the pointer and on the selected row only; the sticker holds the
-/// title's line), right-click menu with the same items and the inline rename, laid over a `SessionRowView`. A card in
-/// the window's list column has no `…` of its own: the list header's acts on the open conversation (#68). Tells the
+/// title's line), right-click menu with the same items and the inline rename, laid over the popover's `SessionRowView`
+/// or the window's `MissionCard` (#72). A card in the window's list column has no `…` of its own: the list header's acts on the open conversation (#68). Tells the
 /// card when the pointer is on it.
 private struct ConversationChrome: ViewModifier {
     let info: SessionInfo
@@ -313,22 +313,15 @@ struct ActionError: View {
     }
 }
 
-/// `PINNED` / `CONVERSATIONS` above a group of rows: in the window's list column a `// PINNED ——— 04` label line (#69);
-/// in the popover a plain label.
+/// `PINNED` / `CONVERSATIONS` above a group of the popover's rows, a plain label (the window's chat list has its mission
+/// group heads, #72).
 struct SectionLabel: View {
     let title: String
-    var count: Int?
-
-    @Environment(\.onSidebar) private var onSidebar
 
     var body: some View {
-        if onSidebar {
-            SectionHead(title: title, count: count).padding(.top, Space.s).padding(.bottom, Space.xs)
-        } else {
-            Text(title).typeRole(.label).foregroundStyle(Ink.text.secondary)
-                .padding(.horizontal, Space.l).padding(.vertical, Space.s)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityAddTraits(.isHeader)
-        }
+        Text(title).typeRole(.label).foregroundStyle(Ink.text.secondary)
+            .padding(.horizontal, Space.l).padding(.vertical, Space.s)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
     }
 }

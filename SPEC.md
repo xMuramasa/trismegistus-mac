@@ -142,7 +142,7 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   (`window.section`, `window.selection.<section>`; Chat keeps `window.selectedSession`). Opening a conversation from
   GitHub, Agents, Jobs, Commands or a notification switches to Chat with it selected. The list column's ground is sunken
   at 42 % (`surface.sidebar`) with ink text (`text.on-sidebar`, `text.on-sidebar-secondary`); every row there is a card
-  (below), Chat's with its index and avatar, the other sections' with their own content. The daily feed runs are ordinary read-only
+  (below), Chat's a mission card (#72), the other sections' with their own content. The daily feed runs are ordinary read-only
   cron conversations, listed like every other cron run (the news itself is read at news.lab.x-muramasa.dev).
   The GitHub issue (#59): the header with `done/total` of the body's task list, a readout row (Status and
   Priority menus for a manager, Tags, Agent, Close/Reopen), then body and comments through the Markdown renderer in a
@@ -194,7 +194,8 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   clock keeps its width. The filter is white with a rule hairline and `control` corners (blue while focused) and a sunken
   `⌘K` key cap; icon-only actions are thin-edged `control` buttons (white at 70 % in the list, bare in a header), the
   `+` yellow with a yellow edge and a glow under the pointer. Section heads are 24 pt `// PINNED ——— 04` label lines (a
-  contour hairline runs to the 2-digit count). A conversation is a 46 pt **card** at a 50 pt pitch, `control` corners,
+  contour hairline runs to the 2-digit count); since #72 the chat list has its own heads (below). Until #72 a
+  conversation was a 46 pt **card** at a 50 pt pitch (`SessionRowView` in the list column; the mission card replaced it), `control` corners,
   white stepping from 94 % to 72 % (lit from above) with a contour hairline; on it the muted 2-digit index (its place in
   the list), a 26 pt source avatar (the app's `T` on dark-panel, Telegram on blue, the terminal on dark-panel, cron on
   sunken), the title and the 11 pt age, then the list's `preview` as the relay sends it (only when the conversation has a
@@ -210,6 +211,24 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   always; VoiceOver reads the row as `Android app, approval waiting, 2 h, read-only, pinned`. Glyph-only tags (16 pt)
   mark the panel's rows. The popover stays white with its yellow bar and its fonts, with the same tags on its rows'
   corners (the shared part), the `…` on the tag line and the pin after the age.
+  **The chat list as mission cards** (#72, design 13 `#a3-c2`, render 15b, after Endfield's mission list; Martin
+  2026-11-10): each conversation is a `MissionCard` 56 pt tall, 10 pt in from the list's sides, 12 pt apart, white at
+  90 % with a rule hairline and `control` corners, a 3 pt bar at its left edge (yellow running, magenta approval,
+  terminal-red failed, terminal-green done, contour otherwise); a contour triangle (point down) with the source glyph in
+  its upper part (the app's `T`, Telegram, the terminal, cron), a divider, the title 14 pt (500; 600 with a state or
+  selected) with the pin, the preview 12 pt with the lock when read-only; the age over a short hatch at the right. **No
+  tags and no index on the card** (tags stay in the filter and the detail header). The state is a 19 pt pill half over
+  the top edge, 10 pt in from the right: RUN yellow with an ink ring, the clock and the ticking time; APPROVAL magenta
+  with ink text; FAILED / DONE white with a red cross / green check (drawn; #66 feeds them). Hover: white with a contour
+  edge and a soft shadow. Selected: a 1.5 pt ink frame with a 0.5 pt ring and a soft shadow, a yellow wash from the left
+  edge (gone by 150 pt) over faint 135° stripes, the triangle and divider in ink. Each card's row holds the pill's room
+  above the card (a `List` clips each row); the selected one's is 8 pt deeper for its shadow. Groups: **In progress** on
+  top while any conversation waits for an approval or runs (approvals first, then runs, each most recent first, pinned
+  or not; `SessionListing.groups`), headed by a small right-aligned `In progress` with a contour line to its left and a
+  yellow bracket; then **Pinned** and **Conversations**, each under a head with a 22 pt yellow square holding its ink
+  glyph (pin, chat bubble), the label 14/500, the count and a contour hairline under it. With nothing live the group is
+  absent. The panel's counts, the kind filter, the context menu, selection, keyboard and drag are as before
+  (`conversationChrome`). The popover keeps #69's rows, heads and tags.
   The other sections in a3: `//` labels on their cards (`// RESULT`, `// PROMPT`, a comment's author), section cards
   white at 88 % with a rule hairline and `control` corners, the segmented control (GitHub's Board / Needs check) white
   with the chosen part ink and underlined in 2 pt yellow, the Needs-check panel's 2 pt yellow top line with a faint glow,
