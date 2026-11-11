@@ -149,10 +149,10 @@ struct CommandsView: View {
             if isOpen {
                 Group {
                     if oneLine {
-                        LazyVStack(spacing: 0) {
+                        // Light rows 4 pt apart, each with its own edge (#69).
+                        LazyVStack(spacing: Space.xs) {
                             ForEach(shown) { EntryRow(entry: $0, oneLine: true, dated: dated) }
                         }
-                        .background { Rectangle().fill(Ink.surface.raised).shadow(Shadow.card) }
                     } else {
                         LazyVStack(alignment: .leading, spacing: Space.xxl) {
                             ForEach(shown) { EntryRow(entry: $0, dated: dated) }

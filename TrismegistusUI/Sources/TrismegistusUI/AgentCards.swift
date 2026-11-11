@@ -3,7 +3,8 @@ import SwiftUI
 // The Agents section's run cards (#60). Here rather than in the app so the snapshots draw these views; the app feeds
 // them from Kit's `AgentRun`.
 
-/// The run's outcome (`.panel`): RESULT, its chip and facts, a title, then the report folded after 8 lines.
+/// The run's outcome (`.panel`; a section card since #69): `// RESULT`, its chip and facts, a title, then the report
+/// folded after 8 lines.
 public struct AgentResultCard<Report: View>: View {
     let chip: StatusChip
     let meta: String
@@ -24,10 +25,10 @@ public struct AgentResultCard<Report: View>: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: Space.m) {
             HStack(spacing: Space.s) {
-                Text("Result").typeRole(.label).foregroundStyle(Ink.text.primary)
+                Text(verbatim: "// Result").typeRole(.trackedLabel).foregroundStyle(Ink.text.secondary)
                 chip
                 Spacer(minLength: Space.s)
-                Text(verbatim: meta).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary).lineLimit(1)
+                Text(verbatim: meta).typeRole(.callout).monospacedDigit().foregroundStyle(Ink.text.secondary).lineLimit(1)
             }
             VStack(alignment: .leading, spacing: 0) {
                 Text(title).typeRole(.headline).foregroundStyle(Ink.text.primary).tint(Ink.text.link).textSelection(.enabled)
@@ -51,8 +52,7 @@ public struct AgentResultCard<Report: View>: View {
         }
         .padding(Space.l)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Ink.surface.raised)
-        .overlay(Rectangle().strokeBorder(Ink.line.rule, lineWidth: Stroke.hairline))
+        .rounded(Radius.control, fill: Ink.surface.sectionCard, edge: Ink.line.rule)
     }
 
     private var foldButton: some View {
@@ -70,14 +70,11 @@ public struct AgentResultCard<Report: View>: View {
     }
 }
 
-/// The run's steps in one item card (`.card`): the orange header folds them, an accent column down the right.
+/// The run's steps in one section card (`.steps`, #69): a `// 9 STEPS` label line over a rule folds them.
 public struct AgentStepsCard<Rows: View>: View {
     let line: String
     @Binding var isOpen: Bool
     @ViewBuilder let rows: Rows
-
-    /// Square but for the top-right corner, as `TerminalEntryView`.
-    private static var shape: UnevenRoundedRectangle { UnevenRoundedRectangle(topTrailingRadius: Radius.l, style: .continuous) }
 
     public init(line: String, isOpen: Binding<Bool>, @ViewBuilder rows: () -> Rows) {
         self.line = line
@@ -88,28 +85,22 @@ public struct AgentStepsCard<Rows: View>: View {
     public var body: some View {
         VStack(spacing: 0) {
             Button { isOpen.toggle() } label: {
-                HStack(spacing: Space.m) {
-                    Text(verbatim: line).frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: Space.s) {
+                    Text(verbatim: "// \(line)").typeRole(.trackedLabel).frame(maxWidth: .infinity, alignment: .leading)
                     Image(systemName: Symbol.fold(isOpen: isOpen)).font(.system(size: Icon.l)).accessibilityHidden(true)
                 }
-                .typeRole(.mono).lineLimit(1)
-                .foregroundStyle(Ink.card.onHeader)
-                .padding(.horizontal, Space.s)
-                .frame(height: Size.cardHeader)
-                .background(Ink.card.header)
+                .lineLimit(1)
+                .foregroundStyle(Ink.text.secondary)
+                .padding(.horizontal, Space.l)
+                .frame(height: Size.stepsHead)
+                .overlay(alignment: .bottom) { Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline) }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityHint(isOpen ? "Hides the steps" : "Shows the steps")
             if isOpen { rows }
         }
-        .padding(.trailing, Size.cardEdge)
-        .overlay(alignment: .trailing) {
-            Rectangle().fill(Ink.card.accents[0]).frame(width: Size.cardEdge).accessibilityHidden(true)
-        }
-        .background(Ink.surface.raised)
-        .clipShape(Self.shape)
-        .background { Self.shape.fill(Ink.surface.raised).shadow(Shadow.card) }
+        .rounded(Radius.control, fill: Ink.surface.sectionCard, edge: Ink.line.rule)
     }
 }
 

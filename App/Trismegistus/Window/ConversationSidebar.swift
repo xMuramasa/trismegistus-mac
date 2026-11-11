@@ -84,14 +84,16 @@ struct ConversationSidebar: View {
             header(kind: kind, count: count)
             if count == 0 { empty(kind: kind, elsewhere: shown.elsewhere) }
             List(selection: $selection) {
+                // Each card carries its place in the list (`01`, #69).
+                let order = Dictionary(uniqueKeysWithValues: (shown.pinned + shown.rest).enumerated().map { ($1.id, $0 + 1) })
                 if !shown.pinned.isEmpty {
                     SectionLabel(title: "Pinned", count: shown.pinned.count).sidebarRow()
-                    ForEach(shown.pinned) { conversation($0) }
+                    ForEach(shown.pinned) { conversation($0, index: order[$0.id]) }
                     if !shown.rest.isEmpty {
-                        SectionLabel(title: "Conversations", count: shown.rest.count).padding(.top, Space.s).sidebarRow()
+                        SectionLabel(title: "Conversations", count: shown.rest.count).sidebarRow()
                     }
                 }
-                ForEach(shown.rest) { conversation($0) }
+                ForEach(shown.rest) { conversation($0, index: order[$0.id]) }
             }
             .sidebarList()
         }
@@ -136,9 +138,9 @@ struct ConversationSidebar: View {
     }
 
     /// A conversation's row, with its tag editor under it while that is open.
-    private func conversation(_ overview: SessionOverview) -> some View {
+    private func conversation(_ overview: SessionOverview, index: Int?) -> some View {
         VStack(spacing: 0) {
-            ConversationRow(overview: overview, isSelected: selection == overview.id,
+            ConversationRow(overview: overview, isSelected: selection == overview.id, index: index,
                             tags: tags[overview.id] ?? [], actions: actions, store: model.store)
             if actions.tagging == overview.id, let store = model.store {
                 TagEditor(
@@ -248,6 +250,7 @@ struct ChatKindTabs: View {
 private struct ConversationRow: View {
     let overview: SessionOverview
     let isSelected: Bool
+    let index: Int?
     let tags: [String]
     let actions: ConversationActions
     let store: SessionStore?
@@ -262,7 +265,7 @@ private struct ConversationRow: View {
                 preview: overview.info?.title == nil ? nil : overview.info?.preview, isSelected: isSelected,
                 isReadOnly: overview.isReadOnly, isPinned: overview.info?.isPinned == true,
                 runElapsed: overview.run.map { Self.clock(context.date.timeIntervalSince($0.startedAt)) },
-                needsApproval: overview.isWaitingForApproval, tags: tags)
+                needsApproval: overview.isWaitingForApproval, tags: tags, index: index)
             if let info = overview.info {
                 row.conversationChrome(info, isSelected: isSelected, actions: actions, store: store)
             } else {

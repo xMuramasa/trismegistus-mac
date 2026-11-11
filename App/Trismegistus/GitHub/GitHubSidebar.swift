@@ -112,16 +112,15 @@ struct GitHubSidebar: View {
                     .labelsHidden().pickerStyle(.menu)
                 }
             }
-            HStack(spacing: 0) {
-                TabChip(title: "Board", symbol: "rectangle.split.3x1", isOn: list == .board) { list = .board }
+            Segmented {
+                SegmentTab(title: "Board", symbol: "rectangle.split.3x1", isOn: list == .board) { list = .board }
                 // Open and Closed are one repo's issues.
                 if repo != nil {
-                    TabChip(title: "Open", symbol: "circle", isOn: list == .open) { list = .open }
-                    TabChip(title: "Closed", symbol: Symbol.check, isOn: list == .closed) { list = .closed }
+                    SegmentTab(title: "Open", symbol: "circle", isOn: list == .open) { list = .open }
+                    SegmentTab(title: "Closed", symbol: Symbol.check, isOn: list == .closed) { list = .closed }
                 }
-                TabChip(title: "Needs check", symbol: "eye", count: board.needsCheckCount, isOn: list == .needsCheck) { list = .needsCheck }
+                SegmentTab(title: "Needs check", symbol: "eye", count: board.needsCheckCount, isOn: list == .needsCheck) { list = .needsCheck }
             }
-            .rounded(Radius.m, fill: Ink.surface.raised, edge: Ink.line.strong)
         }
     }
 
@@ -245,43 +244,14 @@ private struct IssueRow: View {
                 if !priority.isEmpty { PriorityMark(priority: priority) }
                 if isClosed { Text("closed").typeRole(.label).foregroundStyle(ink.meta) }
             }
-            Text(title).typeRole(.headline).foregroundStyle(ink.title).lineLimit(2)
+            Text(title).typeRole(.quietTitle, weight: isSelected ? .semibold : nil).foregroundStyle(ink.title).lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
             if let caption { Text(caption).typeRole(.caption).foregroundStyle(ink.meta).lineLimit(1) }
         }
         .padding(.horizontal, Space.m).padding(.vertical, Space.s)
-        .frame(maxWidth: .infinity, minHeight: Size.row, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: Size.card, alignment: .leading)
         .rowGround(isSelected: isSelected)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-}
-
-/// One of the sidebar's tabs: an icon with an optional count beside it; the name is the tooltip and accessibility
-/// label. `FilterChip`'s look, which spells its word out and is too wide for four tabs.
-private struct TabChip: View {
-    let title: String
-    let symbol: String
-    var count: Int?
-    let isOn: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: Space.s) {
-                Image(systemName: symbol)
-                if let count { Text(verbatim: "\(count)").typeRole(.data).monospacedDigit() }
-            }
-            .typeRole(.button)
-            .padding(.horizontal, Space.m).padding(.vertical, Space.s)
-            .frame(maxWidth: .infinity)
-            .foregroundStyle(isOn ? Ink.selection : Ink.text.primary)
-            .background(isOn ? Ink.surface.inverse : .clear)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .help(title)
-        .accessibilityLabel(count.map { "\(title), \($0)" } ?? title)
-        .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 }

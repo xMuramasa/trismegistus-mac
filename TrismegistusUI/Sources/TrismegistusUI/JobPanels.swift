@@ -1,11 +1,9 @@
 import SwiftUI
 
 // The job detail's parts (#61), fed by `JobDetail`. Plain values only, no TrismegistusKit; here so the snapshots draw
-// the shipped views.
-// shortcut: `TrismegistusUITests/JobPanels.swift` is a copy of this file (a test fails if they differ); move this to
-// TrismegistusUI as public views and drop the copy.
+// the shipped views. Times and the cron line are Inter with tabular figures since #69.
 
-/// A raised box (`.panel`), under a head when it has one.
+/// A section card (`.card`, #69), under a `// LABEL` head over a rule when it has one.
 public struct JobPanel<Content: View>: View {
     let title: String?
     let content: Content
@@ -18,19 +16,18 @@ public struct JobPanel<Content: View>: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let title {
-                // `.prompt-head`: 1 pt ink under the label.
-                Text(title).typeRole(.label).foregroundStyle(Ink.text.primary)
-                    .padding(.bottom, Space.xs)
+                // `.card-lbl`: a rule under the label.
+                Text(verbatim: "// \(title)").typeRole(.trackedLabel).foregroundStyle(Ink.text.secondary)
+                    .padding(.bottom, Space.s)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .overlay(alignment: .bottom) { Rectangle().fill(Ink.line.strong).frame(height: Stroke.hairline) }
+                    .overlay(alignment: .bottom) { Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline) }
                     .padding(.bottom, Space.m)
             }
             content
         }
         .padding(Space.l)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Ink.surface.raised)
-        .overlay(Rectangle().strokeBorder(Ink.line.rule, lineWidth: Stroke.hairline))
+        .rounded(Radius.control, fill: Ink.surface.sectionCard, edge: Ink.line.rule)
     }
 }
 
@@ -111,35 +108,34 @@ public struct JobReadout: View {
             column("Cadence") {
                 Text(verbatim: cadence).typeRole(.headline).foregroundStyle(Ink.text.primary)
                 if let cron {
-                    Text(verbatim: cron).typeRole(.monoSmall).foregroundStyle(Ink.text.primary).textSelection(.enabled)
-                        .padding(.horizontal, Space.xs).background(Ink.surface.sunken)
+                    Text(verbatim: cron).typeRole(.micro, weight: .semibold).monospacedDigit().foregroundStyle(Ink.text.primary).textSelection(.enabled)
+                        .padding(.horizontal, Space.xs).padding(.vertical, 1).rounded(Radius.tag, fill: Ink.surface.sunken)
                 }
             }
             column("Next runs", ruled: true) {
                 if nextRuns.isEmpty {
-                    Text(verbatim: noRuns).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
+                    Text(verbatim: noRuns).typeRole(.callout).monospacedDigit().foregroundStyle(Ink.text.secondary)
                 } else {
-                    ForEach(nextRuns, id: \.self) { Text(verbatim: $0).typeRole(.monoSmall).foregroundStyle(Ink.text.primary) }
+                    ForEach(nextRuns, id: \.self) { Text(verbatim: $0).typeRole(.callout).monospacedDigit().foregroundStyle(Ink.text.primary) }
                 }
             }
             column("Last result", ruled: true) {
                 if let last {
                     HStack(spacing: Space.s) {
                         StatusChip(last.failed ? "failed" : "ok", kind: last.failed ? .err : .ok)
-                        Text(verbatim: last.time).typeRole(.monoSmall).foregroundStyle(Ink.text.primary)
+                        Text(verbatim: last.time).typeRole(.callout).monospacedDigit().foregroundStyle(Ink.text.primary)
                     }
-                    Text(verbatim: last.ago).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
+                    Text(verbatim: last.ago).typeRole(.callout).monospacedDigit().foregroundStyle(Ink.text.secondary)
                     if let error = last.error {
-                        Text(verbatim: error).typeRole(.monoSmall).foregroundStyle(Ink.text.error).textSelection(.enabled)
+                        Text(verbatim: error).typeRole(.callout).foregroundStyle(Ink.text.error).textSelection(.enabled)
                     }
                 } else {
-                    Text("no runs yet").typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
+                    Text("no runs yet").typeRole(.callout).foregroundStyle(Ink.text.secondary)
                 }
             }
         }
         .fixedSize(horizontal: false, vertical: true)
-        .background(Ink.surface.raised)
-        .overlay(Rectangle().strokeBorder(Ink.line.rule, lineWidth: Stroke.hairline))
+        .rounded(Radius.control, fill: Ink.surface.sectionCard, edge: Ink.line.rule)
     }
 
     private func column(_ label: String, ruled: Bool = false, @ViewBuilder content: () -> some View) -> some View {
@@ -219,9 +215,9 @@ public struct JobRunRow: View {
     public var body: some View {
         Button { onOpen() } label: {
             HStack(spacing: Space.s) {
-                Text(verbatim: time).typeRole(.monoSmall).foregroundStyle(Ink.text.primary)
+                Text(verbatim: time).typeRole(.callout).monospacedDigit().foregroundStyle(Ink.text.primary)
                 if let failed { StatusChip(failed ? "failed" : "ok", kind: failed ? .err : .ok) }
-                if let duration { Text(verbatim: duration).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary) }
+                if let duration { Text(verbatim: duration).typeRole(.callout).monospacedDigit().foregroundStyle(Ink.text.secondary) }
                 Spacer(minLength: Space.s)
                 Image(systemName: Symbol.chevronRight).font(.system(size: Icon.xs)).foregroundStyle(Ink.text.link)
                     .accessibilityHidden(true)
@@ -245,7 +241,7 @@ public struct JobValues: View {
             ForEach(rows, id: \.0) { label, value in
                 GridRow {
                     Text(label).typeRole(.caption).foregroundStyle(Ink.text.secondary)
-                    Text(value).typeRole(.monoSmall).foregroundStyle(Ink.text.primary).textSelection(.enabled)
+                    Text(value).typeRole(.callout).foregroundStyle(Ink.text.primary).textSelection(.enabled)
                 }
             }
         }

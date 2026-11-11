@@ -111,7 +111,7 @@ struct GitHubIssueView: View {
             ActionError(message: actionError)
         }
         .padding(.horizontal, Space.l).padding(.vertical, Space.m)
-        .background(Ink.surface.raised)
+        .background(Ink.surface.frosted)
     }
 
     /// The row with as many tags as fit: asked inside the row's own layout, its spacer would take half their room.
@@ -188,15 +188,14 @@ struct GitHubIssueView: View {
     private func post(author: String, date: String, text: String) -> some View {
         VStack(alignment: .leading, spacing: Space.s) {
             HStack(alignment: .firstTextBaseline, spacing: Space.s) {
-                Text(author).typeRole(.label).foregroundStyle(Ink.text.primary)
+                Text(verbatim: "// \(author)").typeRole(.trackedLabel).foregroundStyle(Ink.text.secondary)
                 Text(Self.age(date)).typeRole(.callout).monospacedDigit().foregroundStyle(Ink.text.secondary)
             }
             GitHubMarkdown(text: text)
         }
         .padding(Space.l)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Ink.surface.raised)
-        .overlay(Rectangle().strokeBorder(Ink.line.rule, lineWidth: Stroke.hairline))
+        .rounded(Radius.control, fill: Ink.surface.sectionCard, edge: Ink.line.rule)
     }
 
     private var composer: some View {
@@ -207,8 +206,7 @@ struct GitHubIssueView: View {
                 .foregroundStyle(Ink.text.primary)
                 .lineLimit(3...12)
                 .padding(Space.m)
-                .background(Ink.surface.raised)
-                .overlay(Rectangle().strokeBorder(Ink.line.rule, lineWidth: Stroke.hairline))
+                .rounded(Radius.control, fill: Ink.surface.raised, edge: Ink.line.rule)
             EndfieldButton("Comment", symbol: Symbol.send) { comment() }
                 .disabled(busy || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }

@@ -4,10 +4,18 @@ public enum EndfieldButtonKind: Sendable {
     case primary, secondary, danger, quiet
 }
 
+public extension EnvironmentValues {
+    /// Controls drawn the #69 (design 13 #a3) way: thin rule edges, `control` corners, tracked small caps, no ink. On in
+    /// the list column, the detail headers and the sections' details; off in the chat's transcript and composer, which
+    /// keep #68's look until their own redesign, and in the popover.
+    @Entry var hairlineControls = false
+}
+
 /// A chip with `m` corners (#68), a 1 px edge and a trailing SF Symbol. `iconOnly` hides the word but keeps it as tooltip
 /// and accessibility label. Pressed inverts to ink with yellow text; disabled goes sunken and muted (dark-panel on steel).
-/// On steel a secondary button has no fill and a light edge and word (`.btn.steel`, #57). In the window's list column a
-/// quiet icon-only button is a sunken square with an ink glyph (`.ib`, a list header's action, #68).
+/// On steel a secondary button has no fill and a light edge and word (`.btn.steel`, #57). With `hairlineControls` (#69)
+/// a thin-edged `control` rectangle: yellow for the primary, white with a rule edge otherwise, sunken when pressed; a
+/// quiet icon-only button is `IconCell`'s face (`.ib`).
 public struct EndfieldButtonStyle: ButtonStyle {
     let kind: EndfieldButtonKind
     let title: String
@@ -31,10 +39,13 @@ public struct EndfieldButtonStyle: ButtonStyle {
         @Environment(\.isEnabled) private var isEnabled
         @Environment(\.onSidebar) private var onSidebar
         @Environment(\.onSteel) private var onSteel
+        @Environment(\.hairlineControls) private var hairline
 
-        private var isBlock: Bool { onSidebar && style.kind == .quiet && style.iconOnly }
+        private var isA3: Bool { hairline || onSidebar }
+        private var isBlock: Bool { isA3 && style.kind == .quiet && style.iconOnly }
 
         private var palette: (fill: Color, edge: Color, text: Color) {
+            if isA3 { return a3Palette }
             if !isEnabled {
                 return onSteel ? (Ink.surface.darkPanel, Ink.text.secondary, Ink.text.onDark) : (Ink.surface.sunken, Ink.line.rule, Ink.text.muted)
             }
@@ -49,8 +60,22 @@ public struct EndfieldButtonStyle: ButtonStyle {
             }
         }
 
+        /// `.btn` in #a3: yellow primary, white with a rule edge, sunken while pressed; a quiet icon button white at
+        /// 70 % in the list column, bare in a header.
+        private var a3Palette: (fill: Color, edge: Color, text: Color) {
+            if !isEnabled { return (Ink.surface.sunken, Ink.line.rule, Ink.text.muted) }
+            if configuration.isPressed { return (Ink.surface.sunken, Ink.text.secondary, Ink.text.primary) }
+            switch style.kind {
+            case .primary: return (Ink.selection, Ink.selection, Ink.text.primary)
+            case .secondary: return (Ink.surface.raised, Ink.line.rule, Ink.text.primary)
+            case .danger: return (Ink.surface.raised, Ink.line.rule, Ink.text.error)
+            case .quiet: return isBlock ? (onSidebar ? Ink.surface.control : .clear, Ink.line.rule, Ink.text.primary) : (.clear, .clear, Ink.text.primary)
+            }
+        }
+
         var body: some View {
             let p = palette
+            let radius = isA3 ? Radius.control : Radius.m
             HStack(spacing: Space.s) {
                 if !style.iconOnly { configuration.label.textCase(.uppercase).lineLimit(1) }
                 // Beside the word the symbol is decoration: as its own element it read the label twice to VoiceOver
@@ -61,13 +86,14 @@ public struct EndfieldButtonStyle: ButtonStyle {
             }
             // A button never wraps its word: in a tight row it keeps its size and the row has to make room.
             .fixedSize()
-            .typeRole(.button)
+            .typeRole(isA3 ? .controlLabel : .button)
             .foregroundStyle(p.text)
             .padding(.vertical, isBlock ? 0 : Space.s)
             .padding(.horizontal, isBlock ? 0 : style.iconOnly ? Space.s : Space.m)
             .frame(width: isBlock ? Size.control : nil, height: isBlock ? Size.control : nil)
-            .rounded(Radius.m, fill: p.fill, edge: p.edge)
-            .contentShape(RoundedRectangle(cornerRadius: Radius.m, style: .continuous))
+            .frame(minHeight: isA3 ? Size.control : nil)
+            .rounded(radius, fill: p.fill, edge: p.edge)
+            .contentShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
             .help(style.title)
             .accessibilityLabel(style.title)
         }
@@ -103,8 +129,8 @@ public struct EndfieldButton: View {
 }
 
 /// `.plain` text field in an `m` container: rest sunken with a rule edge, focused raised with an ink edge, error red.
-/// In the window's list column: white with an ink edge and the soft ink shadow, yellow while focused (#65), and `hint`
-/// (`⌘K`) as a key cap at its end.
+/// In the window's list column (#69): white with a rule hairline and `control` corners, a blue edge while focused, and
+/// `hint` (`⌘K`) as a key cap at its end.
 public struct EndfieldTextField: View {
     let placeholder: String
     @Binding var text: String
@@ -118,6 +144,7 @@ public struct EndfieldTextField: View {
     @FocusState private var focused: Bool
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.onSidebar) private var onSidebar
+    @Environment(\.hairlineControls) private var hairline
 
     public init(
         _ placeholder: String, text: Binding<String>, isError: Bool = false, ground: Color = Ink.surface.sunken,
@@ -136,33 +163,38 @@ public struct EndfieldTextField: View {
         HStack(spacing: Space.s) {
             TextField(placeholder, text: $text, prompt: Text(placeholder).foregroundStyle(Ink.text.secondary))
                 .textFieldStyle(.plain)
-                .typeRole(onSidebar ? .headline : .body)
+                .typeRole(.body)
                 .foregroundStyle(isEnabled ? Ink.text.primary : Ink.text.muted)
                 .focused(focus ?? $focused)
             if let hint { KeyCap(hint) }
         }
-        .padding(.leading, Space.m).padding(.trailing, hint == nil ? Space.m : Space.xs)
+        .padding(.leading, onSidebar ? Space.s : Space.m).padding(.trailing, hint == nil ? Space.m : Space.xs)
         .frame(height: Size.control)
-        // The shadow on the ground alone: over the field it would blur the text's glyphs inside it.
-        .background {
-            RoundedRectangle(cornerRadius: Radius.m, style: .continuous)
-                .fill(isFocused || onSidebar ? Ink.surface.raised : ground)
-                .shadow(!onSidebar ? Shadow.none : isFocused ? Shadow.blockFocus : Shadow.block)
-        }
-        .edge(isError ? Ink.text.error : isFocused || onSidebar ? Ink.line.strong : Ink.line.rule, radius: Radius.m)
+        .rounded(isA3 ? Radius.control : Radius.m, fill: isFocused || isA3 ? Ink.surface.raised : ground, edge: edge(focused: isFocused))
+    }
+
+    /// In a section's detail (#69) the field has a contour edge; focus is blue there and in the list column.
+    private var isA3: Bool { onSidebar || hairline }
+
+    private func edge(focused: Bool) -> Color {
+        if isError { return Ink.text.error }
+        if isA3 { return focused ? Ink.text.link : onSidebar ? Ink.line.rule : Ink.line.contour }
+        return focused ? Ink.line.strong : Ink.line.rule
     }
 }
 
-/// A shortcut as a key cap (`⌘K`, `kbd`): Inter on raised with a rule edge, `s` corners.
+/// A shortcut as a key cap (`⌘K`, `kbd`): Inter on raised with a rule edge, `s` corners; in the window's list column
+/// (#69) 10 pt semibold on sunken, no edge, `tag` corners.
 public struct KeyCap: View {
     let key: String
+    @Environment(\.onSidebar) private var onSidebar
 
     public init(_ key: String) { self.key = key }
 
     public var body: some View {
-        Text(verbatim: key).typeRole(.caption, weight: .semibold).foregroundStyle(Ink.text.secondary).lineLimit(1).fixedSize()
+        Text(verbatim: key).typeRole(onSidebar ? .micro : .caption, weight: .semibold).foregroundStyle(Ink.text.secondary).lineLimit(1).fixedSize()
             .padding(.horizontal, Space.xs).padding(.vertical, Space.xxs)
-            .rounded(Radius.s, fill: Ink.surface.raised, edge: Ink.line.rule)
+            .rounded(onSidebar ? Radius.tag : Radius.s, fill: onSidebar ? Ink.surface.sunken : Ink.surface.raised, edge: onSidebar ? .clear : Ink.line.rule)
             .accessibilityHidden(true)
     }
 }

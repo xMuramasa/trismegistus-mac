@@ -31,7 +31,7 @@ struct ContextMeter: View {
         let canHandOff = compressing && SessionCapabilities(info).canHandOff
         let label = HStack(spacing: Space.s) {
             Text(summary(window: window, percent: percent))
-                .typeRole(.callout).monospacedDigit().foregroundStyle(color(band, text: true)).lineLimit(1).fixedSize()
+                .typeRole(.caption).monospacedDigit().foregroundStyle(color(band, text: true)).lineLimit(1).fixedSize()
             if let percent { SegmentBar(percent: percent, color: color(band, text: false)) }
         }
         .contentShape(Rectangle())
@@ -80,7 +80,7 @@ struct ContextMeter: View {
             }
         }
         return switch band {
-        case .normal: text ? Ink.text.secondary : Ink.line.strong
+        case .normal: Ink.text.secondary
         case .warn: text ? Ink.text.primary : Ink.status.warn
         case .bad, .critical: Ink.text.error
         }
@@ -126,8 +126,10 @@ private struct SegmentBar: View {
         let filled = ContextEstimate.filled(percent: percent)
         HStack(spacing: 1) {
             ForEach(0..<10, id: \.self) { i in
-                Rectangle().fill(i < filled ? color : onSteel ? .clear : Ink.surface.sunken)
-                    .overlay(Rectangle().strokeBorder(i < filled ? Ink.line.strong : onSteel ? Ink.line.outlineOnDark : Ink.line.rule, lineWidth: Stroke.hairline))
+                Rectangle().fill(i < filled ? color : onSteel ? .clear : Ink.line.rule)
+                    .overlay {
+                        if onSteel { Rectangle().strokeBorder(i < filled ? Ink.line.strong : Ink.line.outlineOnDark, lineWidth: Stroke.hairline) }
+                    }
                     .frame(width: Size.meterCell.width, height: Size.meterCell.height)
             }
         }

@@ -30,14 +30,16 @@ final class WindowChromeTests: XCTestCase {
             var body: some View {
                 List(selection: $selection) {
                     ForEach(0..<3, id: \.self) { i in
-                        // Not `isSelected`: the selected card's glow lies in those margins too.
+                        // The selected cell's margins carry the backing (#69); the card itself not `isSelected`: its
+                        // glow and bracket corners lie in those margins too.
                         SessionRowView(name: "Row \(i)", source: .trismegistus, activity: "now")
-                            .sidebarCardCell().tag(i).sidebarRow()
+                            .sidebarCardCell(isSelected: i == selection).tag(i).sidebarRow()
                     }
                 }
                 .sidebarList()
                 .environment(\.onSidebar, true)
-                .background(Ink.surface.sidebar)
+                // The list's translucent ground over paper, opaque: what the backing matches.
+                .background(Ink.surface.sidebarSolid)
                 .frame(width: 260, height: 190)
             }
         }

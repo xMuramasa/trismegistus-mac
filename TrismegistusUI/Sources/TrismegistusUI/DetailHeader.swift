@@ -6,9 +6,9 @@ public extension EnvironmentValues {
     @Entry var onSteel = false
 }
 
-/// The head of every detail (#57, white since #68 took the top bar away): 52 pt on white, an optional leading mark (the
-/// conversation's avatar), the title and the subtitle (`source · run id · started time`) on the left, the readings and
-/// actions on the right; Endfield's 4 pt title rule under it, edge to edge.
+/// The head of every detail (#57; #69 design 13 #a3): 52 pt, frosted white, an optional leading mark (the
+/// conversation's 28 pt avatar), the title (14 pt, 600) and the subtitle (`source · run id · started time`, 11 pt) on
+/// the left, the readings and actions (thin-edged) on the right; the 2 pt title rule under it, edge to edge.
 public struct DetailHeader<Mark: View, Title: View, Subtitle: View, Trailing: View>: View {
     let mark: Mark
     let title: Title
@@ -31,20 +31,38 @@ public struct DetailHeader<Mark: View, Title: View, Subtitle: View, Trailing: Vi
                 mark
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: Space.s) {
-                        title.typeRole(.title, weight: .bold).foregroundStyle(Ink.text.primary).accessibilityAddTraits(.isHeader)
+                        title.typeRole(.detailTitle).foregroundStyle(Ink.text.primary).accessibilityAddTraits(.isHeader)
                     }
-                    subtitle.typeRole(.callout).monospacedDigit().foregroundStyle(Ink.text.secondary)
+                    subtitle.typeRole(.caption).monospacedDigit().foregroundStyle(Ink.text.secondary)
                 }
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 HStack(spacing: Space.s) { trailing }.fixedSize(horizontal: true, vertical: false)
+                    .environment(\.hairlineControls, true)
             }
             .foregroundStyle(Ink.text.primary)
             .padding(.leading, Space.xxl).padding(.trailing, Space.l).padding(.vertical, Space.s)
             .frame(minHeight: Size.sidebarHead)
-            .background(Ink.surface.raised)
-            SegmentRule((Size.titleRule.magenta, Size.titleRule.yellow, Size.titleRule.green), height: Size.titleRule.height, stretches: true)
+            .background(Ink.surface.frosted)
+            DetailRule()
         }
+    }
+}
+
+/// The detail header's title rule (#69): a 2 pt rule-grey line with an 8 pt dark-panel tick and the 56 pt yellow
+/// segment after a gap.
+public struct DetailRule: View {
+    public init() {}
+
+    public var body: some View {
+        HStack(spacing: Space.xs) {
+            Rectangle().fill(Ink.surface.darkPanel).frame(width: Size.titleRule.tick)
+            Rectangle().fill(Ink.selection).frame(width: Size.titleRule.yellow)
+            Spacer(minLength: 0)
+        }
+        .frame(height: Size.titleRule.height)
+        .background(Ink.line.rule)
+        .accessibilityHidden(true)
     }
 }
 

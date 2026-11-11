@@ -13,13 +13,16 @@ public struct TypeSpec: Sendable {
 
     /// The families type roles asked for since the last reset (tests: the sidebar's text uses no mono face, #65).
     nonisolated(unsafe) static var drawn: Set<FontFamily> = []
+    /// The weights asked for since the last reset (tests: nothing in the window above 600, #69).
+    nonisolated(unsafe) static var drawnWeights: Set<Int> = []
 
     /// The bundled face, or its `weight` sibling (one of `weights`; JetBrains Mono stops at bold).
     public func font(weight: Font.Weight? = nil) -> Font {
         Fonts.register()
         Self.drawn.insert(family)
-        let face = weight.flatMap { Self.weights[$0] }.flatMap { family.faces[$0] } ?? family.faces[self.weight]!
-        return .custom(face, fixedSize: size)
+        let chosen = weight.flatMap { Self.weights[$0] }.flatMap { family.faces[$0] != nil ? $0 : nil } ?? self.weight
+        Self.drawnWeights.insert(chosen)
+        return .custom(family.faces[chosen]!, fixedSize: size)
     }
 }
 

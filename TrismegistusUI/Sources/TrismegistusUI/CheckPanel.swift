@@ -57,11 +57,21 @@ public struct CheckPanel: View {
                 open
             }
         }
-        .padding(.top, Stroke.mark + Space.m).padding([.horizontal, .bottom], Space.l)
+        .padding(.top, Stroke.accent + Space.m).padding([.horizontal, .bottom], Space.l)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Ink.surface.raised)
-        .edge(Ink.line.rule)
-        .overlay(alignment: .top) { Rectangle().fill(Ink.selection).frame(height: Stroke.mark) }
+        // #69: a section card whose yellow 2 pt top line glows faintly.
+        .background {
+            let shape = RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+            ZStack {
+                shape.fill(Ink.surface.sectionCard).shadow(Shadow.checkGlow)
+                VStack(spacing: 0) {
+                    Rectangle().fill(Ink.selection).frame(height: Stroke.accent)
+                    Spacer(minLength: 0)
+                }
+                .clipShape(shape)
+            }
+        }
+        .edge(Ink.line.rule, radius: Radius.control)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(result?.line ?? "Needs your check")
     }
@@ -69,11 +79,12 @@ public struct CheckPanel: View {
     private var open: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: Space.s) {
-                Rectangle().fill(Ink.marker).frame(width: Size.marker, height: Size.marker)
-                Text("Needs your check").textCase(.uppercase).typeRole(.label).foregroundStyle(Ink.text.primary)
-                if !lines.isEmpty { Text(verbatim: reading).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary) }
+                Rectangle().fill(Ink.marker).frame(width: Size.marker, height: Size.marker).rotationEffect(.degrees(45))
+                    .accessibilityHidden(true)
+                Text("Needs your check").typeRole(.trackedLabel).foregroundStyle(Ink.text.secondary)
+                if !lines.isEmpty { Text(verbatim: reading).typeRole(.callout).monospacedDigit().foregroundStyle(Ink.text.secondary) }
                 Spacer(minLength: Space.s)
-                Text(source).typeRole(.monoSmall).foregroundStyle(Ink.text.secondary).lineLimit(1)
+                Text(source).typeRole(.callout).monospacedDigit().foregroundStyle(Ink.text.secondary).lineLimit(1)
             }
             .padding(.bottom, Space.m)
             if lines.isEmpty {
@@ -116,7 +127,7 @@ private struct LookRow: View {
     var body: some View {
         Button(action: toggle) {
             HStack(alignment: .top, spacing: Space.s) {
-                Text(verbatim: "\(number)").typeRole(.monoSmall).foregroundStyle(Ink.text.secondary)
+                Text(verbatim: "\(number)").typeRole(.callout).monospacedDigit().foregroundStyle(Ink.text.secondary)
                     .frame(width: Space.l, height: Size.taskBox, alignment: .trailing)
                 TaskBox(done: isTicked)
                 Text(line).typeRole(.body).foregroundStyle(isTicked ? Ink.text.secondary : Ink.text.primary)
@@ -161,7 +172,7 @@ public struct TaskReading: View {
     public var body: some View {
         HStack(spacing: Space.xs) {
             Image(systemName: Symbol.check).font(.system(size: Icon.l))
-            Text(verbatim: reading).typeRole(.mono)
+            Text(verbatim: reading).typeRole(.callout).monospacedDigit()
         }
         .padding(.trailing, Space.s)
         .help("Checklist done / total")
@@ -170,15 +181,16 @@ public struct TaskReading: View {
     }
 }
 
-/// A sunken mono chip in a readout row (`.tag`).
+/// A sunken chip in a readout row (`.tag`; Inter with `tag` corners since #69).
 public struct ReadoutTag: View {
     let text: String
 
     public init(_ text: String) { self.text = text }
 
     public var body: some View {
-        Text(verbatim: text).typeRole(.monoSmall).lineLimit(1).fixedSize()
-            .padding(.horizontal, Space.xs).background(Ink.surface.sunken)
+        Text(verbatim: text).typeRole(.micro).lineLimit(1).fixedSize()
+            .padding(.horizontal, Space.xs).frame(minHeight: Size.chip)
+            .rounded(Radius.tag, fill: Ink.surface.sunken)
     }
 }
 
@@ -196,7 +208,7 @@ public struct ReadoutTags: View {
         HStack(spacing: Space.xs) {
             if tags.isEmpty { ReadoutTag("none") }
             ForEach(tags.prefix(shown), id: \.self) { ReadoutTag($0) }
-            if shown < tags.count { Text(verbatim: "+\(tags.count - shown)").typeRole(.monoSmall).foregroundStyle(Ink.text.secondary).lineLimit(1).fixedSize() }
+            if shown < tags.count { Text(verbatim: "+\(tags.count - shown)").typeRole(.micro, weight: .semibold).foregroundStyle(Ink.text.secondary).lineLimit(1).fixedSize() }
         }
         .help(tags.joined(separator: ", "))
         .accessibilityElement(children: .ignore)

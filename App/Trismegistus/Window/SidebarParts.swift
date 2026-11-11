@@ -66,40 +66,6 @@ struct SidebarNote: View {
     }
 }
 
-/// A sidebar row: title, then one meta line, with marks on the right.
-struct SidebarRow<Marks: View>: View {
-    let title: String
-    let meta: String
-    let isSelected: Bool
-    var titleLines = 1
-    @ViewBuilder var marks: (RowInk) -> Marks
-
-    @Environment(\.onSidebar) private var onSidebar
-
-    var body: some View {
-        let ink = RowInk(onSidebar: onSidebar, isSelected: isSelected)
-        HStack(spacing: Space.s) {
-            VStack(alignment: .leading, spacing: Space.xs) {
-                Text(title).typeRole(.headline).foregroundStyle(ink.title).lineLimit(titleLines)
-                Text(meta).typeRole(.callout).monospacedDigit().foregroundStyle(ink.meta).lineLimit(1)
-            }
-            Spacer(minLength: Space.s)
-            marks(ink)
-        }
-        .padding(.horizontal, Space.m).padding(.vertical, Space.s)
-        .frame(maxWidth: .infinity, minHeight: Size.row, alignment: .leading)
-        .rowGround(isSelected: isSelected)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-}
-
-extension SidebarRow where Marks == EmptyView {
-    init(title: String, meta: String, isSelected: Bool, titleLines: Int = 1) {
-        self.init(title: title, meta: meta, isSelected: isSelected, titleLines: titleLines, marks: { _ in EmptyView() })
-    }
-}
-
 /// A detail's empty state: the section's symbol and one line.
 struct SectionEmpty: View {
     let symbol: String

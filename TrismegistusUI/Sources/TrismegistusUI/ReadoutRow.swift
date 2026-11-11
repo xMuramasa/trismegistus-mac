@@ -49,8 +49,8 @@ public struct ReadoutMenu: View {
     }
 }
 
-/// A compact raised row of readings (#57, `.readout`, `.read`): `ReadoutCell`s with a 1 pt rule between them and a 1 pt
-/// rule under the row; `trailing` sits at its end (GitHub's Close issue).
+/// A compact frosted row of readings (#57, `.readout`, `.rostrip`; #69 frosted white): `ReadoutCell`s with a 1 pt rule
+/// between them and a 1 pt rule under the row; `trailing` sits at its end (GitHub's Close issue).
 public struct ReadoutRow<Cells: View, Trailing: View>: View {
     let cells: Cells
     let trailing: Trailing
@@ -76,7 +76,7 @@ public struct ReadoutRow<Cells: View, Trailing: View>: View {
         }
         .padding(.horizontal, Space.l)
         .frame(maxWidth: .infinity, minHeight: Size.rowCompact)
-        .background(Ink.surface.raised)
+        .background(Ink.surface.frosted)
         .overlay(alignment: .bottom) { Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairline) }
     }
 }

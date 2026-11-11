@@ -56,8 +56,8 @@ struct ModelLabel: View {
             Image(systemName: Symbol.chevronDown).font(.system(size: Icon.xs, weight: .semibold))
         }
         .foregroundStyle(onSteel ? Ink.text.onDark : Ink.text.primary)
-        .padding(.horizontal, Space.s).padding(.vertical, Space.xs)
-        .edge(onSteel ? Ink.line.outlineOnDark : Ink.line.rule, radius: Radius.l)
+        .padding(.leading, Space.m).padding(.trailing, Space.s).frame(height: Size.control)
+        .rounded(Radius.pill, fill: onSteel ? .clear : Ink.surface.raised, edge: onSteel ? Ink.line.outlineOnDark : Ink.line.rule)
         .contentShape(Rectangle())
     }
 }

@@ -22,43 +22,75 @@ public extension View {
     /// A list column `List`: keyboard selection as before, no ground of its own.
     func sidebarList() -> some View { listStyle(.plain).scrollContentBackground(.hidden) }
 
-    /// A row of a list column, edge to edge. Every row sets `listRowBackground`: it replaces the row view's ground,
-    /// where macOS draws its selection highlight (a thin blue line showed past the rows otherwise).
+    /// A row of a list column, edge to edge, on the column's own ground. Every row sets `listRowBackground`: it replaces
+    /// the row view's ground, where macOS draws its selection highlight (a thin blue line showed past the rows
+    /// otherwise).
     func sidebarRow() -> some View {
-        listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Ink.surface.sidebar)
+        listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Color.clear)
     }
 
-    /// A conversation card's cell: 2 pt above and under the 56 pt card, a 60 pt pitch (#68). A `List` clips each row,
-    /// so the selected card's cell is 8 pt taller on each side for its frame and arcs. The backing runs under the list's
-    /// 8 pt side margins, where macOS still draws its selection highlight (`RowGround`).
+    /// A card's cell: 2 pt above and under the 46 pt card, a 50 pt pitch (#69). A `List` clips each row, so the selected
+    /// card's cell is 8 pt taller on each side for its bracket corners.
     func sidebarCardCell(isSelected: Bool = false) -> some View {
-        padding(.vertical, isSelected ? Space.s : Space.xxs).background { Ink.surface.sidebar.padding(.horizontal, -Space.s) }
+        padding(.vertical, isSelected ? Space.s : Space.xxs).background { SelectionMargins(isSelected: isSelected) }
     }
 }
 
-/// `APP // 10`: ExtraBold ink, the slashes secondary and lighter (#68). A title that doesn't fit shrinks rather than
-/// truncating its count.
+/// macOS keeps an 8 pt inset on list rows and draws its selection highlight (blue in a key window) across the full
+/// row, so it showed in those margins beside the selected row. Opaque strips in the column's ground over the margins
+/// hide it whatever the window state; other rows leave the translucent ground alone.
+struct SelectionMargins: View {
+    let isSelected: Bool
+
+    var body: some View {
+        if isSelected {
+            HStack(spacing: 0) {
+                Ink.surface.sidebarSolid.frame(width: Space.s)
+                Spacer(minLength: 0)
+                Ink.surface.sidebarSolid.frame(width: Space.s)
+            }
+            .padding(.horizontal, -Space.s)
+        }
+    }
+}
+
+/// The list header's title (#69): `// APP` in tracked caps, then the count as the one large numeral; a title without a
+/// count (`All conversations`) is the label alone. `APP // 10` is the call sites' form: the part after `//` is the
+/// count, and a word after the number (`14 open`) is a second label.
 public struct SidebarTitle: View {
     let title: String
 
     public init(_ title: String) { self.title = title }
 
+    /// `GitHub // 14 open` → (`GitHub`, `14`, `open`).
+    static func parts(_ title: String) -> (label: String, count: String?, suffix: String?) {
+        guard let slashes = title.range(of: "//") else { return (title, nil, nil) }
+        let label = title[..<slashes.lowerBound].trimmingCharacters(in: .whitespaces)
+        let rest = title[slashes.upperBound...].trimmingCharacters(in: .whitespaces)
+        let count = rest.prefix { $0.isNumber }
+        let suffix = rest.dropFirst(count.count).trimmingCharacters(in: .whitespaces)
+        return (label, count.isEmpty ? rest : String(count), suffix.isEmpty || count.isEmpty ? nil : suffix)
+    }
+
     public var body: some View {
-        var text = AttributedString(title.uppercased())
-        if let slashes = text.range(of: "//") {
-            text[slashes].foregroundColor = Ink.text.secondary
-            text[slashes].font = TypeRole.columnTitle.spec.font(weight: .semibold)
+        let parts = Self.parts(title)
+        HStack(alignment: .firstTextBaseline, spacing: Space.s) {
+            Text(verbatim: "// \(parts.label)").typeRole(.columnLabel).foregroundStyle(Ink.text.secondary)
+            if let count = parts.count {
+                Text(verbatim: count).typeRole(.count).monospacedDigit().foregroundStyle(Ink.text.onSidebar)
+            }
+            if let suffix = parts.suffix { Text(verbatim: suffix).typeRole(.columnLabel).foregroundStyle(Ink.text.secondary) }
         }
-        return Text(text).typeRole(.columnTitle).monospacedDigit()
-            .foregroundStyle(Ink.text.onSidebar)
-            .lineLimit(1).minimumScaleFactor(0.5)
-            .accessibilityAddTraits(.isHeader)
+        .lineLimit(1).minimumScaleFactor(0.5)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title.replacingOccurrences(of: "//", with: ""))
+        .accessibilityAddTraits(.isHeader)
     }
 }
 
-/// The list column's header (#68): `leading` (`…`; first, while the panel is hidden, room for the window's buttons and
-/// the sidebar toggle), the title centred, `trailing` (the yellow `+`, a section's own actions). Both sides take the
-/// same width, so the title stays in the middle.
+/// The list column's header (#69): `leading` (`…`; first, while the panel is hidden, room for the window's buttons and
+/// the sidebar toggle), the title centred, `trailing` (the yellow `+`, a section's own actions), and a short diagonal
+/// hatch left of the actions. Both sides take the same width, so the title stays in the middle.
 public struct ListHeader<Leading: View, Trailing: View>: View {
     let title: String
     let leading: Leading
@@ -86,15 +118,39 @@ public struct ListHeader<Leading: View, Trailing: View>: View {
         }
         .padding(.horizontal, Space.l)
         .frame(height: Size.sidebarHead)
+        .overlay(alignment: .topTrailing) {
+            Hatch().stroke(Ink.line.contour, lineWidth: Stroke.hairline)
+                .frame(width: Size.hatch.headWidth, height: Size.hatch.headHeight)
+                .clipped()
+                .padding(.top, Space.xxl).padding(.trailing, Size.hatch.inset)
+                .accessibilityHidden(true)
+        }
     }
 }
 
-/// The list header's `+`: a yellow `m` square with an ink edge and glyph, the region's primary action. While the open
-/// conversation runs Steer is the yellow action, and `+` steps down to white (#68).
+/// Short diagonal lines (`/`) across the rect, `Size.hatch.pitch` apart: the hatch in the list header and on the selected
+/// card's top edge. Clip it to its frame.
+struct Hatch: Shape {
+    func path(in rect: CGRect) -> Path {
+        Path { p in
+            var x = rect.minX - rect.height
+            while x < rect.maxX {
+                p.move(to: CGPoint(x: x, y: rect.maxY))
+                p.addLine(to: CGPoint(x: x + rect.height, y: rect.minY))
+                x += Size.hatch.pitch
+            }
+        }
+    }
+}
+
+/// The list header's `+`: yellow with a yellow edge and `control` corners, the region's primary action (a yellow glow
+/// under the pointer). While the open conversation runs Steer is the yellow action, and `+` steps down to a thin-edged
+/// white button.
 public struct PlusButton: View {
     let title: String
     let isPrimary: Bool
     let action: () -> Void
+    @State private var hovered = false
 
     public init(_ title: String, isPrimary: Bool = true, action: @escaping () -> Void) {
         self.title = title
@@ -103,20 +159,55 @@ public struct PlusButton: View {
     }
 
     public var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
         Button(action: action) {
-            Image(systemName: Symbol.plus).font(.system(size: Icon.panel)).foregroundStyle(Ink.text.primary)
+            Image(systemName: Symbol.plus).font(.system(size: Icon.section)).foregroundStyle(Ink.text.primary)
                 .frame(width: Size.control, height: Size.control)
-                .rounded(Radius.m, fill: isPrimary ? Ink.selection : Ink.surface.raised, edge: Ink.line.strong)
-                .contentShape(RoundedRectangle(cornerRadius: Radius.m, style: .continuous))
+                .background {
+                    shape.fill(isPrimary ? Ink.selection : hovered ? Ink.surface.raised : Ink.surface.control)
+                        .shadow(isPrimary && hovered ? Shadow.plusGlow : Shadow.none)
+                }
+                .overlay(shape.strokeBorder(isPrimary ? Ink.selection : Ink.line.rule, lineWidth: Stroke.hairline))
+                .contentShape(shape)
         }
         .buttonStyle(.plain)
+        .onHover { hovered = $0 }
         .help(title)
         .accessibilityLabel(title)
     }
 }
 
-/// An ink slab in the list column (PINNED, CONVERSATIONS): inset 8 pt like the cards, `m` corners, a yellow square and
-/// label (with a fold chevron when the group folds), the group's count at the right.
+/// `// TITLE ———— 04`: a tracked label, a hairline running to the trailing text. In the list column (`onPanel` off)
+/// secondary with a contour line; on the section panel contour with a faint white line and the trailing text muted.
+public struct LabelLine: View {
+    let title: String
+    let trailing: String?
+    let onPanel: Bool
+
+    public init(title: String, trailing: String? = nil, onPanel: Bool = false) {
+        self.title = title
+        self.trailing = trailing
+        self.onPanel = onPanel
+    }
+
+    public var body: some View {
+        HStack(spacing: Space.s) {
+            Text(verbatim: "// \(title)").typeRole(.trackedLabel).lineLimit(1).fixedSize()
+                .foregroundStyle(onPanel ? Ink.text.onPanelQuiet : Ink.text.secondary)
+            Rectangle().fill(onPanel ? Ink.line.panelGuide : Ink.line.contour).frame(height: Stroke.hairline)
+            if let trailing {
+                Text(verbatim: trailing).typeRole(.micro, weight: .semibold).monospacedDigit().fixedSize()
+                    .foregroundStyle(onPanel ? Ink.text.muted : Ink.text.secondary)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(trailing.map { "\(title), \($0)" } ?? title)
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// A section head in the list column (PINNED, CONVERSATIONS, a board status): a 24 pt `// PINNED ——— 04` label line,
+/// 16 pt in, with a fold chevron after the count when the group folds.
 public struct SectionHead: View {
     let title: String
     let count: Int?
@@ -130,46 +221,42 @@ public struct SectionHead: View {
 
     public var body: some View {
         HStack(spacing: Space.s) {
-            Rectangle().fill(Ink.selection).frame(width: Size.marker, height: Size.marker)
-            Text(title).typeRole(.sectionHead).foregroundStyle(Ink.selection).lineLimit(1)
+            LabelLine(title: title, trailing: count.map { String(format: "%02d", $0) })
             if let folded {
-                Image(systemName: Symbol.fold(isOpen: !folded)).font(.system(size: Icon.xxs, weight: .bold)).foregroundStyle(Ink.selection)
+                Image(systemName: Symbol.chevronDown).font(.system(size: Icon.l)).foregroundStyle(Ink.text.secondary)
+                    .rotationEffect(.degrees(folded ? -90 : 0))
+                    .accessibilityHidden(true)
             }
-            Spacer(minLength: Space.s)
-            if let count { Text(verbatim: "\(count)").typeRole(.sectionHead).monospacedDigit().foregroundStyle(Ink.text.muted) }
         }
         .padding(.horizontal, Space.l)
-        .frame(height: Size.sectionHead)
-        .rounded(Radius.m, fill: Ink.surface.inverse)
+        .frame(height: Size.labelLine)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
     }
 }
 
-/// A tag. In the list column a sunken chip with `s` corners in Inter (dark-panel on the selected ink card); elsewhere
-/// mono on sunken. `isOn` (a filter's choice, an editor's toggle) is ink with yellow text.
+/// A tag. In the list column a sunken chip with `tag` corners in Inter (#69); elsewhere mono on sunken. `isOn` (a
+/// filter's choice, an editor's toggle) is white with a secondary edge.
 public struct TagChip: View {
     let tag: String
     let isOn: Bool
-    let onInk: Bool
     let weight: Font.Weight?
 
     @Environment(\.onSidebar) private var onSidebar
 
-    public init(tag: String, isOn: Bool = false, onInk: Bool = false, weight: Font.Weight? = nil) {
+    public init(tag: String, isOn: Bool = false, weight: Font.Weight? = nil) {
         self.tag = tag
         self.isOn = isOn
-        self.onInk = onInk
         self.weight = weight
     }
 
     public var body: some View {
-        let fill = isOn ? Ink.surface.inverse : onInk ? Ink.surface.darkPanel : Ink.surface.sunken
-        Text(tag).typeRole(onSidebar ? .caption : .monoSmall, weight: onSidebar ? weight ?? .medium : weight).monospacedDigit().lineLimit(1)
-            .foregroundStyle(isOn ? Ink.selection : onInk ? Ink.text.onDark : Ink.text.secondary)
+        Text(tag).typeRole(onSidebar ? .micro : .monoSmall, weight: weight).monospacedDigit().lineLimit(1)
+            .foregroundStyle(isOn ? Ink.text.primary : Ink.text.secondary)
             .padding(.horizontal, onSidebar ? Space.xs : Space.s).padding(.vertical, onSidebar ? 0 : 1)
             .frame(minHeight: onSidebar ? Size.chip : nil)
-            .rounded(onSidebar ? Radius.s : Radius.none, fill: fill, edge: isOn ? Ink.line.strong : onSidebar ? .clear : Ink.line.rule)
+            .rounded(onSidebar ? Radius.tag : Radius.none, fill: isOn ? Ink.surface.raised : Ink.surface.sunken,
+                     edge: isOn ? Ink.text.secondary : onSidebar ? .clear : Ink.line.rule)
     }
 }
 
@@ -179,24 +266,22 @@ public struct TagChips: View {
     let limit: Int
     let weight: Font.Weight?
     let overflow: Color
-    let onInk: Bool
 
     @Environment(\.onSidebar) private var onSidebar
 
-    public init(tags: [String], limit: Int = 2, weight: Font.Weight? = nil, overflow: Color = Ink.text.secondary, onInk: Bool = false) {
+    public init(tags: [String], limit: Int = 2, weight: Font.Weight? = nil, overflow: Color = Ink.text.secondary) {
         self.tags = tags
         self.limit = limit
         self.weight = weight
         self.overflow = overflow
-        self.onInk = onInk
     }
 
     public var body: some View {
         if !tags.isEmpty {
             HStack(spacing: Space.xs) {
-                ForEach(tags.prefix(limit), id: \.self) { TagChip(tag: $0, onInk: onInk, weight: weight) }
+                ForEach(tags.prefix(limit), id: \.self) { TagChip(tag: $0, weight: weight) }
                 if tags.count > limit {
-                    Text(verbatim: "+\(tags.count - limit)").typeRole(onSidebar ? .data : .monoSmall, weight: weight).monospacedDigit()
+                    Text(verbatim: "+\(tags.count - limit)").typeRole(onSidebar ? .micro : .monoSmall, weight: .semibold).monospacedDigit()
                         .foregroundStyle(overflow)
                 }
             }

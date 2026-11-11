@@ -195,8 +195,7 @@ struct RenameField: View {
         }
         .padding(.horizontal, Space.m)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Ink.surface.raised)
-        .overlay(Rectangle().strokeBorder(Ink.line.strong, lineWidth: Stroke.hairline))
+        .rounded(Radius.control, fill: Ink.surface.raised, edge: Ink.line.contour)
         .onAppear { focused = true }
         .onChange(of: focused) { _, now in
             if !now, actions.renaming == info.id { actions.renaming = nil }
@@ -246,8 +245,7 @@ struct TagEditor: View {
         }
         .padding(Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Ink.surface.raised)
-        .overlay(Rectangle().strokeBorder(Ink.line.strong, lineWidth: Stroke.hairline))
+        .rounded(Radius.control, fill: Ink.surface.raised, edge: Ink.line.rule)
         .onExitCommand(perform: onDone)
     }
 
@@ -315,8 +313,8 @@ struct ActionError: View {
     }
 }
 
-/// `PINNED` / `CONVERSATIONS` above a group of rows: in the window's list column an ink slab with the group's count,
-/// inset 8 pt like the cards (#68); in the popover a plain label.
+/// `PINNED` / `CONVERSATIONS` above a group of rows: in the window's list column a `// PINNED ——— 04` label line (#69);
+/// in the popover a plain label.
 struct SectionLabel: View {
     let title: String
     var count: Int?
@@ -325,7 +323,7 @@ struct SectionLabel: View {
 
     var body: some View {
         if onSidebar {
-            SectionHead(title: title, count: count).padding(.vertical, Space.s)
+            SectionHead(title: title, count: count).padding(.top, Space.s).padding(.bottom, Space.xs)
         } else {
             Text(title).typeRole(.label).foregroundStyle(Ink.text.secondary)
                 .padding(.horizontal, Space.l).padding(.vertical, Space.s)

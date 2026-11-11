@@ -1,10 +1,10 @@
 import SwiftUI
 
 /// The window's three columns (#68, design 13 #a2): the floating section panel, 8 pt in from the window's top, left and
-/// bottom (and 8 pt from the list); the list column on paper with a 1 pt rule at its right; the detail. Hiding the panel
-/// follows the caller's animation (it slides out to the left) and leaves list + detail. Dragging the rule sets
-/// `listWidth`, kept within `Size.listColumn`; the list gives way to keep the detail `detailMin` wide, so at a 1180 pt
-/// window it is 380. The list sees `onSidebar` (its rows are the B2 cards).
+/// bottom (and 8 pt from the list); the list column on its lightly frosted ground (sunken at 42 %, #69) with a 1 pt
+/// rule at its right; the detail. Hiding the panel follows the caller's animation (it slides out to the left) and
+/// leaves list + detail. Dragging the rule sets `listWidth`, kept within `Size.listColumn`; the list gives way to keep
+/// the detail `detailMin` wide, so at a 1180 pt window it is 380. The list sees `onSidebar` (its rows are cards).
 public struct WindowColumns<Panel: View, List: View, Detail: View>: View {
     @Binding var isPanelShown: Bool
     @Binding var listWidth: Double
@@ -39,7 +39,7 @@ public struct WindowColumns<Panel: View, List: View, Detail: View>: View {
                     .frame(maxHeight: .infinity)
                     .padding(Space.s)
                     .transition(.move(edge: .leading))
-                    // Its shadow lies over the list.
+                    // It slides out over the list.
                     .zIndex(1)
             }
             GeometryReader { proxy in
@@ -47,8 +47,10 @@ public struct WindowColumns<Panel: View, List: View, Detail: View>: View {
                 HStack(spacing: 0) {
                     list
                         .environment(\.onSidebar, true)
+                        .environment(\.hairlineControls, true)
                         .frame(width: width)
                         .frame(maxHeight: .infinity)
+                        .background(Ink.surface.sidebar)
                         .overlay(alignment: .trailing) { divider(width) }
                     detail.frame(maxWidth: .infinity, maxHeight: .infinity)
                 }

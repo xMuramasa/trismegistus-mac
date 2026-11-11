@@ -70,6 +70,8 @@ struct MainWindow: View {
         } detail: {
             detail
         }
+        // The contour ground under the panel and the frosted list (#69).
+        .background(EndfieldBackdrop())
         .ignoresSafeArea()
         .endfieldPaper()
         .background(TrafficLights(origin: lights))
@@ -93,7 +95,7 @@ struct MainWindow: View {
     /// header's leading corner.
     private var lights: CGPoint {
         panelShown
-            ? CGPoint(x: Space.s + Space.s + Space.m, y: Space.s + Space.s + Size.sectionPanel.row / 2)
+            ? CGPoint(x: Space.s + Space.s + Space.m, y: Space.s + Space.s + Size.rowCompact / 2)
             : CGPoint(x: Space.l, y: Size.sidebarHead / 2)
     }
 
@@ -107,7 +109,9 @@ struct MainWindow: View {
                 if let picked = ConversationKind(rawValue: id) { chatKind = picked }
                 section = .chat
             },
-            chatsOpen: $chatsOpen, device: device, onToggle: togglePanel
+            chatsOpen: $chatsOpen, device: device,
+            version: "v" + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"),
+            onToggle: togglePanel
         ) {
             SettingsLink { Text("Settings…") }
             Button("Unpair…") {
@@ -164,11 +168,19 @@ struct MainWindow: View {
                 }
                 if terminal.isShown { TerminalDrawer(screen: terminal.screen) }
             }
+        default: sectionDetail.environment(\.hairlineControls, true)
+        }
+    }
+
+    /// The details outside Chat take the thin-edged controls whole (#69); Chat's transcript and composer keep #68's.
+    @ViewBuilder private var sectionDetail: some View {
+        switch section {
         case .github: GitHubView(selection: optional($selectedIssue).wrappedValue, onOpen: open)
         case .agents: AgentsView(selection: optional($selectedAgent), onOpen: open)
         case .jobs: JobsView(selection: optional($selectedJob), onOpen: open)
         case .commands:
             CommandsView(conversation: commandsConversation, search: commandsSearch, sessions: $commandSessions, onOpen: open)
+        case .chat: EmptyView()
         }
     }
 

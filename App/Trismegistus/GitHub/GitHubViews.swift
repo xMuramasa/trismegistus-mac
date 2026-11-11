@@ -2,13 +2,14 @@ import SwiftUI
 import TrismegistusKit
 import TrismegistusUI
 
-/// The priority as an ink tag.
+/// The priority as a sunken tag (#69, `.ptag`): ink word, `tag` corners.
 struct PriorityMark: View {
     let priority: String
 
     var body: some View {
-        Text(priority).typeRole(.label).foregroundStyle(Ink.surface.window)
-            .padding(.horizontal, Space.s).padding(.vertical, Space.xxs).background(Ink.surface.inverse)
+        Text(priority).typeRole(.tag).foregroundStyle(Ink.text.primary)
+            .padding(.horizontal, Space.xs).padding(.vertical, Space.xxs)
+            .rounded(Radius.tag, fill: Ink.surface.sunken)
             .accessibilityLabel("Priority \(priority)")
     }
 }
@@ -27,8 +28,7 @@ struct SetupNote: View {
         }
         .padding(Space.l)
         .frame(maxWidth: Size.chatColumn, alignment: .leading)
-        .background(Ink.surface.raised)
-        .overlay(Rectangle().strokeBorder(Ink.line.rule, lineWidth: Stroke.hairline))
+        .rounded(Radius.control, fill: Ink.surface.sectionCard, edge: Ink.line.rule)
         .padding(Space.l)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }

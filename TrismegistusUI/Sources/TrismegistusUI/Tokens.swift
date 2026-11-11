@@ -36,6 +36,8 @@ public enum Palette {
     public static let onSteel = Color(hex: 0xE9E9E9)
     public static let accentCyan = Color(hex: 0x1FE5E0)
     public static let accentMagenta = Color(hex: 0xDA16DC)
+    /// sunken at 42 % over paper, opaque (#69): the backing under the selected row's list margins, where macOS draws its selection highlight
+    public static let listGround = Color(hex: 0xECECEC)
 }
 
 /// `color.role`: colours by job.
@@ -49,8 +51,10 @@ public enum Ink {
         public let onSidebar = Palette.ink
         /// meta lines and notes in the list column
         public let onSidebarSecondary = Palette.secondary
-        /// labels and icons on the ink section panel (#68)
+        /// the current row's label, the Chats parent and the device name on the section panel
         public let onPanel = Palette.raised
+        /// counts, the `// TRISMEGISTUS` label and the link line on the section panel (#69, contour)
+        public let onPanelQuiet = Palette.borderInactive
         public let link = Palette.blue
         public let error = Palette.red
     }
@@ -59,24 +63,36 @@ public enum Ink {
         public let window = Palette.paper
         public let raised = Palette.raised
         public let sunken = Palette.sunken
-        /// the window's list column (#68): paper, the window's own ground
-        public let sidebar = Palette.paper
+        /// the window's list column (#69): sunken at 42 %, the contour lines faintly through
+        public let sidebar = Palette.sunken.opacity(Opacity.listGround)
+        /// the list column's ground, opaque: under the selected row's margins
+        public let sidebarSolid = Palette.listGround
         /// ink behind a chip, a toggle that is on, a pressed button, a switch that is on
         public let inverse = Palette.ink
         /// the warn status chip; a disabled button on steel; the terminal drawer's ground
         public let darkPanel = Palette.darkPanel
-        /// a conversation card in the list column (#68: white on paper)
-        public let paperCard = Palette.raised
-        /// the band along the top of a conversation card
-        public let cardHead = Palette.muted
-        /// the bar along the bottom of a conversation card
-        public let cardFoot = Palette.darkPanel
-        /// a card under the pointer
-        public let cardHover = Palette.sunken
-        /// the floating section panel (#68)
-        public let panel = Palette.ink
-        /// a panel row under the pointer, the current kind, the Chats head
-        public let panelRow = Palette.darkPanel
+        /// a card in the list column at its top (#69): white stepping down to `card-low`, lit from above
+        public let paperCard = Palette.raised.opacity(Opacity.cardTop)
+        /// a card in the list column at its bottom
+        public let cardLow = Palette.raised.opacity(Opacity.frosted)
+        /// a card under the pointer, and the selected card: white
+        public let cardHover = Palette.raised
+        /// the detail header and an issue's readout strip (#69)
+        public let frosted = Palette.raised.opacity(Opacity.frosted)
+        /// the sections' cards in a detail: an issue's body, a run's result and steps, a job's panels, a command row
+        public let sectionCard = Palette.raised.opacity(Opacity.sectionCard)
+        /// a thin-edged icon button in the list column
+        public let control = Palette.raised.opacity(Opacity.control)
+        /// the floating section panel at its top (#69): translucent dark-panel grey
+        public let panel = Palette.darkPanel.opacity(Opacity.panelTop)
+        /// the section panel at its bottom
+        public let panelLow = Palette.darkPanel.opacity(Opacity.panelBottom)
+        /// the current row on the section panel, a lighter row
+        public let panelRow = Palette.raised.opacity(Opacity.litOnDark)
+        /// a panel row or button under the pointer
+        public let panelHover = Palette.raised.opacity(Opacity.hoverOnDark)
+        /// the device's avatar on the section panel
+        public let deviceAvatar = Palette.raised.opacity(Opacity.avatarOnDark)
     }
     public static let surface = Surface()
     public struct Line: Sendable {
@@ -88,8 +104,16 @@ public enum Ink {
         public let outlineOnDark = Palette.onSteel.opacity(Opacity.outlineOnDark)
         /// the crosses on the paper ground
         public let paperCross = Palette.ink.opacity(Opacity.paperCrosses)
-        /// the contour lines on an ink section head (decorative)
+        /// the hairline of a card under the pointer, a pressed control's edge, the hatches, a label line's rule (#69)
         public let contour = Palette.borderInactive
+        /// a card's hairline in the list column
+        public let card = Palette.borderInactive.opacity(Opacity.cardEdge)
+        /// the section panel's hairline
+        public let panelEdge = Palette.raised.opacity(Opacity.litOnDark)
+        /// the hairline along the panel's cut corner, a little brighter
+        public let panelChamfer = Palette.raised.opacity(Opacity.chamferOnDark)
+        /// the tree's guide line under Chats, the `// TRISMEGISTUS` rule, the device menu's edge
+        public let panelGuide = Palette.raised.opacity(Opacity.guideOnDark)
     }
     public static let line = Line()
     public struct Mark: Sendable {
@@ -129,7 +153,8 @@ public enum Ink {
     public static let ansi = [Palette.ink, Palette.red, Palette.green, Palette.yellow, Palette.ansiBlue, Palette.magenta, Palette.accentCyan, Palette.onSteel, Palette.muted, Palette.red, Palette.green, Palette.yellow, Palette.ansiBlue, Palette.magenta, Palette.accentCyan, Palette.raised]
     public static let titleRule = [Palette.magenta, Palette.yellow, Palette.green]
     public struct Avatar: Sendable {
-        public let app = Palette.ink
+        /// the app's `T` avatar (#69: dark-panel, no ink block)
+        public let app = Palette.darkPanel
         public let telegram = Palette.blue
         public let terminal = Palette.darkPanel
         /// cron and other sources: ink glyph, rule edge
@@ -147,6 +172,26 @@ public enum Opacity {
     public static let paperCrosses: Double = 0.55
     /// the paper veil over the chat while images are dragged over it
     public static let dropVeil: Double = 0.85
+    /// #69: the section panel's dark-panel, top to bottom
+    public static let panelTop: Double = 0.93
+    public static let panelBottom: Double = 0.86
+    /// the list column's sunken
+    public static let listGround: Double = 0.42
+    /// a list card's white, top to bottom
+    public static let cardTop: Double = 0.94
+    /// a list card's white at its bottom; the frosted detail header
+    public static let frosted: Double = 0.72
+    public static let sectionCard: Double = 0.88
+    /// a thin-edged icon button's white
+    public static let control: Double = 0.7
+    /// a list card's contour hairline
+    public static let cardEdge: Double = 0.6
+    /// white on the section panel: its hairline, the current row
+    public static let litOnDark: Double = 0.1
+    public static let hoverOnDark: Double = 0.06
+    public static let avatarOnDark: Double = 0.08
+    public static let guideOnDark: Double = 0.14
+    public static let chamferOnDark: Double = 0.22
 }
 
 /// `space`: the strict spacing scale; literals round up to the next step.
@@ -174,10 +219,12 @@ public enum Icon {
     public static let section: CGFloat = 16
     /// an empty state's symbol
     public static let empty: CGFloat = 28
-    /// a sticker's state shape
+    /// the grid a state glyph is drawn on
     public static let sticker: CGFloat = 12
-    /// a row's icon in the section panel, a card's source glyph, the device avatar's glyph
-    public static let panel: CGFloat = 18
+    /// a row's icon in the section panel, the device avatar's glyph (#69)
+    public static let panel: CGFloat = 16
+    /// a source avatar's glyph
+    public static let avatar: CGFloat = 14
 }
 
 /// `size`: fixed sizes of rows, cards, panes and windows.
@@ -185,22 +232,42 @@ public enum Size {
     /// a conversation row; also the unit of the terminal card cap
     public static let row: CGFloat = 52
     public static let rowCompact: CGFloat = 40
-    /// a conversation card in the list column, at a 60 pt pitch
-    public static let card: CGFloat = 56
-    /// rounded-square source avatars: on a card, in the detail header; the device's in the panel
+    /// a conversation card in the list column, at a 50 pt pitch (#69)
+    public static let card: CGFloat = 46
+    /// the column of a card's muted 2-digit index
+    public static let cardIndex: CGFloat = 16
+    /// rounded-square source avatars (`control` corners): on a card, in the detail header; the device's in the panel
     public struct Avatar: Sendable {
-        public let card: CGFloat = 36
-        public let header: CGFloat = 32
-        public let device: CGFloat = 32
+        public let card: CGFloat = 26
+        public let header: CGFloat = 28
+        public let device: CGFloat = 28
     }
     public static let avatar = Avatar()
-    /// the floating section panel (#68): its width, a section or kind row, the device row's minimum height
+    /// the floating section panel: its width, a section or kind row (#69), the `// TRISMEGISTUS` line, the cut of its top-right corner, the device row's minimum height
     public struct SectionPanel: Sendable {
         public let width: CGFloat = 300
-        public let row: CGFloat = 40
+        public let row: CGFloat = 36
+        public let label: CGFloat = 20
+        public let chamfer: CGFloat = 16
         public let device: CGFloat = 56
     }
     public static let sectionPanel = SectionPanel()
+    /// the short diagonal hatch on the selected card's top edge and in the list header (`head-`): its size, the pitch of its 1 pt lines, its distance from the right edge
+    public struct Hatch: Sendable {
+        public let width: CGFloat = 24
+        public let height: CGFloat = 3
+        public let headWidth: CGFloat = 32
+        public let headHeight: CGFloat = 4
+        public let pitch: CGFloat = 4
+        public let inset: CGFloat = 56
+    }
+    public static let hatch = Hatch()
+    /// the selected card's grey bracket corners: an arm's length, and how far outside the card they sit
+    public static let bracket: CGFloat = 6
+    /// the `// 9 STEPS` line that folds a run's steps
+    public static let stepsHead: CGFloat = 32
+    /// a `// PINNED ——— 04` label line in the list column
+    public static let labelLine: CGFloat = 24
     /// the list column's width; it gives way to keep the detail this wide (380 at a 1180 pt window)
     public struct ListColumn: Sendable {
         public let min: CGFloat = 380
@@ -213,13 +280,13 @@ public enum Size {
     public static let trafficLights: CGFloat = 60
     /// the list column's header line (`…`, `APP // 10`, `+`); the detail header's height
     public static let sidebarHead: CGFloat = 52
-    /// an ink slab (PINNED, CONVERSATIONS) in the list column; the panel's Chats head
-    public static let sectionHead: CGFloat = 28
-    /// a state sticker: its height on a card, its glyph cell's width, its height glyph-only (the panel's rows)
+    /// a state tag (#69): its height, its glyph cell's width, its height and cell glyph-only (the panel's rows), the glyph
     public struct Sticker: Sendable {
-        public let height: CGFloat = 24
-        public let cell: CGFloat = 20
-        public let badge: CGFloat = 20
+        public let height: CGFloat = 18
+        public let cell: CGFloat = 16
+        public let badge: CGFloat = 16
+        public let badgeCell: CGFloat = 14
+        public let glyph: CGFloat = 9
     }
     public static let sticker = Sticker()
     public static let cardHeader: CGFloat = 24
@@ -266,12 +333,11 @@ public enum Size {
         public let height: CGFloat = 640
     }
     public static let windowMin = WindowMin()
-    /// the detail header; green is a minimum, it stretches
+    /// the detail header's rule (#69): a dark-panel tick, a gap, the yellow segment, then rule grey to the edge
     public struct TitleRule: Sendable {
-        public let magenta: CGFloat = 48
-        public let yellow: CGFloat = 120
-        public let height: CGFloat = 4
-        public let green: CGFloat = 24
+        public let tick: CGFloat = 8
+        public let yellow: CGFloat = 56
+        public let height: CGFloat = 2
     }
     public static let titleRule = TitleRule()
     /// text field and button height
@@ -370,6 +436,9 @@ public enum Size {
 /// `radius`: the corner radius scale (#68): s, m, l, xl.
 public enum Radius {
     public static let none: CGFloat = 0
+    public static let tag: CGFloat = 3
+    public static let control: CGFloat = 4
+    public static let pill: CGFloat = 15
     public static let s: CGFloat = 6
     public static let m: CGFloat = 8
     public static let l: CGFloat = 12
@@ -382,8 +451,10 @@ public enum Stroke {
     public static let hairlineFine: CGFloat = 0.5
     public static let accent: CGFloat = 2
     public static let rule: CGFloat = 4
-    /// selection and accent bars (rows, the banner's top, notices)
+    /// selection and accent bars (rows, the banner's top, notices, the panel's current row, a command row's edge)
     public static let mark: CGFloat = 3
+    /// the selected card's yellow frame (#69)
+    public static let selection: CGFloat = 1.5
 }
 
 /// A drop shadow (`View.shadow(_:)`).
@@ -401,14 +472,12 @@ public enum Shadow {
     public static let panel = ShadowToken(color: Palette.ink.opacity(0.12), radius: 12, x: 0, y: 4)
     /// no shadow, for a view whose shadow comes and goes
     public static let none = ShadowToken(color: Palette.ink.opacity(0), radius: 0, x: 0, y: 0)
-    /// B2's soft offset shadow (the design's 8 px blur: SwiftUI's radius is half a CSS blur): the section panel, the selected card
-    public static let block = ShadowToken(color: Palette.ink.opacity(0.4), radius: 4, x: 4, y: 4)
-    /// the sidebar filter while focused
-    public static let blockFocus = ShadowToken(color: Palette.yellow.opacity(0.4), radius: 4, x: 4, y: 4)
-    /// a sticker on a row; a done sticker has none
-    public static let sticker = ShadowToken(color: Palette.ink.opacity(0.4), radius: 3, x: 3, y: 3)
-    /// the soft glow of the selected card's yellow frame
-    public static let selectionGlow = ShadowToken(color: Palette.yellow.opacity(0.4), radius: 4, x: 0, y: 0)
+    /// #69: the faint glow of the selected card's yellow frame (the design's 12 px blur: SwiftUI's radius is half a CSS blur). No offset shadows in the window
+    public static let selectionGlow = ShadowToken(color: Palette.yellow.opacity(0.45), radius: 6, x: 0, y: 0)
+    /// the Needs-check panel's glow under its yellow top line
+    public static let checkGlow = ShadowToken(color: Palette.yellow.opacity(0.25), radius: 6, x: 0, y: 0)
+    /// the yellow + under the pointer
+    public static let plusGlow = ShadowToken(color: Palette.yellow.opacity(0.6), radius: 4, x: 0, y: 0)
 }
 
 /// `motion`: an `Animation` where the token has a curve, else a `Duration` to wait (a value settling).
@@ -439,7 +508,7 @@ public enum FontFamily: String, CaseIterable, Sendable {
 
 /// `font.role`: the type roles (`View.typeRole(_:)`).
 public enum TypeRole: CaseIterable, Sendable {
-    case heading, title, headline, body, callout, caption, label, button, cardTitle, data, sticker, sectionHead, columnTitle, panelRow, avatarMark, mono, monoSmall
+    case heading, title, headline, body, callout, caption, label, button, quietTitle, detailTitle, trackedLabel, columnLabel, count, tag, controlLabel, micro, mono, monoSmall
 
     public var spec: TypeSpec {
         switch self {
@@ -451,13 +520,14 @@ public enum TypeRole: CaseIterable, Sendable {
         case .caption: TypeSpec(family: .ui, size: 11, weight: 400, tracking: 0, uppercase: false)
         case .label: TypeSpec(family: .ui, size: 10, weight: 600, tracking: 0.8, uppercase: true)
         case .button: TypeSpec(family: .ui, size: 12, weight: 600, tracking: 0.3, uppercase: false)
-        case .cardTitle: TypeSpec(family: .ui, size: 14, weight: 800, tracking: -0.14, uppercase: true)
-        case .data: TypeSpec(family: .ui, size: 11, weight: 700, tracking: 0, uppercase: false)
-        case .sticker: TypeSpec(family: .ui, size: 11, weight: 800, tracking: 0.4, uppercase: true)
-        case .sectionHead: TypeSpec(family: .ui, size: 12, weight: 900, tracking: 0.8, uppercase: true)
-        case .columnTitle: TypeSpec(family: .ui, size: 15, weight: 800, tracking: 0.3, uppercase: true)
-        case .panelRow: TypeSpec(family: .ui, size: 14, weight: 400, tracking: 0, uppercase: false)
-        case .avatarMark: TypeSpec(family: .ui, size: 18, weight: 800, tracking: 0, uppercase: true)
+        case .quietTitle: TypeSpec(family: .ui, size: 13, weight: 500, tracking: 0, uppercase: false)
+        case .detailTitle: TypeSpec(family: .ui, size: 14, weight: 600, tracking: 0, uppercase: false)
+        case .trackedLabel: TypeSpec(family: .ui, size: 10, weight: 600, tracking: 1.4, uppercase: true)
+        case .columnLabel: TypeSpec(family: .ui, size: 11, weight: 600, tracking: 1.54, uppercase: true)
+        case .count: TypeSpec(family: .ui, size: 28, weight: 500, tracking: -0.56, uppercase: false)
+        case .tag: TypeSpec(family: .ui, size: 10, weight: 600, tracking: 1, uppercase: true)
+        case .controlLabel: TypeSpec(family: .ui, size: 10, weight: 600, tracking: 1.2, uppercase: true)
+        case .micro: TypeSpec(family: .ui, size: 10, weight: 500, tracking: 0, uppercase: false)
         case .mono: TypeSpec(family: .mono, size: 12, weight: 400, tracking: 0, uppercase: false)
         case .monoSmall: TypeSpec(family: .mono, size: 11, weight: 400, tracking: 0, uppercase: false)
         }

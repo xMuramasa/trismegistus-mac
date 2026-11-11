@@ -111,6 +111,8 @@ public struct TerminalEntryView: View {
     @State private var expanded = false
     @State private var folded: Bool
     @State private var hovered = false
+    /// The Commands log's rows (#69); the chat's chip keeps #68's look.
+    @Environment(\.hairlineControls) private var hairline
     /// The body's natural height, once laid out: past `maxBodyHeight` it scrolls.
     @State private var bodyHeight: CGFloat?
 
@@ -170,7 +172,18 @@ public struct TerminalEntryView: View {
     private static let shape = UnevenRoundedRectangle(topTrailingRadius: Radius.l, style: .continuous)
 
     public var body: some View {
-        if oneLine {
+        if oneLine && hairline {
+            // #69 (`.crow`): a light row with a rule hairline and a 3 pt left edge, green or red by its exit.
+            VStack(spacing: 0) {
+                foldButton { row }
+                if !folded { cappedContent }
+            }
+            .background(Ink.surface.sectionCard)
+            .overlay(alignment: .leading) { Rectangle().fill(failed ? Ink.status.error : Ink.status.ok).frame(width: Stroke.mark) }
+            .clipShape(RoundedRectangle(cornerRadius: Radius.control, style: .continuous))
+            .edge(Ink.line.rule, radius: Radius.control)
+            .onHover { hovered = $0 }
+        } else if oneLine {
             VStack(spacing: 0) {
                 foldButton { row }
                 if !folded { cappedContent.background(Ink.surface.window) }
@@ -231,12 +244,15 @@ public struct TerminalEntryView: View {
 
     private var row: some View {
         HStack(spacing: Space.m) {
-            Text(time).fixedSize().frame(minWidth: timeWidth ?? Size.toolRow.time, alignment: .leading)
-            Text(tool).frame(width: Size.toolRow.nameWide, alignment: .leading)
+            // #69: the command stays mono, everything around it Inter.
+            Text(time).typeRole(hairline ? .caption : .monoSmall).monospacedDigit().foregroundStyle(hairline ? Ink.text.secondary : Ink.text.primary)
+                .fixedSize().frame(minWidth: timeWidth ?? Size.toolRow.time, alignment: .leading)
+            Text(tool).typeRole(hairline ? .trackedLabel : .monoSmall).foregroundStyle(hairline ? Ink.text.secondary : Ink.text.primary)
+                .frame(width: Size.toolRow.nameWide, alignment: .leading)
             Text(Self.firstLine(command)).truncationMode(.tail).frame(maxWidth: .infinity, alignment: .leading)
             // The cells stay while they are empty, so the columns line up down the list.
             Color.clear.frame(width: Size.toolRow.duration).overlay(alignment: .trailing) {
-                elapsed.foregroundStyle(Ink.text.secondary)
+                elapsed.typeRole(hairline ? .caption : .monoSmall).monospacedDigit().foregroundStyle(Ink.text.secondary)
             }
             Color.clear.frame(width: Size.toolRow.statusNarrow).overlay(alignment: .leading) { status }
             chevron
@@ -244,10 +260,10 @@ public struct TerminalEntryView: View {
         .typeRole(.monoSmall)
         .lineLimit(1)
         .foregroundStyle(Ink.text.primary)
-        .padding(.horizontal, Space.m)
+        .padding(.leading, hairline ? Space.l : Space.m).padding(.trailing, Space.m)
         .frame(height: Size.rowTool)
-        .background(hovered || forceHovered ? Ink.surface.window : Ink.surface.raised)
-        .overlay(alignment: .top) { Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairlineFine) }
+        .background(hovered || forceHovered ? Ink.surface.window : hairline ? .clear : Ink.surface.raised)
+        .overlay(alignment: .top) { if !hairline { Rectangle().fill(Ink.line.rule).frame(height: Stroke.hairlineFine) } }
     }
 
     private var chevron: some View {
@@ -269,7 +285,7 @@ public struct TerminalEntryView: View {
     /// Nothing until there is a result: no duration yet means no verdict either.
     @ViewBuilder private var status: some View {
         if let failedExit {
-            Text(verbatim: "exit \(failedExit)").typeRole(.label).foregroundStyle(Ink.status.error)
+            Text(verbatim: "exit \(failedExit)").typeRole(.label).monospacedDigit().foregroundStyle(Ink.status.error)
         } else if failed {
             Text(verbatim: "failed").typeRole(.label).foregroundStyle(Ink.status.error)
         } else if !isRunning, duration != nil {
@@ -349,7 +365,7 @@ public struct TerminalEntryView: View {
 }
 
 /// One conversation's head in the Commands log (`.cmd-head`): the conversation as a link, its counts, a fold toggle, a
-/// 1 pt ink rule under it.
+/// 1 pt contour rule under it (#69).
 public struct CommandGroupHead: View {
     let title: String
     let calls: Int
@@ -380,10 +396,10 @@ public struct CommandGroupHead: View {
                 }
                 .buttonStyle(.plain)
                 .help("Open the conversation")
-                Text(verbatim: "\(calls) \(calls == 1 ? "call" : "calls")").typeRole(.monoSmall)
+                Text(verbatim: "\(calls) \(calls == 1 ? "call" : "calls")").typeRole(.callout).monospacedDigit()
                     .foregroundStyle(Ink.text.secondary).fixedSize()
                 if failed > 0 {
-                    Text(verbatim: "\(failed) failed").typeRole(.monoSmall).foregroundStyle(Ink.status.error).fixedSize()
+                    Text(verbatim: "\(failed) failed").typeRole(.callout, weight: .semibold).monospacedDigit().foregroundStyle(Ink.status.error).fixedSize()
                 }
                 Spacer(minLength: 0)
                 Button(action: onFold) {
@@ -396,7 +412,7 @@ public struct CommandGroupHead: View {
                 .help(isOpen ? "Fold" : "Unfold")
                 .accessibilityLabel(Text(verbatim: "\(isOpen ? "Fold" : "Unfold") \(title)"))
             }
-            Rectangle().fill(Ink.text.primary).frame(height: Stroke.hairline)
+            Rectangle().fill(Ink.line.contour).frame(height: Stroke.hairline)
         }
     }
 }

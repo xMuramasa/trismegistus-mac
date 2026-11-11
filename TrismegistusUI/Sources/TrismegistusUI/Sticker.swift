@@ -24,43 +24,23 @@ public enum StickerState: CaseIterable, Sendable {
         }
     }
 
-    var fill: Color {
+    /// The bar at the tag's left edge and the glyph.
+    var mark: Color {
         switch self {
         case .approval: Ink.marker
-        case .running: Ink.surface.inverse
-        case .failed: Ink.status.error
-        case .done: Ink.status.online
-        }
-    }
-
-    /// The word and the time on `fill`.
-    var text: Color {
-        switch self {
-        case .approval, .done: Ink.text.primary
-        case .running, .failed: Ink.surface.raised
-        }
-    }
-
-    var cell: Color {
-        switch self {
-        case .approval, .done: Ink.surface.inverse
         case .running: Ink.selection
-        case .failed: Ink.surface.raised
+        case .failed: Ink.status.error
+        case .done: Ink.status.ok
         }
     }
 
-    /// The shape on `cell`.
-    var glyph: Color {
-        switch self {
-        case .approval: Ink.marker
-        case .running: Ink.text.primary
-        case .failed: Ink.status.error
-        case .done: Ink.status.online
-        }
-    }
+    /// RUN is the one dark chip; the rest are light.
+    var ground: Color { self == .running ? Ink.surface.darkPanel : Ink.surface.raised }
+    var edge: Color { self == .running ? Ink.surface.darkPanel : Ink.line.rule }
+    var text: Color { self == .running ? Ink.text.onPanel : Ink.text.primary }
 }
 
-/// The state's shape, so a sticker never relies on colour: diamond, ring, cross, check, on a 12 pt grid.
+/// The state's shape, so a tag never relies on colour: diamond, ring, cross, check, on a 12 pt grid.
 struct StickerGlyph: Shape {
     let state: StickerState
 
@@ -83,65 +63,45 @@ struct StickerGlyph: Shape {
     }
 }
 
-/// A sticker with `s` corners: a glyph cell, then the word and (on a run) the time; approval ends in hard ink and magenta stripes.
-/// `showsWord` off keeps the cell, the time and the stripes (a narrow sidebar). A badge is the cell alone, a little shorter.
+/// A state tag (#69, design 13 #a3, replacing B2's sticker): 18 pt, a light chip with a rule hairline and `tag` corners,
+/// a 2 pt bar in the state's colour at its left edge, the small coloured glyph, then the word in tracked caps. RUN is the
+/// dark-panel chip with a yellow bar, ring and time. `showsWord` off keeps the glyph and the time; a badge is the glyph
+/// alone (the panel's rows), 16 pt.
 public struct Sticker: View {
     let state: StickerState
     let time: String?
     let showsWord: Bool
     let isBadge: Bool
-    let edge: Color
 
-    public init(_ state: StickerState, time: String? = nil, showsWord: Bool = true, isBadge: Bool = false, edge: Color = Ink.line.strong) {
+    public init(_ state: StickerState, time: String? = nil, showsWord: Bool = true, isBadge: Bool = false) {
         self.state = state
         self.time = time
         self.showsWord = showsWord
         self.isBadge = isBadge
-        self.edge = edge
     }
 
     public var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Radius.tag, style: .continuous)
         HStack(spacing: 0) {
-            StickerGlyph(state: state).fill(state.glyph)
-                .frame(width: Icon.sticker, height: Icon.sticker)
-                .frame(width: Size.sticker.cell)
-                .frame(maxHeight: .infinity)
-                .background(state.cell)
-            if !isBadge {
-                if showsWord || time != nil {
-                    HStack(spacing: Space.xs) {
-                        if showsWord { Text(state.word).typeRole(.sticker) }
-                        // A run's time in yellow on ink, as in the prototype (review, 2026-11-06).
-                        if let time {
-                            Text(verbatim: time).typeRole(.data).monospacedDigit()
-                                .foregroundStyle(state == .running ? Ink.selection : state.text)
-                        }
-                    }
-                    .lineLimit(1).fixedSize()
-                    .foregroundStyle(state.text)
-                    .padding(.horizontal, Space.xs)
-                    .frame(maxHeight: .infinity)
-                    .background(state.fill)
+            StickerGlyph(state: state).fill(state.mark)
+                .frame(width: Size.sticker.glyph, height: Size.sticker.glyph)
+                .frame(width: isBadge ? Size.sticker.badgeCell : Size.sticker.cell)
+            if !isBadge, showsWord || time != nil {
+                HStack(spacing: Space.xs) {
+                    if showsWord { Text(state.word).typeRole(.tag).foregroundStyle(state.text) }
+                    if let time { Text(verbatim: time).typeRole(.tag).monospacedDigit().foregroundStyle(state.mark) }
                 }
-                if state == .approval { stripes }
+                .lineLimit(1).fixedSize()
+                .padding(.trailing, Space.s)
             }
         }
-        .padding(Stroke.hairline)
+        .padding(.leading, Stroke.accent)
         .frame(height: isBadge ? Size.sticker.badge : Size.sticker.height)
-        // `s` corners clip the glyph cell; the edge follows them (#68).
-        .clipShape(RoundedRectangle(cornerRadius: Radius.s, style: .continuous))
-        .edge(edge, radius: Radius.s)
-        .compositingGroup()  // one shadow for the sticker, not one per word
-        .shadow(isBadge || state == .done ? Shadow.none : Shadow.sticker)
+        .background(state.ground)
+        .overlay(alignment: .leading) { Rectangle().fill(state.mark).frame(width: Stroke.accent) }
+        .clipShape(shape)
+        .overlay(shape.strokeBorder(state.edge, lineWidth: Stroke.hairline))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(state.spoken)
-    }
-
-    private var stripes: some View {
-        HStack(spacing: Stroke.accent) {
-            ForEach(0..<3, id: \.self) { _ in Rectangle().fill(state.fill).frame(width: Stroke.accent) }
-        }
-        .padding(.trailing, Stroke.accent)
-        .background(state.cell)
     }
 }
