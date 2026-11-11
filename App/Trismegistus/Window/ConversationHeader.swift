@@ -3,8 +3,9 @@ import TrismegistusKit
 import TrismegistusUI
 
 /// Above the open conversation in the window (#68): its avatar, title, pin, tags and the subtitle (source · run ·
-/// started) on the left; the token meter, the model, the terminal and Settings buttons and the actions menu on the
-/// right, in the `DetailHeader`; the tag editor and errors open under its rule on white.
+/// started) on the left; the token meter, the model, the effort (#74), the terminal and Settings buttons and the actions
+/// menu on the right, in the `DetailHeader` with the narrow-window rule (`FittedHeader`: the title keeps 120 pt, the meter
+/// then the model pill shorten); the tag editor and errors open under its rule on white.
 struct ConversationHeader: View {
     let sessionID: String
 
@@ -19,7 +20,7 @@ struct ConversationHeader: View {
         if let info {
             let tags = model.store?.tags[info.id] ?? []
             VStack(spacing: 0) {
-                DetailHeader {
+                FittedHeader {
                     SourceAvatar(PopoverFormat.source(info.source), size: Size.avatar.header)
                 } title: {
                     if actions.renaming == info.id {
@@ -34,9 +35,10 @@ struct ConversationHeader: View {
                     }
                 } subtitle: {
                     Text(PopoverFormat.subtitle(info.id, info: info, store: model.store))
-                } trailing: {
-                    ContextMeter(info: info) { actions.handingOff = info }
-                    ModelMenu(info: info)
+                } trailing: { fit in
+                    ContextMeter(info: info) { actions.handingOff = info }.environment(\.compactMeter, fit.meterCompact)
+                    ModelMenu(info: info, fit: fit)
+                    EffortMenu(info: info, fit: fit)
                     DetailTools(section: .chat)
                     Menu {
                         ConversationMenuItems(info: info, actions: actions, store: model.store)
@@ -69,4 +71,9 @@ struct ConversationHeader: View {
             .id(model.store?.olderParts(of: info.id).last ?? info.id)
         }
     }
+}
+
+extension EnvironmentValues {
+    /// The header's narrow-window rule, stage 1 (#74): the context meter shows only its percentage (`35%`).
+    @Entry var compactMeter = false
 }

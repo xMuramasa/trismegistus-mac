@@ -6,6 +6,8 @@ import TrismegistusUI
 /// from the next message); others show the model Hermes ran them on, read-only. Nothing from a relay without models.
 struct ModelMenu: View {
     let info: SessionInfo
+    /// The window header's narrow-window rule: the label without `claude-` from stage 2 (#74).
+    var fit = HeaderFit()
 
     @Environment(AppModel.self) private var model
     @Environment(\.onSteel) private var onSteel
@@ -17,7 +19,7 @@ struct ModelMenu: View {
                 if let error { Text(error).typeRole(.caption).foregroundStyle(onSteel ? Ink.status.warn : Ink.text.error).lineLimit(1) }
                 if info.isReadOnly {
                     if let id = info.model {
-                        Text(ModelChoice.label(id)).typeRole(.callout).lineLimit(1)
+                        Text(fit.model(ModelChoice.label(id))).typeRole(.callout).lineLimit(1)
                             .foregroundStyle(onSteel ? Ink.text.onDark.opacity(Opacity.secondaryOnDark) : Ink.text.secondary)
                             .help("Model (set in \(PopoverFormat.sourceName(info.source)))")
                     }
@@ -30,7 +32,7 @@ struct ModelMenu: View {
                             }
                         }
                     } label: {
-                        ModelLabel(choice: current)
+                        ModelLabel(choice: current, fit: fit)
                     }
                     // `.button` + `.plain` draws `ModelLabel` as it is; `.borderlessButton` swaps it for AppKit's own
                     // (a leading chevron, system text colour, no border).
@@ -44,21 +46,13 @@ struct ModelMenu: View {
     }
 }
 
-/// The model's id and a chevron, as the menus show it.
+/// The model's id and a chevron, as the menus show it (the pill the effort's shares, #74).
 struct ModelLabel: View {
     let choice: ModelChoice?
-
-    @Environment(\.onSteel) private var onSteel
+    var fit = HeaderFit()
 
     var body: some View {
-        HStack(spacing: Space.xs) {
-            Text(choice?.label ?? "Model").typeRole(.callout).lineLimit(1)
-            Image(systemName: Symbol.chevronDown).font(.system(size: Icon.xs, weight: .semibold))
-        }
-        .foregroundStyle(onSteel ? Ink.text.onDark : Ink.text.primary)
-        .padding(.leading, Space.m).padding(.trailing, Space.s).frame(height: Size.control)
-        .rounded(Radius.pill, fill: onSteel ? .clear : Ink.surface.raised, edge: onSteel ? Ink.line.outlineOnDark : Ink.line.rule)
-        .contentShape(Rectangle())
+        PillLabel(fit.model(choice?.label ?? "Model"))
     }
 }
 

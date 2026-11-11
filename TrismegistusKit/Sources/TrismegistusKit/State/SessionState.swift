@@ -47,6 +47,8 @@ public struct SessionState: Sendable, Equatable {
     /// Highest seq applied; 0 before the first event and after a replay_gap.
     public var lastSeq = 0
     public var run: ActiveRun?
+    /// The first line of the newest thought Hermes stored during the current run (#74); nil after it ends.
+    public var thought: String?
     public var approvals: [PendingApproval] = []
     public var outbox: [OutgoingPrompt] = []
     /// The history misses something: a run just finished, or (with a relay older than trismegistus#30, which sends no
@@ -145,12 +147,16 @@ public struct SessionState: Sendable, Equatable {
     /// going, with its pending approval, right after the subscription; the outbox stays.
     mutating func lostTrack() {
         run = nil
+        thought = nil
         approvals = []
     }
 
     /// A run ended: the history has the finished turn (and any prompt or steer this device didn't see).
     private mutating func end(_ runID: String) {
-        if run?.id == runID { run = nil }
+        if run?.id == runID {
+            run = nil
+            thought = nil
+        }
         approvals.removeAll { $0.runID == runID }
         historyStale = true
     }

@@ -9,6 +9,21 @@ public struct ToolRow: Sendable, Equatable {
     public var exitCode: Int?
 }
 
+/// One step of an answer's thinking: an assistant message's `reasoning` and what the step led to.
+public struct ThinkingStep: Sendable, Equatable {
+    public var thought: String
+    /// The step's tool names (`terminal`, `read_file, terminal`); nil when it led to the answer.
+    public var tool: String?
+    /// Its one call's arguments in short (`cua-driver inspect`), or `3 calls`; empty for none.
+    public var detail: String
+
+    public init(thought: String, tool: String? = nil, detail: String = "") {
+        self.thought = thought
+        self.tool = tool
+        self.detail = detail
+    }
+}
+
 /// An image in the chat.
 public enum ChatImage: Sendable, Equatable, Hashable {
     /// Sent through the relay (`GET /api/attachments/{id}`).
@@ -30,11 +45,13 @@ public enum ChatItem: Sendable, Equatable, Identifiable {
     /// The window's one marker per run; the terminal pane has the details.
     case marker(id: String, RunSummary)
     case note(id: String, text: String, isError: Bool)
+    /// The window's chip of a finished turn's thinking, after its answer (#74): the steps in order.
+    case thinking(id: String, [ThinkingStep])
 
     public var id: String {
         switch self {
         case .user(let id, _, _, _, _), .answer(let id, _, _), .tool(let id, _), .subagent(let id, _, _, _),
-            .marker(let id, _), .note(let id, _, _):
+            .marker(let id, _), .note(let id, _, _), .thinking(let id, _):
             id
         case .prompt(let p, _): "o-\(p.id)"
         }
@@ -46,7 +63,7 @@ public enum ChatItem: Sendable, Equatable, Identifiable {
 /// otherwise (window) each run gets one marker.
 public enum ChatTimeline {
     public static func items(_ s: SessionState, compact: Bool) -> [ChatItem] {
-        var items = history(s.history, compact: compact)
+        var items = history(s.history, compact: compact, running: s.run != nil)
         var runs: [String: [Event]] = [:]
         var order: [String] = []
         for e in s.events {
@@ -73,16 +90,29 @@ public enum ChatTimeline {
         s.events.filter { $0.runID == runID && $0.kind == "tool.started" }.count
     }
 
-    private static func history(_ messages: [HistoryMessage], compact: Bool) -> [ChatItem] {
+    /// `running`: the last turn is still going; its thinking shows once it ends and the history reloads.
+    private static func history(_ messages: [HistoryMessage], compact: Bool, running: Bool = false) -> [ChatItem] {
         var results: [String: String] = [:]
         for m in messages where m.role == .tool {
             if let id = m.toolCallID { results[id] = m.content }
         }
         var items: [ChatItem] = []
+        // The window's thinking chip goes after each turn's last item (its answer); a steer stays in the turn.
+        var steps: [ThinkingStep] = []
+        var stepsID = ""
+        func endTurn() {
+            if !compact, !steps.isEmpty { items.append(.thinking(id: stepsID, steps)) }
+            steps = []
+        }
         for m in messages {
             let time = m.timestamp.map { Date(timeIntervalSince1970: $0) }
+            if m.role == .assistant, let step = thinkingStep(m) {
+                steps.append(step)
+                stepsID = "k-\(m.id)"
+            }
             switch m.role {
             case .user:
+                if !m.isSteer { endTurn() }
                 let (text, images) = userMessage(m.content, attachments: m.attachments)
                 items.append(.user(id: "h-\(m.id)", text: text, time: time, images: images, steer: m.isSteer))
             case .assistant:
@@ -99,7 +129,37 @@ public enum ChatTimeline {
                 break
             }
         }
+        if !running { endTurn() }
         return items
+    }
+
+    /// The message's thinking as a step, nil when it has none.
+    static func thinkingStep(_ m: HistoryMessage) -> ThinkingStep? {
+        guard let thought = m.reasoning?.trimmingCharacters(in: .whitespacesAndNewlines), !thought.isEmpty else { return nil }
+        guard let first = m.toolCalls.first else { return ThinkingStep(thought: thought) }
+        var names: [String] = []
+        for call in m.toolCalls where !names.contains(call.name) { names.append(call.name) }
+        let detail = m.toolCalls.count == 1 ? argumentSummary(first.arguments) : "\(m.toolCalls.count) calls"
+        return ThinkingStep(thought: thought, tool: names.joined(separator: ", "), detail: detail)
+    }
+
+    /// A call's arguments in at most 40 characters: its command, path, query or URL, else its first string argument by
+    /// name; empty when it has none.
+    static func argumentSummary(_ arguments: String?) -> String {
+        guard let data = arguments?.data(using: .utf8),
+            let args = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        else { return "" }
+        let named = ["command", "path", "file_path", "query", "url", "pattern"].lazy.compactMap { args[$0] as? String }.first
+        let value = named ?? args.sorted { $0.key < $1.key }.lazy.compactMap { $0.value as? String }.first ?? ""
+        let line = firstLine(value).trimmingCharacters(in: .whitespaces)
+        return line.count > 40 ? String(line.prefix(39)) + "…" : line
+    }
+
+    /// The first line of the newest thought Hermes stored in the turn still going (the messages after its prompt): what the
+    /// WORKING line shows during a run. Nil when none has one yet.
+    public static func latestThought(_ messages: [HistoryMessage]) -> String? {
+        let turn = messages.lastIndex { $0.role == .user && !$0.isSteer }.map { messages[($0 + 1)...] } ?? messages[...]
+        return turn.reversed().lazy.compactMap { thinkingStep($0) }.first.map { firstLine($0.thought) }
     }
 
     /// A history user message as the chat shows it. Hermes keeps no images, only a `[screenshot]` line for each: with

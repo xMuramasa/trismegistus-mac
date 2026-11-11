@@ -28,6 +28,8 @@ public final class SessionStore {
     public private(set) var models: ModelCatalog?
     /// The sessions with a model of their own; the others use `models.current`.
     public private(set) var sessionModels: [String: ModelChoice] = [:]
+    /// The sessions with an effort of their own; the others use Hermes' default (#74).
+    public private(set) var sessionEfforts: [String: Effort] = [:]
     /// Open sessions by id.
     public private(set) var sessions: [String: SessionState] = [:]
     /// A row for every listed or open session. The open ones and the RelayClient.maxSubscriptions most recent are
@@ -64,12 +66,21 @@ public final class SessionStore {
     @ObservationIgnored private var loading: Set<String> = []
     @ObservationIgnored private var wasConnected = false
     @ObservationIgnored private let now: @Sendable () -> Date
+    @ObservationIgnored private let sleep: @Sendable (Duration) async throws -> Void
+    /// The latest-thought fetch per session: waiting out its second, or fetching.
+    @ObservationIgnored private var thoughtTimers: [String: Task<Void, Never>] = [:]
+    @ObservationIgnored private var thoughtFetching: Set<String> = []
+    @ObservationIgnored private var thoughtAgain: Set<String> = []
 
-    /// now is injectable so tests control run start times.
-    public init(client: RelayClient, rest: RelayREST, now: @escaping @Sendable () -> Date = Date.init) {
+    /// now and sleep are injectable so tests control run start times and the thought's debounce.
+    public init(
+        client: RelayClient, rest: RelayREST, now: @escaping @Sendable () -> Date = Date.init,
+        sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
+    ) {
         self.client = client
         self.rest = rest
         self.now = now
+        self.sleep = sleep
     }
 
     public func start() {
@@ -111,6 +122,9 @@ public final class SessionStore {
             connection = state
         case .message(let message):
             for id in sessions.keys { sessions[id]?.apply(message) }
+            if case .event(let e) = message, e.kind == "tool.completed", sessions[e.sessionID]?.run?.id == e.runID {
+                scheduleThought(e.sessionID)
+            }
             let at = now()
             for id in overview.keys { overview[id]?.apply(message, at: at) }
         }
@@ -149,6 +163,34 @@ public final class SessionStore {
         } catch {
             sessions[id]?.historyError = (error as? RelayAPIError)?.message ?? "Can't reach the relay."
         }
+    }
+
+    /// Hermes stores a step's thinking when its tool round ends, and the runs API doesn't stream it: fetch the end of the
+    /// history 1 s after the last `tool.completed`, one fetch at a time, for the WORKING line (`SessionState.thought`).
+    /// The live timeline stays as it is.
+    private func scheduleThought(_ id: String) {
+        if thoughtFetching.contains(id) {
+            thoughtAgain.insert(id)
+            return
+        }
+        thoughtTimers[id]?.cancel()
+        let sleep = sleep
+        thoughtTimers[id] = Task { [weak self] in
+            do { try await sleep(.seconds(1)) } catch { return }
+            await self?.loadThought(id)
+        }
+    }
+
+    private func loadThought(_ id: String) async {
+        thoughtTimers[id] = nil
+        guard let runID = sessions[id]?.run?.id else { return }
+        thoughtFetching.insert(id)
+        let messages = try? await rest.latestMessages(id, limit: 20)
+        thoughtFetching.remove(id)
+        if sessions[id]?.run?.id == runID, let thought = messages.flatMap(ChatTimeline.latestThought) {
+            sessions[id]?.thought = thought
+        }
+        if thoughtAgain.remove(id) != nil { scheduleThought(id) }
     }
 
     /// Sends a prompt to an open session; it waits in the session's outbox until the history has it. Images not
@@ -230,6 +272,7 @@ public final class SessionStore {
         if let fresh = try? await rest.links() { links = fresh }
         if let fresh = try? await rest.models() { models = fresh }
         if let fresh = try? await rest.sessionModels() { sessionModels = fresh }
+        if let fresh = try? await rest.sessionEfforts() { sessionEfforts = fresh }
     }
 
     /// The model the session's next run uses: its own choice, else the relay's current one.
@@ -245,6 +288,18 @@ public final class SessionStore {
             sessionModels[id] = try await rest.setModel(id, choice)
         } catch {
             if sessionModels[id] == choice { sessionModels[id] = old }
+            throw error
+        }
+    }
+
+    /// Optimistic like setModel; nil is Hermes' default. Not copied by a handoff (the relay doesn't copy the model either).
+    public func setEffort(_ id: String, _ effort: Effort?) async throws {
+        let old = sessionEfforts[id]
+        sessionEfforts[id] = effort
+        do {
+            sessionEfforts[id] = try await rest.setEffort(id, effort)
+        } catch {
+            if sessionEfforts[id] == effort { sessionEfforts[id] = old }
             throw error
         }
     }
@@ -307,6 +362,7 @@ public final class SessionStore {
         sessionList.removeAll { $0.id == id }
         tags[id] = nil
         sessionModels[id] = nil
+        sessionEfforts[id] = nil
         links = links.filter { $0.key != id && $0.value != id } // the relay drops both sides
         sessions[id] = nil
         await follow()

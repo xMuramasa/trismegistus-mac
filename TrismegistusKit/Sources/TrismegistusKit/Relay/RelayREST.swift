@@ -92,6 +92,8 @@ public struct HistoryMessage: Decodable, Sendable, Equatable {
     public var attachments: [AttachmentRef]
     /// Hermes' `display_kind`: `steer` for a message sent into a running turn; nil for a plain one.
     public var displayKind: String?
+    /// An assistant message's summarized thinking, plain text; nil or empty when the model didn't think.
+    public var reasoning: String?
 
     /// A steer: `content` is the text that was sent, without Hermes' out-of-band wrapper.
     public var isSteer: Bool { displayKind == Self.steer }
@@ -123,6 +125,7 @@ public struct HistoryMessage: Decodable, Sendable, Equatable {
         toolName = try c.decodeIfPresent(String.self, forKey: "tool_name")
         timestamp = try c.decodeIfPresent(Double.self, forKey: "timestamp")
         attachments = (try? c.decodeIfPresent(Lossy<AttachmentRef>.self, forKey: "attachments"))??.items ?? []
+        reasoning = try? c.decodeIfPresent(String.self, forKey: "reasoning")
     }
 }
 
@@ -220,6 +223,24 @@ public struct RelayREST: Sendable {
     public func setModel(_ id: String, _ choice: ModelChoice) async throws -> ModelChoice {
         let body: [String: JSONValue] = ["provider": .string(choice.provider), "model": .string(choice.model)]
         return try decode(ModelChoice.self, try await call("PUT", try sessionPath(id) + "/model", body: body))
+    }
+
+    /// The sessions with an effort of their own; the others use Hermes' default. Unknown values are skipped. 404 → none.
+    public func sessionEfforts() async throws -> [String: Effort] {
+        struct Body: Decodable { var sessions: [String: String?] }
+        do {
+            return try decode(Body.self, try await call("GET", "/api/session-efforts")).sessions
+                .compactMapValues { $0.flatMap(Effort.init(rawValue:)) }
+        } catch let error as RelayAPIError where error.status == 404 {
+            return [:]
+        }
+    }
+
+    /// Only `api_server` sessions (403 read_only otherwise); nil goes back to Hermes' default. Applies from the next run.
+    public func setEffort(_ id: String, _ effort: Effort?) async throws -> Effort? {
+        struct Body: Decodable { var effort: String? }
+        let body: [String: JSONValue] = ["effort": effort.map { .string($0.rawValue) } ?? .null]
+        return try decode(Body.self, try await call("PUT", try sessionPath(id) + "/effort", body: body)).effort.flatMap(Effort.init(rawValue:))
     }
 
     /// Handoff links, newer id → the older id it continues. Ids deleted elsewhere may linger. 404 → none.

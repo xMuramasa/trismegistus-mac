@@ -49,4 +49,26 @@ public struct ModelCatalog: Decodable, Sendable, Equatable {
     public func providerName(_ slug: String) -> String {
         providers.first { $0.slug == slug }?.name ?? slug
     }
+
+    /// The model can think (an effort applies): unless the catalog says `reasoning: false`.
+    public func reasons(_ choice: ModelChoice) -> Bool {
+        providers.first { $0.slug == choice.provider }?.models.first { $0.id == choice.model }?.reasoning != false
+    }
+}
+
+/// How hard the model thinks, per session (`PUT /api/sessions/{id}/effort`); a session without one uses Hermes'
+/// default, which the app can't read. Fast mode stays out: it bills extra usage on Claude plans (#74).
+public enum Effort: String, Sendable, CaseIterable {
+    case none, low, medium, high, xhigh, max
+
+    public var label: String {
+        switch self {
+        case .none: "Off"
+        case .low: "Low"
+        case .medium: "Medium"
+        case .high: "High"
+        case .xhigh: "Extra high"
+        case .max: "Max"
+        }
+    }
 }

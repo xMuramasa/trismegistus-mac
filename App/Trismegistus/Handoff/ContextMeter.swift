@@ -12,6 +12,8 @@ struct ContextMeter: View {
 
     @Environment(AppModel.self) private var model
     @Environment(\.onSteel) private var onSteel
+    /// The window header's narrow-window rule, stage 1 (#74): only the percentage.
+    @Environment(\.compactMeter) private var compact
     @State private var estimate = ContextEstimate()
     @State private var estimateID: String?
     @State private var loaded = false
@@ -30,9 +32,9 @@ struct ContextMeter: View {
         let compressing = estimate.isCompressing(window: window)
         let canHandOff = compressing && SessionCapabilities(info).canHandOff
         let label = HStack(spacing: Space.s) {
-            Text(summary(window: window, percent: percent))
+            Text(compact ? percent.map { "\($0)%" } ?? summary(window: window, percent: percent) : summary(window: window, percent: percent))
                 .typeRole(.caption).monospacedDigit().foregroundStyle(color(band, text: true)).lineLimit(1).fixedSize()
-            if let percent { SegmentBar(percent: percent, color: color(band, text: false)) }
+            if let percent, !compact { SegmentBar(percent: percent, color: color(band, text: false)) }
         }
         .contentShape(Rectangle())
         Group {

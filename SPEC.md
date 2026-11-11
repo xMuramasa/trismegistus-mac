@@ -272,6 +272,27 @@ scripts/             sync-protocol.sh, mac-build.sh (the SSH build loop, run fro
   scrolls under the panel, the list or the header, and a material's blur would wipe out the contour lines the list is
   meant to show faintly); the glows (`selection-glow`, `check-glow`, `plus-glow`); the 50 pt pitch. A `.shadow` goes on
   the fill alone: on a stack it is one shadow per child.
+- **Thinking and effort** (#74, design 16 `#16a`, `#16d`, `#16-states` in `design/opendesign/16-qol/`; relay
+  trismegistus#32): in the window's chat a finished turn with stored thinking (the history's `reasoning` on assistant
+  messages) gets a `∴ THINKING · N STEPS ⌄` chip under its answer, in the commands chip's style and before it (N: the
+  turn's assistant messages with thinking; no chip without any: effort Off, a model that doesn't think, older
+  conversations). It unfolds a panel (white at 80 %, rule hairline, `control` corners): one row per step, `01`, the
+  thought (13 pt secondary, 1.45 line height, folded to 3 lines with an underlined `more`) and what it led to
+  (`→ terminal · <its argument in short>`, `→ terminal, read_file · 3 calls`, `→ answer`), split by `#ECECEC` hairlines.
+  Folded by default; each fold holds while the conversation stays open. During a run the WORKING line goes on with
+  `· thinking: "<first line of the newest stored thought>"`, one line cut at its tail: the runs API doesn't stream
+  thinking, so the store fetches the end of the history 1 s after the last `tool.completed` (one fetch at a time,
+  the live timeline untouched); the chip comes when the run ends and the history reloads. The `∴` is the system font's
+  (Inter has none). **Effort** is its own pill right of the model's in the window header (`∴ High ⌄`, `∴ Default` in
+  secondary when nothing is chosen), only for app conversations whose model has `reasoning != false`: a native menu
+  with one Effort section (Default "Hermes' setting", Off "no thinking", Low, Medium, High, Extra high, Max; notes under
+  the names, a native menu having no trailing text) and a disabled "Applies from the next message."; wire values `null`,
+  `none`, `low`, `medium`, `high`, `xhigh`, `max` (`PUT /api/sessions/:id/effort`, loaded with the session models
+  from `GET /api/session-efforts`, set optimistically with rollback). Fast mode stays out (it bills extra usage on
+  Claude plans); the popover keeps its model text; a handoff doesn't copy the effort. **Narrow windows:** the header
+  (`FittedHeader`) keeps the title 120 pt where it can: first the context meter shows only its percentage, then the
+  model pill drops `claude-`; the effort pill and the icon buttons never hide. At 1560 pt that holds; at 1180 pt (a
+  484 pt detail) both steps leave the title about 20 pt.
 - **Markdown:** prose with `AttributedString(markdown:)`; fenced code blocks are split out and drawn as views with a
   language label and a copy button.
 - **Images** (#43, #44, #45; relay trismegistus#25, #26): a message takes up to 4 images by drop onto the chat column, the

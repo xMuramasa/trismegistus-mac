@@ -166,11 +166,14 @@ struct ChatView: View {
         let tools = state.map { ChatTimeline.toolCount($0, runID: run.id) } ?? 0
         let entries = compact ? [] : TerminalTranscript.entries(from: state?.events.filter { $0.runID == run.id } ?? [])
         let summary = TerminalTranscript.summary(of: entries)
+        // The latest thought Hermes stored (#74), one line truncated at its tail.
+        let thought = state?.thought.map { " · thinking: “\($0)”" } ?? ""
         return VStack(alignment: .leading, spacing: Space.s) {
             TimelineView(.periodic(from: .now, by: 1)) { context in
-                WorkLine(detail: "\(Self.elapsed(from: start, to: context.date)) · " + (run.status == .waitingForApproval ? "approval" : "\(tools) \(tools == 1 ? "tool" : "tools")")) {
+                WorkLine(detail: "\(Self.elapsed(from: start, to: context.date)) · " + (run.status == .waitingForApproval ? "approval" : "\(tools) \(tools == 1 ? "tool" : "tools")") + thought) {
                     if summary.commandCount > 0 { RunChip(summary: summary, isOpen: $workOpen, showCommands: showCommands) }
                 }
+                .lineLimit(1)
             }
             if workOpen { RunCards(entries: entries) }
         }
@@ -361,6 +364,10 @@ struct ChatTranscript: View {
                 }
             case .note(_, let text, let isError):
                 Text(text).typeRole(.caption).foregroundStyle(isError ? Ink.text.error : Ink.text.secondary)
+            case .thinking(let id, let steps):
+                // The chip row under the answer (#74); its fold holds while the conversation stays open.
+                ThinkingBlock(
+                    steps: steps.map { ThinkingPanel.Step(thought: $0.thought, tool: $0.tool, detail: $0.detail) }, isOpen: isExpanded(id))
             }
         }
     }

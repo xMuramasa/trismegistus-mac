@@ -87,6 +87,8 @@ public enum Ink {
         public let message = Palette.raised.opacity(Opacity.message)
         /// the window's floating composer, white at 82 %
         public let composer = Palette.raised.opacity(Opacity.composer)
+        /// #74: the thinking panel under an answer's chip row, white at 80 %
+        public let thinking = Palette.raised.opacity(Opacity.thinking)
         /// the floating section panel at its top (#69): translucent dark-panel grey
         public let panel = Palette.darkPanel.opacity(Opacity.panelTop)
         /// the section panel at its bottom
@@ -118,6 +120,8 @@ public enum Ink {
         public let panelChamfer = Palette.raised.opacity(Opacity.chamferOnDark)
         /// the tree's guide line under Chats, the `// TRISMEGISTUS` rule, the device menu's edge
         public let panelGuide = Palette.raised.opacity(Opacity.guideOnDark)
+        /// #74: the hairline between the thinking panel's steps
+        public let step = Palette.listGround
     }
     public static let line = Line()
     public struct Mark: Sendable {
@@ -207,6 +211,8 @@ public enum Opacity {
     public static let message: Double = 0.85
     /// the window's composer's white
     public static let composer: Double = 0.82
+    /// #74: the thinking panel's white
+    public static let thinking: Double = 0.8
     /// a list card's contour hairline
     public static let cardEdge: Double = 0.6
     /// white on the section panel: its hairline, the current row
@@ -255,6 +261,8 @@ public enum Icon {
     public static let panel: CGFloat = 16
     /// a source avatar's glyph
     public static let avatar: CGFloat = 14
+    /// #74: the effort pill's ∴ (system font: Inter has no U+2234); the thinking chip's takes `m`
+    public static let therefore: CGFloat = 12
     /// #72: the source glyph in a mission card's triangle
     public static let mission: CGFloat = 13
 }
@@ -431,6 +439,14 @@ public enum Size {
     public static let pickerMax: CGFloat = 240
     /// the conversation header's tag strip
     public static let tagsMax: CGFloat = 220
+    /// #74: the thinking panel's number column, the gap that makes a thought's 13 pt lines 1.45 high, the lines a long thought folds to; the least the conversation header leaves its title before the meter and the model pill shorten
+    public struct Thinking: Sendable {
+        public let number: CGFloat = 34
+        public let lineGap: CGFloat = 3
+        public let lines: CGFloat = 3
+        public let titleMin: CGFloat = 120
+    }
+    public static let thinking = Thinking()
     /// the T mark in the popover header
     public static let headerMark: CGFloat = 18
     /// the T mark of an empty state
@@ -611,7 +627,7 @@ public enum FontFamily: String, CaseIterable, Sendable {
 
 /// `font.role`: the type roles (`View.typeRole(_:)`).
 public enum TypeRole: CaseIterable, Sendable {
-    case heading, title, headline, body, callout, caption, label, button, quietTitle, detailTitle, trackedLabel, columnLabel, count, tag, controlLabel, micro, missionTitle, message, statePill, mono, monoSmall
+    case heading, title, headline, body, callout, caption, label, button, quietTitle, detailTitle, trackedLabel, columnLabel, count, tag, controlLabel, micro, missionTitle, message, stepNumber, stepTool, statePill, mono, monoSmall
 
     public var spec: TypeSpec {
         switch self {
@@ -633,6 +649,8 @@ public enum TypeRole: CaseIterable, Sendable {
         case .micro: TypeSpec(family: .ui, size: 10, weight: 500, tracking: 0, uppercase: false)
         case .missionTitle: TypeSpec(family: .ui, size: 14, weight: 500, tracking: 0, uppercase: false)
         case .message: TypeSpec(family: .ui, size: 14, weight: 400, tracking: 0, uppercase: false)
+        case .stepNumber: TypeSpec(family: .ui, size: 11, weight: 600, tracking: 0.88, uppercase: false)
+        case .stepTool: TypeSpec(family: .ui, size: 11, weight: 500, tracking: 0, uppercase: false)
         case .statePill: TypeSpec(family: .ui, size: 11, weight: 600, tracking: 0, uppercase: false)
         case .mono: TypeSpec(family: .mono, size: 12, weight: 400, tracking: 0, uppercase: false)
         case .monoSmall: TypeSpec(family: .mono, size: 11, weight: 400, tracking: 0, uppercase: false)
