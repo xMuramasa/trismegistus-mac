@@ -364,6 +364,9 @@ struct ChatTranscript: View {
     @State private var expanded: Set<String> = []
     /// The row under the pointer: its actions show.
     @State private var hovered: String?
+    /// How far a 24 pt action button hangs above its 10 pt label line; less than the window's 20 pt gap between rows,
+    /// so a row's hover ground never reaches the row above.
+    static let actionReach = Size.messageAction.button - Space.m
 
     var body: some View {
         let cut = editing.wrappedValue.flatMap { e in items.firstIndex { $0.id == e.itemID } }
@@ -373,9 +376,16 @@ struct ChatTranscript: View {
         ForEach(Array(items.enumerated()), id: \.element.id) { i, item in
             row(item, offer: offer, last: last)
                 .rewound(cut.map { i > $0 } ?? false)
+                // The whole row is hover ground, not just its text and boxes: an empty stretch (the label line right of
+                // its words) used to count as outside, so the pencil hid on the way to it and flickered. The ground
+                // also reaches up over the actions, which hang above the label line into the gap between rows
+                // (Martin's recording, 2026-11-11).
+                .padding(.top, Self.actionReach)
+                .contentShape(Rectangle())
                 .onHover { inside in
                     if inside { hovered = item.id } else if hovered == item.id { hovered = nil }
                 }
+                .padding(.top, -Self.actionReach)
         }
     }
 
