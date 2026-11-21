@@ -53,18 +53,19 @@ struct ChatView: View {
         let items = self.items
         let marks = findMarks
         let counts = marks.map { findCounts(items, $0) } ?? []
+        // The newest rows are laid out in full, the older ones lazily (`TailStack`): an all-lazy chat could land in
+        // its height estimate, blank (Martin, 2026-11-21).
+        let split = ChatTail.split(items.count)
         VStack(spacing: 0) {
-            if find.wrappedValue?.sessionID == sessionID, !compact, let findFocus { findBar(findFocus) }
-            if let approval { banner(approval) }
-            // The composer block lies over the scroll view's bottom, never under it (#52, `DockedScroll`).
+            // The find bar and an approval lie over the scroll view's top and the composer block over its bottom,
+            // never beside it (#52, `DockedScroll`): its height never changes, so the chat stays at the bottom.
             DockedScroll(reveal: marks == nil ? nil : steps.match?.itemID) {
-                LazyVStack(alignment: .leading, spacing: compact ? Space.m : Space.xl) {
+                TailStack(spacing: compact ? Space.m : Space.xl) {
                     OlderParts(tipID: id, compact: compact)
                     historyStatus
-                    ChatTranscript(
-                        items: items, sessionID: id, events: state?.events ?? [], onShowCommands: showCommands, retry: retry(_:),
-                        editing: $editing, resend: canRewind ? resend(_:) : nil, openRows: $openRows,
-                        findMarks: rowMarks(counts, marks))
+                    transcript(items, counts: counts, marks: marks, shown: 0..<split)
+                } tail: {
+                    transcript(items, counts: counts, marks: marks, shown: split..<items.count)
                     if let run { working(run) } else if let info, SessionCapabilities(info).canHandOff, Self.stalled(items) { stallRow(info) }
                 }
                 // The window: Space.m under the header's title rule.
@@ -74,6 +75,11 @@ struct ChatView: View {
                 .padding(.horizontal, Space.l)
                 .frame(maxWidth: .infinity)
                 .environment(\.plainAnswers, !compact)
+            } top: {
+                VStack(spacing: 0) {
+                    if find.wrappedValue?.sessionID == sessionID, !compact, let findFocus { findBar(findFocus) }
+                    if let approval { banner(approval) }
+                }
             } dock: {
                 ComposerBlock(floating: !compact) { runLine } input: { input }
             }
@@ -237,6 +243,16 @@ struct ChatView: View {
         .padding([.horizontal, .top], Space.l)
         .background(compact ? Ink.surface.window : .clear)
         .zIndex(1)
+    }
+
+    /// The rows in `shown` (a slice of `items`, which retry, edit and find read whole).
+    private func transcript(
+        _ items: [ChatItem], counts: [(itemID: String, count: Int)], marks: FindMarks?, shown: Range<Int>
+    ) -> some View {
+        ChatTranscript(
+            items: items, shown: shown, sessionID: id, events: state?.events ?? [], onShowCommands: showCommands,
+            retry: retry(_:), editing: $editing, resend: canRewind ? resend(_:) : nil, openRows: $openRows,
+            findMarks: rowMarks(counts, marks))
     }
 
     @ViewBuilder private var historyStatus: some View {
@@ -442,6 +458,8 @@ extension EnvironmentValues {
 
 struct ChatTranscript: View {
     let items: [ChatItem]
+    /// The rows drawn (`TailStack` splits them); retry, edit and the dimmed rows after an edit go by all of `items`.
+    var shown: Range<Int>? = nil
     /// Whose messages: Hermes' media files are fetched per session.
     let sessionID: String
     /// The live events: a run's cards unfold from them.
@@ -472,7 +490,7 @@ struct ChatTranscript: View {
         // Retry and edit wait while the editor is open.
         let offer = editing.wrappedValue == nil ? resend : nil
         let last = offer == nil ? nil : ChatTimeline.retry(items)
-        ForEach(Array(items.enumerated()), id: \.element.id) { i, item in
+        ForEach(Array(items.enumerated())[shown ?? items.indices], id: \.element.id) { i, item in
             row(item, offer: offer, last: last)
                 .environment(\.findMarks, findMarks[item.id])
                 .id(item.id) // ⌘F scrolls to it

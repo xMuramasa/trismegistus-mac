@@ -4,8 +4,9 @@ import XCTest
 
 @testable import TrismegistusUI
 
-/// The chat stays visible and at the bottom while the composer under it grows or shrinks (#52). `Chat` puts a
-/// `LazyVStack` of varied rows and a `Composer` in `DockedScroll`, the view `ChatView` uses.
+/// The chat stays visible and at the bottom while the composer under it grows or shrinks (#52), as a conversation's
+/// history arrives, and when something appears above it (Martin, 2026-11-21). `Chat` puts varied rows in a `TailStack`
+/// and a `Composer` in `DockedScroll`, as `ChatView` does.
 ///
 /// With the composer stacked under the scroll view instead (`docked: false`, the layout before the fix), every line
 /// shrank the scroll view; the lazy stack re-estimated its height and the bottom anchor either fell behind or landed
@@ -17,6 +18,10 @@ final class ChatScrollTests: XCTestCase {
         @Published var chosen = 0.0
         @Published var conversation = "a"
         @Published var rows = 150
+        /// Real conversations: mostly short rows, now and then a huge one (a code answer, an image): see `extra`.
+        @Published var spread = false
+        /// Something above the messages (an approval banner, the find bar), laid over the scroll view's top.
+        @Published var banner: CGFloat = 0
         /// Rows the lazy stack has laid out, in its own coordinates.
         var laidOut: [String: CGRect] = [:]
     }
@@ -30,17 +35,39 @@ final class ChatScrollTests: XCTestCase {
         /// Deterministic and varied: 4…63 words a row.
         static func words(_ id: String) -> Int { 4 + id.unicodeScalars.reduce(7) { ($0 &* 31 &+ Int($1.value)) % 9973 } % 60 }
 
+        /// With `spread`: conversation `a` has a 1600 pt row every 13 rows, `b` a 2400 pt one every 41, the rest none.
+        static func extra(_ id: String) -> CGFloat {
+            guard let n = Int(id.drop { !$0.isNumber }) else { return 0 }
+            switch id.first {
+            case "a": return n % 13 == 5 ? 1600 : 0
+            case "b": return n % 41 == 7 ? 2400 : 0
+            default: return 0
+            }
+        }
+
+        private func row(_ id: String) -> some View {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(String(repeating: "word \(id) ", count: Self.words(id)))
+                    .typeRole(.body).foregroundStyle(Ink.surface.window)
+                if chat.spread { Color.clear.frame(height: Self.extra(id)) }
+            }
+            .padding(Space.m)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Ink.text.primary)
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("rows")) } action: { [chat] in chat.laidOut[id] = $0 }
+            .onDisappear { [chat] in chat.laidOut[id] = nil }
+        }
+
+        private var ids: [String] { (0..<chat.rows).map { "\(chat.conversation)\($0)" } }
+
+        /// As `ChatView`: the newest rows in full under a lazy stack of the older ones (`TailStack`).
         private var rows: some View {
-            LazyVStack(alignment: .leading, spacing: compact ? Space.m : Space.xl) {
-                ForEach((0..<chat.rows).map { "\(chat.conversation)\($0)" }, id: \.self) { id in
-                    Text(String(repeating: "word \(id) ", count: Self.words(id)))
-                        .typeRole(.body).foregroundStyle(Ink.surface.window)
-                        .padding(Space.m)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Ink.text.primary)
-                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("rows")) } action: { [chat] in chat.laidOut[id] = $0 }
-                        .onDisappear { [chat] in chat.laidOut[id] = nil }
-                }
+            let ids = self.ids
+            let split = ChatTail.split(ids.count)
+            return TailStack(spacing: compact ? Space.m : Space.xl) {
+                ForEach(ids[..<split], id: \.self) { row($0) }
+            } tail: {
+                ForEach(ids[split...], id: \.self) { row($0) }
             }
             .coordinateSpace(.named("rows"))
             .padding(compact ? Space.l : Space.xl)
@@ -62,7 +89,9 @@ final class ChatScrollTests: XCTestCase {
             VStack(spacing: 0) {
                 if docked {
                     // The real layout: ChatView uses this view.
-                    DockedScroll { rows } dock: { input }
+                    DockedScroll { rows } top: {
+                        if chat.banner > 0 { Color.red.frame(height: chat.banner) }
+                    } dock: { input }
                 } else {
                     ScrollView { rows }
                         .defaultScrollAnchor(.bottom)
@@ -139,7 +168,7 @@ final class ChatScrollTests: XCTestCase {
                 if let c = rep.colorAt(x: x, y: y)?.usingColorSpace(.sRGB), c.brightnessComponent < 0.5 { dark += 1 }
             }
         }
-        let pad = compact ? Space.l : Space.xl
+        let pad = (compact ? Space.l : Space.xl) + chat.banner
         let rows = chat.laidOut.values.map { $0.offsetBy(dx: 0, dy: pad) }
         return Step(
             label: label, composer: editor.frame.height, document: scroll.documentView?.frame.height ?? 0,
@@ -255,6 +284,51 @@ final class ChatScrollTests: XCTestCase {
             spin(0.5)
             let step = try measure(window, chat, compact: compact, "another conversation")
             XCTAssertTrue(step.shows && step.atBottom, "\(step)")
+        }
+    }
+
+    /// Rows of very different heights (one-line chips, then a long code answer or an image), and a switch to a
+    /// conversation not opened yet: no rows for a frame, the Loading row while its history comes, then all of it. With
+    /// every row lazy, the stack's height estimate was far off and the bottom anchor landed in it: a blank chat with a
+    /// long empty scroll, until a scroll (Martin, 2026-11-21). The newest rows are laid out in full (`TailStack`).
+    func testAConversationWhoseHistoryArrivesLandsAtTheBottom() throws {
+        for compact in [false, true] {
+            let chat = ChatState()
+            chat.spread = true
+            chat.conversation = "a"
+            chat.rows = 300
+            let window = window(chat, compact: compact)
+            for (next, count) in [("b", 300), ("c", 120), ("a", 260), ("b", 200)] {
+                chat.conversation = next
+                chat.rows = 0
+                spin(0.016)
+                chat.rows = 1 // the Loading row
+                spin(0.3)
+                chat.rows = count
+                spin(0.6)
+                let step = try measure(window, chat, compact: compact, "\(compact ? "popover" : "window"), opened \(next)")
+                XCTAssertTrue(step.shows && step.atBottom, "\(step)")
+            }
+        }
+    }
+
+    /// An approval banner or the find bar appearing above the messages: they lie over the scroll view, which keeps its
+    /// height, so the chat stays at the bottom. Beside it, every change knocked the chat off the bottom, further with
+    /// each new message.
+    func testABannerAboveKeepsTheChatAtTheBottom() throws {
+        let chat = ChatState()
+        let window = window(chat, compact: false)
+        for height in [60.0, 4, 44] {
+            chat.banner = height
+            spin()
+            chat.rows += 1
+            spin(0.6)
+            let shown = try measure(window, chat, compact: false, "banner \(Int(height)), a new message")
+            XCTAssertTrue(shown.shows && shown.atBottom, "\(shown)")
+            chat.banner = 0
+            spin(0.6)
+            let gone = try measure(window, chat, compact: false, "banner \(Int(height)) gone")
+            XCTAssertTrue(gone.shows && gone.atBottom, "\(gone)")
         }
     }
 }
