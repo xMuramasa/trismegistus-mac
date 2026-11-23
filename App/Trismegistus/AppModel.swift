@@ -50,6 +50,7 @@ final class AppModel {
     @ObservationIgnored private var unseenWatch: Task<Void, Never>?
     /// Moves `trackedUntil` every 30 s once the launch has caught up; nil before.
     @ObservationIgnored private var tracking: Task<Void, Never>?
+    @ObservationIgnored private var loadingAhead: Task<Void, Never>?
     /// The conversation each place shows, and its window: who is looking (#66).
     @ObservationIgnored private var viewers: [Viewer: Shown] = [:]
 
@@ -132,6 +133,17 @@ final class AppModel {
         guard let store, !store.unseen.marks.isEmpty else { return }
         let parts = watchedParts
         if store.unseen.mark(parts) != nil { store.unseen.viewed(parts) }
+    }
+
+    /// The first conversations of the window's tab load their histories ahead, so picking one shows it at once rather
+    /// than after a fetch that can take seconds on a slow link (Martin, 2026-11-23).
+    private func loadAhead(_ store: SessionStore) {
+        let listing = ConversationSidebar.listing(self)
+        let stored = defaults.string(forKey: "chat.kind").flatMap(ConversationKind.init(rawValue:)) ?? .app
+        let kind = ConversationSidebar.summary(listing, store: store).resolving(stored)
+        let ids = (listing.inProgress + listing.pinned + listing.rest).filter { kind.includes($0.source) }.map(\.id)
+        loadingAhead?.cancel()
+        loadingAhead = Task { await store.prefetch(ids) }
     }
 
     /// The first list load of the launch catches up on what changed while the app was quit (a done mark, no sound),
@@ -255,6 +267,7 @@ final class AppModel {
                     try await store.refreshSessions()
                     self?.sessionsError = nil
                     self?.listLoaded(store)
+                    self?.loadAhead(store)
                 } catch {
                     self?.sessionsError = (error as? RelayAPIError)?.message ?? "Can't reach the relay."
                 }
@@ -283,6 +296,8 @@ final class AppModel {
         unseenWatch = nil
         tracking?.cancel()
         tracking = nil
+        loadingAhead?.cancel()
+        loadingAhead = nil
         await store?.stop()
         store = nil
         device = nil

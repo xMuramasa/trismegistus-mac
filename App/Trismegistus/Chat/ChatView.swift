@@ -36,6 +36,8 @@ struct ChatView: View {
     @State private var popoverComposerHeight = 0.0
     /// The column's height: the composer is dragged up to half of it.
     @State private var columnHeight: CGFloat = 0
+    /// The composer block's height: the loading note is centred in the room above it.
+    @State private var dockHeight: CGFloat = 0
     /// Images waiting for the next message, per conversation.
     @State private var tray = ImageTray()
     /// The message open in the editor (#75), with the text and images being edited.
@@ -62,7 +64,7 @@ struct ChatView: View {
             DockedScroll(reveal: marks == nil ? nil : steps.match?.itemID) {
                 TailStack(spacing: compact ? Space.m : Space.xl) {
                     OlderParts(tipID: id, compact: compact)
-                    historyStatus
+                    if !items.isEmpty { historyStatus } // else `opening`
                     transcript(items, counts: counts, marks: marks, shown: 0..<split)
                 } tail: {
                     transcript(items, counts: counts, marks: marks, shown: split..<items.count)
@@ -82,7 +84,9 @@ struct ChatView: View {
                 }
             } dock: {
                 ComposerBlock(floating: !compact) { runLine } input: { input }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { dockHeight = $0 }
             }
+            .overlay { if items.isEmpty { opening.padding(.bottom, dockHeight) } }
         }
         // The window's chat in the a3 skin (#71): the transcript and the composer straight on the backdrop.
         .environment(\.hairlineControls, !compact)
@@ -253,6 +257,23 @@ struct ChatView: View {
             items: items, shown: shown, sessionID: id, events: state?.events ?? [], onShowCommands: showCommands,
             retry: retry(_:), editing: $editing, resend: canRewind ? resend(_:) : nil, openRows: $openRows,
             findMarks: rowMarks(counts, marks))
+    }
+
+    /// A conversation whose history hasn't arrived, in the middle of the chat (Martin, 2026-11-23: a small spinner on
+    /// an empty column looked like the conversation had gone). With rows, `historyStatus` says it above them.
+    @ViewBuilder private var opening: some View {
+        if let error = state?.historyError {
+            VStack(spacing: Space.s) {
+                Text(verbatim: error).typeRole(.caption).foregroundStyle(Ink.text.error)
+                EndfieldButton("Retry", symbol: Symbol.retry, kind: .quiet) { Task { await model.store?.loadHistory(id) } }
+            }
+        } else if state?.historyLoaded != true {
+            VStack(spacing: Space.s) {
+                ProgressView().controlSize(.small)
+                Text("Loading messages…").typeRole(.caption).foregroundStyle(Ink.text.muted)
+            }
+            .accessibilityElement(children: .combine)
+        }
     }
 
     @ViewBuilder private var historyStatus: some View {
