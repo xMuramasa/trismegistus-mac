@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 import Observation
 
 /// The app's model: connection state, the session list with a live row for each, and every open session's state,
@@ -63,7 +66,9 @@ public final class SessionStore {
     /// The chat's images on disk; uploads land here so the sender's own message shows without a download.
     @ObservationIgnored public var images: ImageFiles?
     @ObservationIgnored private var feed: Task<Void, Never>?
-    @ObservationIgnored private var loading: Set<String> = []
+    /// The history fetch per session in flight. The store's own task: the view that asked going away (another
+    /// conversation picked) doesn't cancel it.
+    @ObservationIgnored private var historyLoads: [String: Task<Void, Never>] = [:]
     @ObservationIgnored private var wasConnected = false
     @ObservationIgnored private let now: @Sendable () -> Date
     @ObservationIgnored private let sleep: @Sendable (Duration) async throws -> Void
@@ -128,7 +133,7 @@ public final class SessionStore {
             let at = now()
             for id in overview.keys { overview[id]?.apply(message, at: at) }
         }
-        for (id, s) in sessions where (!s.historyLoaded || s.historyStale) && s.historyError == nil && !loading.contains(id) {
+        for (id, s) in sessions where (!s.historyLoaded || s.historyStale) && s.historyError == nil && historyLoads[id] == nil {
             await loadHistory(id)
         }
     }
@@ -153,15 +158,41 @@ public final class SessionStore {
         await follow()
     }
 
-    /// Also the retry after historyError.
+    /// Also the retry after historyError. Joins a fetch already in flight. A fetch cancelled anyway (-999) is no error:
+    /// the next thing from the relay tries again.
     public func loadHistory(_ id: String) async {
-        guard sessions[id] != nil, loading.insert(id).inserted else { return }
-        defer { loading.remove(id) }
-        do {
-            let messages = try await rest.messages(id)
-            sessions[id]?.applyHistory(messages)
-        } catch {
-            sessions[id]?.historyError = (error as? RelayAPIError)?.message ?? "Can't reach the relay."
+        guard sessions[id] != nil else { return }
+        if let load = historyLoads[id] { return await load.value }
+        let rest = rest
+        let load = Task { [weak self] in
+            let result: Result<[HistoryMessage], any Error>
+            do { result = .success(try await rest.messages(id)) } catch { result = .failure(error) }
+            guard let self else { return }
+            historyLoads[id] = nil
+            switch result {
+            case .success(let messages):
+                sessions[id]?.applyHistory(messages)
+            case .failure(let error) where error is CancellationError || (error as? URLError)?.code == .cancelled:
+                break
+            case .failure(let error):
+                sessions[id]?.historyError = (error as? RelayAPIError)?.message ?? "Can't reach the relay."
+            }
+        }
+        historyLoads[id] = load
+        await load.value
+    }
+
+    /// How many conversations `prefetch` opens at most.
+    public static let prefetchCount = 5
+
+    /// Opens the first `prefetchCount` of `ids` (the window's most recent conversations) one at a time, each once the
+    /// fetches in flight are done, so a conversation picked meanwhile comes first. Picked later, they show at once.
+    public func prefetch(_ ids: [String]) async {
+        var seen = Set<String>()
+        for id in ids where seen.insert(id).inserted {
+            guard seen.count <= Self.prefetchCount, !Task.isCancelled else { return }
+            while let load = historyLoads.values.first { await load.value }
+            await open(id)
         }
     }
 
