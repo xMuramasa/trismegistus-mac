@@ -16,8 +16,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # The palette's source (endfield-dotfiles) is private; the Android app keeps a public copy of it.
       - name: Design tokens
-        run: scripts/check-tokens.sh
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/palette.json" \
+            https://raw.githubusercontent.com/xMuramasa/trismegistus-android/develop/design/endfield-palette.json
+          ENDFIELD_PALETTE="$RUNNER_TEMP/palette.json" scripts/check-tokens.sh
 
       - name: TrismegistusKit tests (Linux)
         run: scripts/linux-test.sh
