@@ -1,0 +1,23 @@
+name: CI
+
+# The Linux half of the [gates] in .caduceus/project.toml: the design-token check and TrismegistusKit's tests in the
+# official Swift image. TrismegistusUI and the app need Xcode on macOS 26; they build and test on the Mac.
+on:
+  pull_request:
+  push:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+jobs:
+  kit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Design tokens
+        run: scripts/check-tokens.sh
+
+      - name: TrismegistusKit tests (Linux)
+        run: scripts/linux-test.sh
