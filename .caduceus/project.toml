@@ -1,0 +1,59 @@
+# Caduceus settings (caduceus SPEC section 6), from the hermes-dispatch profile with gates split by meaning by Hermes.
+kind = "macos-app"
+language = "swift"
+hosts = ["optiplex", "mac"]
+locks = ["mac-build"]
+model = "opus"
+rules = [
+  "Build and test only with the scripts above; `scripts/mac-build.sh` takes no arguments (installing is Hermes' step).",
+  "Tests never touch the real relay, the network or the real Keychain. Fixture tokens are obviously fake (`trs_FAKEFAKEFAKE...`).",
+  "Never log or print secrets, message text or approval commands in app or library code.",
+  "A view that needs a snapshot or layout test lives in `TrismegistusUI/Sources` as a public view (plain values in, no Kit types), and the App feeds it. Never copy an App file into a test target with a test that keeps the copy equal: if the view's file is outside Owns, ask for the move in the report.",
+  "You can't pull snapshot PNGs off the Mac; Hermes looks at them in review. Assert what matters in the test itself (sizes, pixels, the terminal's text) instead of hoping the picture shows it.",
+]
+
+[gates]
+# Kit on Linux (Swift container), Kit and UI natively on the Mac over ssh: the Mac must be awake.
+test = [
+  "scripts/linux-test.sh",
+  "scripts/mac-test.sh",
+  "scripts/mac-swift.sh TrismegistusUI test",
+]
+build = [
+  "scripts/mac-build.sh",
+]
+lint = [
+  "scripts/check-tokens.sh",
+]
+
+[access]
+allow = [
+  "Bash(chmod*)",
+  "Bash(python3*)",
+  "Bash(scripts/linux-test.sh*)",
+  "Bash(./scripts/linux-test.sh*)",
+  "Bash(scripts/mac-swift.sh*)",
+  "Bash(./scripts/mac-swift.sh*)",
+  "Bash(scripts/mac-test.sh*)",
+  "Bash(./scripts/mac-test.sh*)",
+  "Bash(scripts/mac-build.sh)",
+  "Bash(./scripts/mac-build.sh)",
+  "Bash(scripts/check-tokens.sh*)",
+  "Bash(./scripts/check-tokens.sh*)",
+  "Bash(sha256sum*)",
+  "Bash(rm -rf TrismegistusKit/.build*)",
+  "Bash(rm -rf TrismegistusUI/.build*)",
+]
+deny = [
+  "Bash(scripts/mac-build.sh --install*)",
+  "Bash(./scripts/mac-build.sh --install*)",
+]
+protected = [
+  "scripts/*.sh",
+]
+read_only = [
+  "hermes-relay",
+]
+no_touch = [
+  "endfield-dotfiles",
+]
